@@ -1,0 +1,66 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@variant dark (prefers-color-scheme: dark);
+@variant dark (.dark &);
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+
+    /* Custom Bible colors */
+    --color-bible-blue: #1e40af;
+    --color-bible-gold: #d97706;
+}
+
+/* Verse hover effects */
+.verse-hoverable {
+    transition: all 0.2s ease-in-out;
+    border-radius: 4px;
+    padding: 2px 4px;
+    margin: -2px -4px;
+}
+
+.verse-hoverable:hover {
+    background-color: rgba(59, 130, 246, 0.25) !important; /* Much more visible blue */
+    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.35);
+}
+
+/* Dark mode hover effect */
+.dark .verse-hoverable:hover {
+    background-color: rgba(6, 182, 212, 0.4) !important; /* Bright cyan for dark mode */
+    box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.5);
+}
+
+/* Paragraph style verse hover */
+.paragraph-verse-hoverable {
+    transition: all 0.2s ease-in-out;
+    border-radius: 2px;
+    padding: 0px 1px;
+    margin: 0px -1px;
+}
+
+.paragraph-verse-hoverable:hover {
+    background-color: rgba(59, 130, 246, 0.2) !important; /* Much more visible for paragraph style */
+    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
+}
+
+.dark .paragraph-verse-hoverable:hover {
+    background-color: rgba(6, 182, 212, 0.3) !important; /* Bright cyan for dark mode */
+    box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.4);
+}
+
+/* Verse number colors for better visibility - different for light/dark modes */
+.verse-hoverable:hover .text-bible-blue,
+.paragraph-verse-hoverable:hover .text-bible-blue {
+    color: #1e3a8a !important; /* Dark blue verse numbers for light mode blue background */
+}
+
+.dark .verse-hoverable:hover .text-bible-blue,
+.dark .paragraph-verse-hoverable:hover .text-bible-blue {
+    color: #ffffff !important; /* White verse numbers for dark mode cyan background */
+}
