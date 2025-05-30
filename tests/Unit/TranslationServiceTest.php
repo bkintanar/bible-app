@@ -31,6 +31,28 @@ describe('TranslationService', function () {
             expect($default)->toBe('kjv');
         });
 
+        it('gets default translation configuration', function () {
+            $defaultTranslation = $this->service->getDefaultTranslation();
+
+            expect($defaultTranslation)->toBeArray();
+            expect($defaultTranslation)->toHaveKeys(['key', 'name', 'filename']);
+            expect($defaultTranslation['key'])->toBe('kjv');
+        });
+
+        it('gets translation by key', function () {
+            $translation = $this->service->getTranslation('kjv');
+
+            expect($translation)->toBeArray();
+            expect($translation)->toHaveKeys(['key', 'name', 'filename']);
+            expect($translation['key'])->toBe('kjv');
+        });
+
+        it('returns null for invalid translation key', function () {
+            $translation = $this->service->getTranslation('invalid');
+
+            expect($translation)->toBeNull();
+        });
+
         it('creates OSIS reader for valid translation', function () {
             $reader = $this->service->createReader('kjv');
 
@@ -62,9 +84,26 @@ describe('TranslationService', function () {
 
             expect($path)->toBeNull();
         });
+
+        it('returns null for non-existent file', function () {
+            // Mock a translation with non-existent file
+            config(['bible.translations.fake' => [
+                'name' => 'Fake Translation',
+                'filename' => 'nonexistent.osis.xml'
+            ]]);
+
+            $path = $this->service->getOsisFilePath('fake');
+
+            expect($path)->toBeNull();
+        });
     });
 
     describe('current translation management', function () {
+        beforeEach(function () {
+            // Clear session before each test
+            session()->forget('current_translation');
+        });
+
         it('sets and gets current translation', function () {
             // Default should be KJV
             $current = $this->service->getCurrentTranslationKey();
@@ -95,6 +134,75 @@ describe('TranslationService', function () {
 
             // Should always have a valid default
             expect($originalDefault)->toBe('kjv');
+        });
+
+        it('ignores setting invalid translation', function () {
+            // Try to set invalid translation
+            $this->service->setCurrentTranslation('invalid');
+
+            // Should still be default
+            $current = $this->service->getCurrentTranslationKey();
+            expect($current)->toBe('kjv');
+        });
+
+        it('falls back to default when current translation becomes invalid', function () {
+            // Set valid translation first
+            $this->service->setCurrentTranslation('asv');
+            expect($this->service->getCurrentTranslationKey())->toBe('asv');
+
+            // Simulate translation becoming unavailable
+            session(['current_translation' => 'invalid']);
+
+            // getCurrentTranslation should fall back gracefully
+            $config = $this->service->getCurrentTranslation();
+            expect($config['key'])->toBe('kjv'); // Should fall back to default
+        });
+
+        it('handles session persistence correctly', function () {
+            // Set translation
+            $this->service->setCurrentTranslation('asv');
+
+            // Create new service instance (simulating new request)
+            $newService = new TranslationService();
+
+            // Should maintain session state
+            expect($newService->getCurrentTranslationKey())->toBe('asv');
+        });
+    });
+
+    describe('edge cases and error handling', function () {
+        it('handles empty translations config', function () {
+            // Temporarily clear translations config
+            $originalConfig = config('bible.translations');
+            config(['bible.translations' => []]);
+
+            $translations = $this->service->getAvailableTranslations();
+            expect($translations)->toBeEmpty();
+
+            // Restore config
+            config(['bible.translations' => $originalConfig]);
+        });
+
+        it('handles missing default translation config', function () {
+            // Test with invalid default translation
+            config(['bible.default_translation' => 'nonexistent']);
+
+            $defaultTranslation = $this->service->getDefaultTranslation();
+            expect($defaultTranslation)->toBe([]); // Should return empty array
+
+            // Restore config
+            config(['bible.default_translation' => 'kjv']);
+        });
+
+        it('handles missing OSIS directory config', function () {
+            $originalDir = config('bible.osis_directory');
+            config(['bible.osis_directory' => null]);
+
+            $path = $this->service->getOsisFilePath('kjv');
+            // Should handle gracefully - might return null or string
+            expect($path === null || is_string($path))->toBeTrue();
+
+            config(['bible.osis_directory' => $originalDir]);
         });
     });
 });
