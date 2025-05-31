@@ -14,7 +14,9 @@ Route::get('/{bookOsisId}/{chapterNumber}/{verseNumber}', [BibleController::clas
 // API routes for Bible data
 Route::prefix('api')->group(function () {
     Route::get('/books', [BibleController::class, 'apiBooks'])->name('api.bible.books');
+    Route::get('/capabilities', [BibleController::class, 'apiCapabilities'])->name('api.bible.capabilities');
     Route::get('/{bookOsisId}/chapters', [BibleController::class, 'apiChapters'])->name('api.bible.chapters');
     Route::get('/{bookOsisId}/{chapterNumber}/verses', [BibleController::class, 'apiVerses'])->name('api.bible.verses');
+    Route::get('/{bookOsisId}/{chapterNumber}/{verseNumber}', [BibleController::class, 'apiVerseDetails'])->name('api.bible.verse.details');
     Route::get('/search', [BibleController::class, 'apiSearch'])->name('api.bible.search');
 });

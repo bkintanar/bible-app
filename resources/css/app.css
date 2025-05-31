@@ -214,3 +214,134 @@ mark {
         border-radius: 4px;
     }
 }
+
+/* Poetry formatting - Hebrew poetry with 4-level indentation */
+.poetry-line {
+    font-family: var(--font-bible);
+    font-size: 1.125rem;
+    line-height: 1.8;
+    margin-bottom: 0.25rem;
+    padding-left: 0;
+    color: #374151; /* Default text color for light mode */
+}
+
+/* Dark mode text color for poetry lines */
+.dark .poetry-line {
+    color: #d1d5db;
+}
+
+/* 4-level indentation for Hebrew poetry */
+.poetry-line.indent-0 {
+    padding-left: 0;
+}
+
+.poetry-line.indent-4 {
+    padding-left: 1rem;
+}
+
+.poetry-line.indent-8 {
+    padding-left: 2rem;
+}
+
+.poetry-line.indent-12 {
+    padding-left: 3rem;
+}
+
+/* Line groups for poetry stanzas */
+.line-group {
+    margin-bottom: 1rem;
+    padding: 0.5rem 0;
+}
+
+/* Caesura (poetry pause) styling */
+.caesura {
+    font-weight: bold;
+    font-size: 1.2em;
+    user-select: none;
+    opacity: 0.7;
+}
+
+/* Section titles - Psalm titles, chapter headings */
+.psalm-title {
+    font-family: var(--font-bible);
+    font-style: italic;
+    text-align: center;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #6b7280;
+    margin: 1rem 0 1.5rem 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.dark .psalm-title {
+    color: #9ca3af;
+    border-bottom-color: #374151;
+}
+
+.main-title {
+    font-family: var(--font-bible);
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 0.025em;
+    margin: 1.5rem 0;
+    color: #111827;
+    text-align: center;
+}
+
+.dark .main-title {
+    color: #f9fafb;
+}
+
+/* Acrostic markers (Hebrew letters for acrostic psalms) */
+.acrostic-title {
+    font-family: var(--font-bible);
+    font-size: 1.125rem;
+    font-weight: 600;
+    text-align: center;
+    color: #1d4ed8;
+    margin: 1rem 0;
+    letter-spacing: 0.05em;
+}
+
+.dark .acrostic-title {
+    color: #60a5fa;
+}
+
+/* Enhanced poetry formatting for better readability */
+.poetry-container {
+    background-color: #f8fafc;
+    border-left: 4px solid var(--color-bible-blue);
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 0 8px 8px 0;
+}
+
+.dark .poetry-container {
+    background-color: #1f2937;
+    border-left-color: #60a5fa;
+}
+
+/* Make poetry lines more distinct in paragraph view */
+.poetry-line:not(:last-child)::after {
+    content: "";
+    display: block;
+    height: 0.125rem;
+}
+
+/* Special formatting for Psalms with traditional numbering */
+.psalm-verse {
+    position: relative;
+}
+
+.psalm-verse .verse-number {
+    position: absolute;
+    left: -2rem;
+    top: 0;
+    font-weight: 700;
+    color: var(--color-bible-blue);
+}
+
+.dark .psalm-verse .verse-number {
+    color: #60a5fa;
+}

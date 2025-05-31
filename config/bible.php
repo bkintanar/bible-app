@@ -3,6 +3,21 @@
 return [
     /*
     |--------------------------------------------------------------------------
+    | Bible Reader Type
+    |--------------------------------------------------------------------------
+    |
+    | Determines which reader implementation to use:
+    | - 'xml': Uses XML files directly (OsisReader)
+    | - 'database': Uses imported database content (DatabaseBibleReader)
+    |
+    | Database reader provides enhanced features like Strong's concordance,
+    | textual criticism notes, and high-performance FTS search.
+    |
+    */
+    'reader_type' => env('BIBLE_READER_TYPE', 'database'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Available Bible Translations
     |--------------------------------------------------------------------------
     |
@@ -89,4 +104,18 @@ return [
     |
     */
     'osis_directory' => 'assets',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Database Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Settings for database-based Bible reader
+    |
+    */
+    'database' => [
+        'cache_duration' => env('BIBLE_CACHE_DURATION', 3600), // 1 hour
+        'fts_enabled' => env('BIBLE_FTS_ENABLED', true),
+        'enhanced_features' => env('BIBLE_ENHANCED_FEATURES', true),
+    ],
 ];

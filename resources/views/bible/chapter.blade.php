@@ -123,6 +123,13 @@
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-8">
         <div id="verseContainer" class="bible-text prose prose-xl dark:prose-invert max-w-none" style="font-size: 1.125rem;">
             @if($formatStyle === 'paragraph' && $paragraphs)
+                <!-- Display chapter titles if they exist (before paragraphs) -->
+                @if($paragraphs->isNotEmpty() && isset($paragraphs->first()['verses'][0]['chapter_titles']) && !empty($paragraphs->first()['verses'][0]['chapter_titles']))
+                    <div class="mb-6">
+                        {!! $paragraphs->first()['verses'][0]['chapter_titles'] !!}
+                    </div>
+                @endif
+
                 @foreach($paragraphs as $paragraph)
                     @if(isset($paragraph['type']) && $paragraph['type'] === 'line_break')
                         <!-- Render line break -->
@@ -221,6 +228,13 @@
                     @endif
                 @endforeach
             @else
+                <!-- Display chapter titles if they exist (before verses) -->
+                @if($verses->isNotEmpty() && !empty($verses->first()['chapter_titles']))
+                    <div class="mb-6">
+                        {!! $verses->first()['chapter_titles'] !!}
+                    </div>
+                @endif
+
                 @foreach($verses as $verse)
                     @php
                         $isHighlighted = false;

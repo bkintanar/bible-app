@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Services\Contracts\BibleReaderInterface;
 use App\Services\Contracts\OsisParserInterface;
 use App\Services\Parsers\MilestoneOsisParser;
 use App\Services\Parsers\ContainedOsisParser;
@@ -9,7 +10,7 @@ use DOMDocument;
 use DOMXPath;
 use Illuminate\Support\Collection;
 
-class OsisReader
+class OsisReader implements BibleReaderInterface
 {
     private DOMDocument $dom;
     private DOMXPath $xpath;
