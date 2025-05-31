@@ -12,9 +12,37 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 
+    /* Traditional Bible serif font stack - similar to Thompson Bible */
+    --font-bible: 'Minion Pro', 'Adobe Garamond Pro', 'Times New Roman', 'Liberation Serif', 'Times', serif;
+
     /* Custom Bible colors */
     --color-bible-blue: #1e40af;
     --color-bible-gold: #d97706;
+}
+
+/* Ensure transChange elements are properly italicized */
+em.italic,
+em[class*="italic"] {
+    font-style: italic !important;
+    font-family: var(--font-bible) !important;
+}
+
+/* Specific styling for translator additions */
+.bible-text em.italic {
+    font-style: italic !important;
+    color: #6b7280 !important;
+    font-weight: 400 !important;
+}
+
+.dark .bible-text em.italic {
+    color: #9ca3af !important;
+}
+
+/* Override any prose styles that might interfere */
+.prose em.italic,
+.prose-xl em.italic {
+    font-style: italic !important;
+    font-family: inherit !important;
 }
 
 /* Verse hover effects */
@@ -63,4 +91,126 @@
 .dark .verse-hoverable:hover .text-bible-blue,
 .dark .paragraph-verse-hoverable:hover .text-bible-blue {
     color: #ffffff !important; /* White verse numbers for dark mode cyan background */
+}
+
+/* Fix verse range highlighting in dark mode */
+.dark .bg-yellow-100 {
+    background-color: #92400e !important; /* Dark yellow/amber background for dark mode */
+}
+
+.dark .bg-yellow-100 .text-gray-800,
+.dark .bg-yellow-100 span {
+    color: #f3f4f6 !important; /* Light text for contrast */
+}
+
+/* Search highlighting styles for mark tags */
+mark {
+    background-color: #fbbf24 !important; /* Bright yellow for light mode */
+    color: #1f2937 !important; /* Dark text for contrast */
+    padding: 2px 4px !important;
+    border-radius: 4px !important;
+    font-weight: 600 !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+    border: 1px solid #d97706 !important; /* Orange border for definition */
+    font-style: normal !important;
+    text-decoration: none !important;
+}
+
+/* Dark mode search highlighting */
+.dark mark {
+    background-color: #f59e0b !important; /* Bright orange-yellow for dark mode */
+    color: #000000 !important; /* Pure black text for maximum contrast */
+    font-weight: 700 !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4) !important;
+    border: 1px solid #d97706 !important; /* Orange border for definition */
+    font-style: normal !important;
+    text-decoration: none !important;
+}
+
+/* Ensure nested elements within mark tags also have proper contrast */
+.dark mark * {
+    color: #000000 !important; /* Ensure all nested elements are black */
+    background-color: inherit !important;
+}
+
+/* Traditional Bible typography - similar to Thompson Chain-Reference Bible */
+.bible-text {
+    font-family: var(--font-bible);
+    font-size: 1.125rem;
+    line-height: 1.7;
+    letter-spacing: 0.01em;
+    font-weight: 400;
+}
+
+.bible-text p {
+    margin-bottom: 1rem;
+}
+
+/* Verse numbers with traditional styling */
+.verse-number {
+    font-family: var(--font-bible);
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1;
+    vertical-align: super;
+    margin-right: 0.25rem;
+}
+
+/* Chapter headers with classic styling */
+.chapter-title {
+    font-family: var(--font-bible);
+    font-weight: 700;
+    letter-spacing: 0.025em;
+}
+
+/* Preserve red letter formatting with serif font */
+.red-letter {
+    font-family: var(--font-bible);
+    color: #dc2626;
+    font-weight: 500;
+}
+
+.dark .red-letter {
+    color: #ef4444;
+}
+
+/* Individual verse highlighting within paragraphs */
+.paragraph-verse-hoverable.bg-yellow-100 {
+    border-radius: 6px;
+    margin: 1px 0;
+    padding: 4px 8px;
+    display: inline-block;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.dark .paragraph-verse-hoverable.bg-yellow-100 {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Make consecutive highlighted verses flow together seamlessly */
+.paragraph-verse-hoverable.bg-yellow-100 + .paragraph-verse-hoverable.bg-yellow-100 {
+    margin-left: -2px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+.paragraph-verse-hoverable.bg-yellow-100:has(+ .paragraph-verse-hoverable.bg-yellow-100) {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+/* Fallback for browsers that don't support :has() */
+@supports not selector(:has(*)) {
+    .paragraph-verse-hoverable.bg-yellow-100 {
+        border-radius: 4px 0 0 4px;
+        margin-right: 0;
+    }
+
+    .paragraph-verse-hoverable.bg-yellow-100:last-of-type {
+        border-radius: 0 4px 4px 0;
+    }
+
+    .paragraph-verse-hoverable.bg-yellow-100:only-child {
+        border-radius: 4px;
+    }
 }

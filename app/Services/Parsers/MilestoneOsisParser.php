@@ -220,6 +220,19 @@ class MilestoneOsisParser implements OsisParserInterface
         $results = collect();
         $processedCount = 0;
 
+        // Early exit for empty search
+        if (empty(trim($searchTerm))) {
+            return $results;
+        }
+
+        // MAJOR OPTIMIZATION: Pre-build a map of eID to verse nodes to avoid repeated XPath queries
+        $verseEndMap = [];
+        $verseEndNodes = $this->xpath->query('//osis:verse[@eID]');
+        foreach ($verseEndNodes as $endNode) {
+            $eId = $endNode->getAttribute('eID');
+            $verseEndMap[$eId] = $endNode;
+        }
+
         // Get all verse elements with milestone format
         $verseNodes = $this->xpath->query('//osis:verse[@sID]');
 
@@ -239,10 +252,15 @@ class MilestoneOsisParser implements OsisParserInterface
                     continue;
                 }
 
-                // Get verse text
+                // OPTIMIZATION: Fast pre-screening using the cached end markers
+                if (!$this->fastTextContainsOptimized($verseNode, $verseEndMap, $searchTerm)) {
+                    continue; // Skip expensive processing if no match
+                }
+
+                // Only do expensive text processing if we have a potential match
                 $verseText = $this->getVerseText($osisId);
 
-                // Simple case-insensitive search
+                // Double-check with full formatted text
                 if (stripos($verseText, $searchTerm) !== false) {
                     $chapterNum = $parts[1];
                     $verseNum = $parts[2];
@@ -262,6 +280,47 @@ class MilestoneOsisParser implements OsisParserInterface
         }
 
         return $results;
+    }
+
+    /**
+     * Optimized fast text search for milestone verses using pre-cached end markers
+     */
+    private function fastTextContainsOptimized($verseStartNode, array $verseEndMap, string $searchTerm): bool
+    {
+        $sId = $verseStartNode->getAttribute('sID');
+        $eId = str_replace('.sID.', '.eID.', $sId);
+
+        // Use cached verse end node instead of XPath query
+        $verseEnd = $verseEndMap[$eId] ?? null;
+        if (!$verseEnd) {
+            return false;
+        }
+
+        // Extract plain text between start and end markers with early exit
+        $plainText = '';
+        $currentNode = $verseStartNode->nextSibling;
+        $maxNodes = 200; // Safety limit to prevent runaway processing
+        $nodeCount = 0;
+
+        while ($currentNode && $currentNode !== $verseEnd && $nodeCount < $maxNodes) {
+            if ($currentNode->nodeType === XML_TEXT_NODE) {
+                $plainText .= $currentNode->textContent;
+            } elseif ($currentNode->nodeType === XML_ELEMENT_NODE) {
+                // Just get textContent for speed - no formatting
+                $plainText .= $currentNode->textContent;
+            }
+
+            // Early exit optimization: check for match as we build the text
+            if (strlen($plainText) > strlen($searchTerm) && stripos($plainText, $searchTerm) !== false) {
+                return true;
+            }
+
+            $currentNode = $currentNode->nextSibling;
+            $nodeCount++;
+        }
+
+        // Final check in case the search term spans the end of the text
+        return stripos($plainText, $searchTerm) !== false;
     }
 
     /**
@@ -359,6 +418,33 @@ class MilestoneOsisParser implements OsisParserInterface
     {
         $text = '';
 
+        // Handle the case where the node itself is a special element
+        if ($node->nodeType === XML_ELEMENT_NODE) {
+            if ($node->nodeName === 'transChange') {
+                // Handle translator additions - traditionally italicized
+                $changeType = $node->getAttribute('type');
+                if ($changeType === 'added') {
+                    return '<em class="text-gray-600 dark:text-gray-400 font-normal italic">' . $node->textContent . '</em>';
+                } else {
+                    return $node->textContent;
+                }
+            } elseif ($node->nodeName === 'q' && $node->getAttribute('who') === 'Jesus') {
+                // Handle Red Letter text for contained verses
+                return '<span class="text-red-600 font-medium">' . $node->textContent . '</span>';
+            } elseif ($node->nodeName === 'title') {
+                // Handle titles (psalm titles, etc.)
+                $titleType = $node->getAttribute('type');
+                if ($titleType === 'psalm') {
+                    return '<div class="text-center text-sm font-medium text-gray-700 dark:text-gray-300 italic mb-3 border-b border-gray-200 dark:border-gray-600 pb-2">' . $node->textContent . '</div>';
+                } elseif ($titleType === 'main') {
+                    return '<h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">' . $node->textContent . '</h2>';
+                } else {
+                    return '<div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">' . $node->textContent . '</div>';
+                }
+            }
+        }
+
+        // Process child nodes for complex elements
         foreach ($node->childNodes as $child) {
             if ($child->nodeType === XML_TEXT_NODE) {
                 $text .= $child->textContent;

@@ -33,7 +33,7 @@
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
         <div class="flex items-center justify-between mb-4">
             <div>
-                <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ $currentBook['name'] }} {{ $chapterNumber }}</h1>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100 chapter-title">{{ $currentBook['name'] }} {{ $chapterNumber }}</h1>
                 <p class="text-gray-600 dark:text-gray-400 mt-1">{{ $currentBook['testament'] }}</p>
             </div>
             <div class="text-right">
@@ -121,7 +121,7 @@
 
     <!-- Verses -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-8">
-        <div id="verseContainer" class="prose prose-xl dark:prose-invert max-w-none" style="font-size: 1.125rem;">
+        <div id="verseContainer" class="bible-text prose prose-xl dark:prose-invert max-w-none" style="font-size: 1.125rem;">
             @if($formatStyle === 'paragraph' && $paragraphs)
                 @foreach($paragraphs as $paragraph)
                     @if(isset($paragraph['type']) && $paragraph['type'] === 'line_break')
@@ -133,41 +133,88 @@
                         <!-- Render normal paragraph -->
                         <div class="mb-6">
                             @php
-                                $paragraphVerseNumbers = collect($paragraph['verses'])->pluck('verse_number');
-                                $highlightClass = '';
+                                // Determine which verses should be highlighted
+                                $highlightedVerses = [];
+                                foreach ($paragraph['verses'] as $verse) {
+                                    $shouldHighlight = false;
 
-                                // Check if any verse in this paragraph should be highlighted
-                                $shouldHighlight = false;
+                                    // Single verse highlighting
+                                    if (session('highlightVerse') == $verse['verse_number']) {
+                                        $shouldHighlight = true;
+                                    }
 
-                                // Single verse highlighting
-                                if (session('highlightVerse') && $paragraphVerseNumbers->contains(session('highlightVerse'))) {
-                                    $shouldHighlight = true;
-                                    $highlightClass = 'bg-yellow-100 border-l-4 border-yellow-400 pl-4 py-2';
+                                    // Verse range highlighting
+                                    $verseRange = session('highlightVerseRange');
+                                    if ($verseRange &&
+                                        $verse['verse_number'] >= $verseRange['start'] &&
+                                        $verse['verse_number'] <= $verseRange['end']) {
+                                        $shouldHighlight = true;
+                                    }
+
+                                    $highlightedVerses[$verse['verse_number']] = $shouldHighlight;
                                 }
 
-                                // Verse range highlighting
-                                $verseRange = session('highlightVerseRange');
-                                if ($verseRange) {
-                                    $rangeOverlap = $paragraphVerseNumbers->filter(function($num) use ($verseRange) {
-                                        return $num >= $verseRange['start'] && $num <= $verseRange['end'];
-                                    });
-                                    if ($rangeOverlap->isNotEmpty()) {
-                                        $shouldHighlight = true;
-                                        $highlightClass = 'bg-blue-50 border-l-4 border-blue-400 pl-4 py-2';
+                                // Group consecutive highlighted verses
+                                $verseGroups = [];
+                                $currentGroup = [];
+                                $inHighlight = false;
+
+                                foreach ($paragraph['verses'] as $index => $verse) {
+                                    $isHighlighted = $highlightedVerses[$verse['verse_number']];
+
+                                    if ($isHighlighted && !$inHighlight) {
+                                        // Start new highlight group
+                                        if (!empty($currentGroup)) {
+                                            $verseGroups[] = ['verses' => $currentGroup, 'highlighted' => false];
+                                        }
+                                        $currentGroup = [$verse];
+                                        $inHighlight = true;
+                                    } elseif ($isHighlighted && $inHighlight) {
+                                        // Continue highlight group
+                                        $currentGroup[] = $verse;
+                                    } elseif (!$isHighlighted && $inHighlight) {
+                                        // End highlight group
+                                        $verseGroups[] = ['verses' => $currentGroup, 'highlighted' => true];
+                                        $currentGroup = [$verse];
+                                        $inHighlight = false;
+                                    } else {
+                                        // Continue normal group
+                                        $currentGroup[] = $verse;
                                     }
+                                }
+
+                                // Add final group
+                                if (!empty($currentGroup)) {
+                                    $verseGroups[] = ['verses' => $currentGroup, 'highlighted' => $inHighlight];
                                 }
                             @endphp
 
-                            <p class="mb-4 leading-relaxed {{ $highlightClass }}"
+                            <p class="mb-4 leading-relaxed"
                                id="paragraph-{{ $paragraph['verses'][0]['verse_number'] ?? '' }}">
-                                @foreach($paragraph['verses'] as $verse)
-                                    <span class="paragraph-verse-hoverable">
-                                        <span class="inline-block align-top text-xs font-bold text-bible-blue dark:text-blue-400 mr-1 mt-1 min-w-[1.5rem]"
-                                              id="verse-{{ $verse['verse_number'] }}">
-                                            {{ $verse['verse_number'] }}
-                                        </span><!--
-                                        --><span class="text-gray-800 dark:text-gray-200">{!! $verse['text'] !!}</span>
-                                    </span>@if(!$loop->last) @endif
+                                @foreach($verseGroups as $group)
+                                    @if($group['highlighted'])
+                                        <span class="bg-yellow-100 dark:bg-yellow-900 px-2 py-1 rounded" style="display: inline;">
+                                            @foreach($group['verses'] as $verse)
+                                                <span class="paragraph-verse-hoverable">
+                                                    <span class="verse-number text-bible-blue dark:text-blue-400"
+                                                          id="verse-{{ $verse['verse_number'] }}">
+                                                        {{ $verse['verse_number'] }}
+                                                    </span><!--
+                                                    --><span class="text-gray-900 dark:text-gray-100">{!! $verse['text'] !!}</span>
+                                                </span>@if(!$loop->last) @endif
+                                            @endforeach
+                                        </span>
+                                    @else
+                                        @foreach($group['verses'] as $verse)
+                                            <span class="paragraph-verse-hoverable">
+                                                <span class="verse-number text-bible-blue dark:text-blue-400"
+                                                      id="verse-{{ $verse['verse_number'] }}">
+                                                    {{ $verse['verse_number'] }}
+                                                </span><!--
+                                                --><span class="text-gray-800 dark:text-gray-200">{!! $verse['text'] !!}</span>
+                                            </span>@if(!$loop->last) @endif
+                                        @endforeach
+                                    @endif
                                 @endforeach
                             </p>
                         </div>
@@ -182,7 +229,7 @@
                         // Single verse highlighting
                         if (session('highlightVerse') == $verse['verse_number']) {
                             $isHighlighted = true;
-                            $highlightClass = 'bg-yellow-100 border-l-4 border-yellow-400 pl-4 py-2';
+                            $highlightClass = 'bg-yellow-100 dark:bg-yellow-900 border-l-4 border-yellow-400 dark:border-yellow-500 pl-4 py-2';
                         }
 
                         // Verse range highlighting
@@ -191,13 +238,13 @@
                             $verse['verse_number'] >= $verseRange['start'] &&
                             $verse['verse_number'] <= $verseRange['end']) {
                             $isHighlighted = true;
-                            $highlightClass = 'bg-blue-50 border-l-4 border-blue-400 pl-4 py-2';
+                            $highlightClass = 'bg-yellow-100 dark:bg-yellow-900 border-l-4 border-yellow-400 dark:border-yellow-500 pl-4 py-2';
                         }
                     @endphp
 
                     <p class="mb-4 leading-relaxed {{ $highlightClass }} verse-hoverable"
                        id="verse-{{ $verse['verse_number'] }}">
-                        <span class="inline-block align-top text-xs font-bold text-bible-blue dark:text-blue-400 mr-1 mt-1 min-w-[1.5rem]">
+                        <span class="verse-number text-bible-blue dark:text-blue-400">
                             {{ $verse['verse_number'] }}
                         </span>
                         <span class="text-gray-800 dark:text-gray-200">{!! $verse['text'] !!}</span>
@@ -332,15 +379,6 @@ document.addEventListener('DOMContentLoaded', function() {
             behavior: 'smooth',
             block: 'center'
         });
-
-        // Flash effect to draw attention
-        setTimeout(() => {
-            verseElement.style.transition = 'background-color 0.3s ease';
-            verseElement.style.backgroundColor = '#fef3c7';
-            setTimeout(() => {
-                verseElement.style.backgroundColor = '#fef9e7';
-            }, 300);
-        }, 1000);
     }
 });
 @endif
@@ -356,20 +394,6 @@ document.addEventListener('DOMContentLoaded', function() {
             behavior: 'smooth',
             block: 'start'
         });
-
-        // Flash effect for the entire range
-        setTimeout(() => {
-            for (let i = verseRange.start; i <= verseRange.end; i++) {
-                const verseEl = document.getElementById('verse-' + i);
-                if (verseEl) {
-                    verseEl.style.transition = 'background-color 0.3s ease';
-                    verseEl.style.backgroundColor = '#dbeafe';
-                    setTimeout(() => {
-                        verseEl.style.backgroundColor = '#eff6ff';
-                    }, 300);
-                }
-            }
-        }, 1000);
     }
 });
 @endif

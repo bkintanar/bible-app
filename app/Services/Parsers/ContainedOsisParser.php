@@ -132,6 +132,14 @@ class ContainedOsisParser implements OsisParserInterface
         $results = collect();
         $processedCount = 0;
 
+        // Early exit for empty search
+        if (empty(trim($searchTerm))) {
+            return $results;
+        }
+
+        // Use a more targeted XPath to search in textContent first (much faster)
+        $searchTermLower = strtolower($searchTerm);
+
         // Get all verse elements with contained format
         $verseNodes = $this->xpath->query('//osis:verse[@osisID and not(@sID)]');
 
@@ -151,10 +159,16 @@ class ContainedOsisParser implements OsisParserInterface
                     continue;
                 }
 
-                // Get verse text
+                // OPTIMIZATION: First do a fast plain text search using textContent
+                $plainText = $verseNode->textContent;
+                if (stripos($plainText, $searchTerm) === false) {
+                    continue; // Skip expensive processing if no match
+                }
+
+                // Only do expensive text processing if we have a match
                 $verseText = $this->getVerseTextFromNode($verseNode);
 
-                // Simple case-insensitive search
+                // Double-check with formatted text (in case textContent differs from formatted)
                 if (stripos($verseText, $searchTerm) !== false) {
                     $chapterNum = $parts[1];
                     $verseNum = $parts[2];
@@ -191,6 +205,33 @@ class ContainedOsisParser implements OsisParserInterface
     {
         $text = '';
 
+        // Handle the case where the node itself is a special element
+        if ($node->nodeType === XML_ELEMENT_NODE) {
+            if ($node->nodeName === 'transChange') {
+                // Handle translator additions - traditionally italicized
+                $changeType = $node->getAttribute('type');
+                if ($changeType === 'added') {
+                    return '<em class="text-gray-600 dark:text-gray-400 font-normal italic">' . $node->textContent . '</em>';
+                } else {
+                    return $node->textContent;
+                }
+            } elseif ($node->nodeName === 'q' && $node->getAttribute('who') === 'Jesus') {
+                // Handle Red Letter text for contained verses
+                return '<span class="text-red-600 font-medium">' . $node->textContent . '</span>';
+            } elseif ($node->nodeName === 'title') {
+                // Handle titles (psalm titles, etc.)
+                $titleType = $node->getAttribute('type');
+                if ($titleType === 'psalm') {
+                    return '<div class="text-center text-sm font-medium text-gray-700 dark:text-gray-300 italic mb-3 border-b border-gray-200 dark:border-gray-600 pb-2">' . $node->textContent . '</div>';
+                } elseif ($titleType === 'main') {
+                    return '<h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">' . $node->textContent . '</h2>';
+                } else {
+                    return '<div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">' . $node->textContent . '</div>';
+                }
+            }
+        }
+
+        // Process child nodes for complex elements
         foreach ($node->childNodes as $child) {
             if ($child->nodeType === XML_TEXT_NODE) {
                 $text .= $child->textContent;

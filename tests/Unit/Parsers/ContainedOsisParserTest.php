@@ -709,4 +709,400 @@ describe('ContainedOsisParser', function () {
             expect($verseNumbers)->toBe(array_values($verseNumbers)); // Should be in order
         });
     });
+
+    describe('comprehensive extractTextWithRedLetters coverage', function () {
+        it('handles transChange node as direct element with added type', function () {
+            // Create a transChange element as the main node (not child)
+            $dom = new DOMDocument();
+            $transElement = $dom->createElement('transChange', 'supplied text');
+            $transElement->setAttribute('type', 'added');
+
+            // Use reflection to access the private method
+            $reflection = new ReflectionClass($this->parser);
+            $method = $reflection->getMethod('extractTextWithRedLetters');
+            $method->setAccessible(true);
+
+            $result = $method->invoke($this->parser, $transElement);
+            expect($result)->toBe('<em class="text-gray-600 dark:text-gray-400 font-normal italic">supplied text</em>');
+        });
+
+        it('handles transChange node as direct element with non-added type', function () {
+            // Create a transChange element with non-added type
+            $dom = new DOMDocument();
+            $transElement = $dom->createElement('transChange', 'modified text');
+            $transElement->setAttribute('type', 'modified');
+
+            $reflection = new ReflectionClass($this->parser);
+            $method = $reflection->getMethod('extractTextWithRedLetters');
+            $method->setAccessible(true);
+
+            $result = $method->invoke($this->parser, $transElement);
+            expect($result)->toBe('modified text');
+        });
+
+        it('handles q node as direct element with Jesus attribute', function () {
+            // Create a q element as the main node with Jesus attribution
+            $dom = new DOMDocument();
+            $qElement = $dom->createElement('q', 'Jesus spoke these words');
+            $qElement->setAttribute('who', 'Jesus');
+
+            $reflection = new ReflectionClass($this->parser);
+            $method = $reflection->getMethod('extractTextWithRedLetters');
+            $method->setAccessible(true);
+
+            $result = $method->invoke($this->parser, $qElement);
+            expect($result)->toBe('<span class="text-red-600 font-medium">Jesus spoke these words</span>');
+        });
+
+        it('handles title node as direct element with psalm type', function () {
+            // Create a title element as the main node with psalm type
+            $dom = new DOMDocument();
+            $titleElement = $dom->createElement('title', 'A Psalm of David');
+            $titleElement->setAttribute('type', 'psalm');
+
+            $reflection = new ReflectionClass($this->parser);
+            $method = $reflection->getMethod('extractTextWithRedLetters');
+            $method->setAccessible(true);
+
+            $result = $method->invoke($this->parser, $titleElement);
+            expect($result)->toBe('<div class="text-center text-sm font-medium text-gray-700 dark:text-gray-300 italic mb-3 border-b border-gray-200 dark:border-gray-600 pb-2">A Psalm of David</div>');
+        });
+
+        it('handles title node as direct element with main type', function () {
+            // Create a title element as the main node with main type
+            $dom = new DOMDocument();
+            $titleElement = $dom->createElement('title', 'Chapter Title');
+            $titleElement->setAttribute('type', 'main');
+
+            $reflection = new ReflectionClass($this->parser);
+            $method = $reflection->getMethod('extractTextWithRedLetters');
+            $method->setAccessible(true);
+
+            $result = $method->invoke($this->parser, $titleElement);
+            expect($result)->toBe('<h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">Chapter Title</h2>');
+        });
+
+        it('handles title node as direct element with generic type', function () {
+            // Create a title element as the main node with generic type
+            $dom = new DOMDocument();
+            $titleElement = $dom->createElement('title', 'Section Title');
+            $titleElement->setAttribute('type', 'section');
+
+            $reflection = new ReflectionClass($this->parser);
+            $method = $reflection->getMethod('extractTextWithRedLetters');
+            $method->setAccessible(true);
+
+            $result = $method->invoke($this->parser, $titleElement);
+            expect($result)->toBe('<div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Section Title</div>');
+        });
+
+        it('handles title node as direct element without type attribute', function () {
+            // Create a title element without type attribute
+            $dom = new DOMDocument();
+            $titleElement = $dom->createElement('title', 'Untitled');
+
+            $reflection = new ReflectionClass($this->parser);
+            $method = $reflection->getMethod('extractTextWithRedLetters');
+            $method->setAccessible(true);
+
+            $result = $method->invoke($this->parser, $titleElement);
+            expect($result)->toBe('<div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Untitled</div>');
+        });
+
+        it('handles non-XML_ELEMENT_NODE as direct node', function () {
+            // Create a text node
+            $dom = new DOMDocument();
+            $textNode = $dom->createTextNode('Plain text content');
+
+            $reflection = new ReflectionClass($this->parser);
+            $method = $reflection->getMethod('extractTextWithRedLetters');
+            $method->setAccessible(true);
+
+            $result = $method->invoke($this->parser, $textNode);
+            // Text nodes passed directly to the method return empty string
+            // because the method processes childNodes, and text nodes have no children
+            expect($result)->toBe('');
+        });
+
+        it('handles mixed content with multiple child node types', function () {
+            // Create a complex node with text and element children
+            $dom = new DOMDocument();
+            $verse = $dom->createElement('verse');
+
+            // Add text node
+            $verse->appendChild($dom->createTextNode('Before '));
+
+            // Add transChange child
+            $transElement = $dom->createElement('transChange', 'supplied');
+            $transElement->setAttribute('type', 'added');
+            $verse->appendChild($transElement);
+
+            // Add more text
+            $verse->appendChild($dom->createTextNode(' and '));
+
+            // Add q element
+            $qElement = $dom->createElement('q', 'Jesus said');
+            $qElement->setAttribute('who', 'Jesus');
+            $verse->appendChild($qElement);
+
+            // Add final text
+            $verse->appendChild($dom->createTextNode(' to them.'));
+
+            $reflection = new ReflectionClass($this->parser);
+            $method = $reflection->getMethod('extractTextWithRedLetters');
+            $method->setAccessible(true);
+
+            $result = $method->invoke($this->parser, $verse);
+            expect($result)->toBe('Before <em class="text-gray-600 dark:text-gray-400 font-normal italic">supplied</em> and <span class="text-red-600 font-medium">Jesus said</span> to them.');
+        });
+
+        it('handles q element with who attribute but not Jesus', function () {
+            // Create a q element with different speaker
+            $dom = new DOMDocument();
+            $verse = $dom->createElement('verse');
+            $qElement = $dom->createElement('q', 'Someone else spoke');
+            $qElement->setAttribute('who', 'Moses');
+            $verse->appendChild($qElement);
+
+            $reflection = new ReflectionClass($this->parser);
+            $method = $reflection->getMethod('extractTextWithRedLetters');
+            $method->setAccessible(true);
+
+            $result = $method->invoke($this->parser, $verse);
+            expect($result)->toBe('Someone else spoke');
+        });
+
+        it('handles q element without who attribute', function () {
+            // Create a q element without who attribute
+            $dom = new DOMDocument();
+            $verse = $dom->createElement('verse');
+            $qElement = $dom->createElement('q', 'Generic quote');
+            $verse->appendChild($qElement);
+
+            $reflection = new ReflectionClass($this->parser);
+            $method = $reflection->getMethod('extractTextWithRedLetters');
+            $method->setAccessible(true);
+
+            $result = $method->invoke($this->parser, $verse);
+            expect($result)->toBe('Generic quote');
+        });
+
+        it('handles nested elements recursively', function () {
+            // Create nested structure
+            $dom = new DOMDocument();
+            $verse = $dom->createElement('verse');
+            $outerDiv = $dom->createElement('div');
+            $innerSpan = $dom->createElement('span');
+
+            $transElement = $dom->createElement('transChange', 'nested');
+            $transElement->setAttribute('type', 'added');
+
+            $innerSpan->appendChild($transElement);
+            $outerDiv->appendChild($innerSpan);
+            $verse->appendChild($outerDiv);
+
+            $reflection = new ReflectionClass($this->parser);
+            $method = $reflection->getMethod('extractTextWithRedLetters');
+            $method->setAccessible(true);
+
+            $result = $method->invoke($this->parser, $verse);
+            expect($result)->toBe('<em class="text-gray-600 dark:text-gray-400 font-normal italic">nested</em>');
+        });
+
+        it('handles l element recursively', function () {
+            // Create a line element with content
+            $dom = new DOMDocument();
+            $verse = $dom->createElement('verse');
+            $lElement = $dom->createElement('l');
+            $lElement->appendChild($dom->createTextNode('Poetic line content'));
+            $verse->appendChild($lElement);
+
+            $reflection = new ReflectionClass($this->parser);
+            $method = $reflection->getMethod('extractTextWithRedLetters');
+            $method->setAccessible(true);
+
+            $result = $method->invoke($this->parser, $verse);
+            expect($result)->toBe('Poetic line content');
+        });
+
+        it('handles lg element recursively', function () {
+            // Create a line group element with content
+            $dom = new DOMDocument();
+            $verse = $dom->createElement('verse');
+            $lgElement = $dom->createElement('lg');
+            $lgElement->appendChild($dom->createTextNode('Line group content'));
+            $verse->appendChild($lgElement);
+
+            $reflection = new ReflectionClass($this->parser);
+            $method = $reflection->getMethod('extractTextWithRedLetters');
+            $method->setAccessible(true);
+
+            $result = $method->invoke($this->parser, $verse);
+            expect($result)->toBe('Line group content');
+        });
+
+        it('handles empty element gracefully', function () {
+            // Create an empty element
+            $dom = new DOMDocument();
+            $emptyElement = $dom->createElement('div');
+
+            $reflection = new ReflectionClass($this->parser);
+            $method = $reflection->getMethod('extractTextWithRedLetters');
+            $method->setAccessible(true);
+
+            $result = $method->invoke($this->parser, $emptyElement);
+            expect($result)->toBe('');
+        });
+
+        it('handles complex combination of all element types', function () {
+            // Create a complex structure with all supported elements
+            $dom = new DOMDocument();
+            $verse = $dom->createElement('verse');
+
+            // Add psalm title
+            $psalmTitle = $dom->createElement('title', 'Psalm Title');
+            $psalmTitle->setAttribute('type', 'psalm');
+            $verse->appendChild($psalmTitle);
+
+            // Add text
+            $verse->appendChild($dom->createTextNode('Regular text '));
+
+            // Add transChange
+            $trans = $dom->createElement('transChange', 'added');
+            $trans->setAttribute('type', 'added');
+            $verse->appendChild($trans);
+
+            // Add line break
+            $verse->appendChild($dom->createElement('lb'));
+
+            // Add Jesus quote
+            $jesus = $dom->createElement('q', 'I am the way');
+            $jesus->setAttribute('who', 'Jesus');
+            $verse->appendChild($jesus);
+
+            // Add line group with line
+            $lg = $dom->createElement('lg');
+            $l = $dom->createElement('l', 'Poetic line');
+            $lg->appendChild($l);
+            $verse->appendChild($lg);
+
+            $reflection = new ReflectionClass($this->parser);
+            $method = $reflection->getMethod('extractTextWithRedLetters');
+            $method->setAccessible(true);
+
+            $result = $method->invoke($this->parser, $verse);
+
+            expect($result)->toContain('<div class="text-center text-sm font-medium text-gray-700 dark:text-gray-300 italic mb-3 border-b border-gray-200 dark:border-gray-600 pb-2">Psalm Title</div>');
+            expect($result)->toContain('Regular text');
+            expect($result)->toContain('<em class="text-gray-600 dark:text-gray-400 font-normal italic">added</em>');
+            expect($result)->toContain('<br class="my-2">');
+            expect($result)->toContain('<span class="text-red-600 font-medium">I am the way</span>');
+            expect($result)->toContain('Poetic line');
+        });
+
+        it('handles transChange with empty type attribute', function () {
+            // Create transChange with empty type
+            $dom = new DOMDocument();
+            $verse = $dom->createElement('verse');
+            $trans = $dom->createElement('transChange', 'content');
+            $trans->setAttribute('type', '');
+            $verse->appendChild($trans);
+
+            $reflection = new ReflectionClass($this->parser);
+            $method = $reflection->getMethod('extractTextWithRedLetters');
+            $method->setAccessible(true);
+
+            $result = $method->invoke($this->parser, $verse);
+            expect($result)->toBe('content');
+        });
+
+        it('handles transChange without type attribute', function () {
+            // Create transChange without type attribute
+            $dom = new DOMDocument();
+            $verse = $dom->createElement('verse');
+            $trans = $dom->createElement('transChange', 'no type');
+            $verse->appendChild($trans);
+
+            $reflection = new ReflectionClass($this->parser);
+            $method = $reflection->getMethod('extractTextWithRedLetters');
+            $method->setAccessible(true);
+
+            $result = $method->invoke($this->parser, $verse);
+            expect($result)->toBe('no type');
+        });
+
+        it('handles deeply nested recursive elements', function () {
+            // Create deeply nested structure
+            $dom = new DOMDocument();
+            $verse = $dom->createElement('verse');
+
+            // Create nested lg > l > div > span structure
+            $lg = $dom->createElement('lg');
+            $l = $dom->createElement('l');
+            $div = $dom->createElement('div');
+            $span = $dom->createElement('span');
+
+            $span->appendChild($dom->createTextNode('Deep content'));
+            $div->appendChild($span);
+            $l->appendChild($div);
+            $lg->appendChild($l);
+            $verse->appendChild($lg);
+
+            $reflection = new ReflectionClass($this->parser);
+            $method = $reflection->getMethod('extractTextWithRedLetters');
+            $method->setAccessible(true);
+
+            $result = $method->invoke($this->parser, $verse);
+            expect($result)->toBe('Deep content');
+        });
+
+        it('handles XML comment nodes gracefully', function () {
+            // Create element with comment node
+            $dom = new DOMDocument();
+            $verse = $dom->createElement('verse');
+            $verse->appendChild($dom->createTextNode('Before comment '));
+            $verse->appendChild($dom->createComment(' This is a comment '));
+            $verse->appendChild($dom->createTextNode(' After comment'));
+
+            $reflection = new ReflectionClass($this->parser);
+            $method = $reflection->getMethod('extractTextWithRedLetters');
+            $method->setAccessible(true);
+
+            $result = $method->invoke($this->parser, $verse);
+            expect($result)->toBe('Before comment  After comment');
+        });
+
+        it('handles CDATA sections', function () {
+            // Create element with CDATA
+            $dom = new DOMDocument();
+            $verse = $dom->createElement('verse');
+            $verse->appendChild($dom->createTextNode('Before CDATA '));
+            $verse->appendChild($dom->createCDATASection('CDATA content'));
+            $verse->appendChild($dom->createTextNode(' After CDATA'));
+
+            $reflection = new ReflectionClass($this->parser);
+            $method = $reflection->getMethod('extractTextWithRedLetters');
+            $method->setAccessible(true);
+
+            $result = $method->invoke($this->parser, $verse);
+            // CDATA sections are handled as text nodes, but the method only processes
+            // XML_TEXT_NODE and XML_ELEMENT_NODE types in the foreach loop
+            expect($result)->toBe('Before CDATA  After CDATA');
+        });
+
+        it('handles processing instructions gracefully', function () {
+            // Create element with processing instruction
+            $dom = new DOMDocument();
+            $verse = $dom->createElement('verse');
+            $verse->appendChild($dom->createTextNode('Regular text'));
+            $verse->appendChild($dom->createProcessingInstruction('xml-stylesheet', 'type="text/xsl" href="style.xsl"'));
+
+            $reflection = new ReflectionClass($this->parser);
+            $method = $reflection->getMethod('extractTextWithRedLetters');
+            $method->setAccessible(true);
+
+            $result = $method->invoke($this->parser, $verse);
+            expect($result)->toBe('Regular text');
+        });
+    });
 });
