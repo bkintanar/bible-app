@@ -3,12 +3,20 @@
     <div class="px-4 sm:px-6 w-full max-w-none">
         <!-- Main Navigation Row -->
         <div class="flex justify-between items-center h-16 w-full">
-            <!-- Logo/Home -->
-            <div class="flex items-center">
-                <a href="{{ route('bible.index') }}" class="text-xl font-bold text-blue-600 dark:text-blue-400 touch-friendly flex items-center">
-                    📖 <span class="hidden sm:inline ml-2">Bible Reader</span>
-                </a>
-            </div>
+            <!-- Book and Chapter Info (Center) -->
+            @if(isset($currentBook) && isset($chapterNumber))
+                <div class="flex items-center">
+                    <button onclick="showBookSelector()" class="touch-friendly px-4 py-3 text-gray-900 dark:text-white shadow-md font-semibold transition-all duration-200 rounded-lg flex items-center justify-center gap-1 whitespace-nowrap" style="font-family: var(--font-bible); font-size: 1.5rem; letter-spacing: 0.025em;">
+                        <span>{{ $currentBook['short_name'] }} {{ $chapterNumber }}</span>
+                    </button>
+                </div>
+            @elseif(isset($currentBook))
+                <div class="flex items-center">
+                    <button onclick="showBookSelector()" class="touch-friendly px-4 py-3 text-gray-900 dark:text-white shadow-md font-semibold transition-all duration-200 rounded-lg flex items-center justify-center gap-1 whitespace-nowrap" style="font-family: var(--font-bible); font-size: 1.5rem; letter-spacing: 0.025em;">
+                        <span>{{ $currentBook['short_name'] }}</span>
+                    </button>
+                </div>
+            @endif
 
             <!-- Mobile Actions -->
             <div class="flex items-center space-x-1 sm:hidden">
@@ -42,6 +50,17 @@
 
             <!-- Desktop Controls -->
             <div class="hidden sm:flex items-center space-x-4">
+                <!-- Book and Chapter Info (Desktop) -->
+                @if(isset($currentBook) && isset($chapterNumber))
+                    <button onclick="showBookSelector()" class="touch-friendly px-4 py-3 text-gray-900 dark:text-white shadow-md font-semibold transition-all duration-200 rounded-lg flex items-center justify-center gap-1 whitespace-nowrap" style="font-family: var(--font-bible); font-size: 1.125rem; letter-spacing: 0.025em;">
+                        <span>{{ $currentBook['short_name'] }} {{ $chapterNumber }}</span>
+                    </button>
+                @elseif(isset($currentBook))
+                    <button onclick="showBookSelector()" class="touch-friendly px-4 py-3 text-gray-900 dark:text-white shadow-md font-semibold transition-all duration-200 rounded-lg flex items-center justify-center gap-1 whitespace-nowrap" style="font-family: var(--font-bible); font-size: 1.125rem; letter-spacing: 0.025em;">
+                        <span>{{ $currentBook['short_name'] }}</span>
+                    </button>
+                @endif
+
                 <!-- Translation Selector -->
                 @if(isset($availableTranslations) && $availableTranslations->count() > 1)
                     <div class="relative">
@@ -174,47 +193,138 @@
                         <span>🔤</span>
                         <span>Strong's Concordance</span>
                     </a>
-                    <a href="{{ route('bible.index') }}" class="touch-friendly flex items-center justify-center space-x-2 bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg p-3 font-medium">
+                    <a href="{{ route('bible.index') }}?fresh=1" class="touch-friendly flex items-center justify-center space-x-2 bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg p-3 font-medium">
                         <span>📖</span>
                         <span>Browse Bible</span>
                     </a>
+                    <form action="{{ route('bible.clear-last-visited') }}" method="POST" class="w-full">
+                        @csrf
+                        <button type="submit" class="touch-friendly flex items-center justify-center space-x-2 bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 rounded-lg p-3 font-medium w-full">
+                            <span>🔄</span>
+                            <span>Start Over</span>
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
     </div>
 </nav>
 
+<!-- Book Selector Modal -->
+@if(isset($currentBook) && isset($books))
+<div id="bookSelector" class="fixed inset-0 bg-gray-900/20 dark:bg-black/30 hidden z-50">
+    <div class="ios-card w-full rounded-none" style="height: 100vh; display: flex; flex-direction: column;">
+        <!-- Fixed Header -->
+        <div class="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-600" style="flex-shrink: 0;">
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Select Book</h3>
+            <button onclick="hideBookSelector()" class="touch-friendly p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Scrollable Content -->
+        <div class="p-3" style="flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; height: calc(100vh - 140px);">
+            <!-- Old Testament -->
+            @php
+                $oldTestament = $books->where('testament', 'Old Testament');
+                $newTestament = $books->where('testament', 'New Testament');
+            @endphp
+
+            <div class="space-y-4">
+                <div>
+                    <h4 class="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2 flex items-center">
+                        📜 OLD TESTAMENT <span class="ml-2 text-xs text-gray-400 dark:text-gray-500">({{ $oldTestament->count() }})</span>
+                    </h4>
+                    <div class="grid gap-2 mb-3" style="grid-template-columns: repeat(3, 1fr);">
+                        @foreach($oldTestament as $book)
+                            <button onclick="selectBook('{{ $book['osis_id'] }}', '{{ $book['name'] }}', '{{ $book['short_name'] }}')"
+                               class="touch-friendly p-2 {{ $book['osis_id'] === $currentBook['osis_id'] ? 'text-blue-600 dark:text-blue-400 shadow-md' : 'text-gray-800 dark:text-gray-200 shadow-sm hover:shadow-md' }} text-xs font-semibold transition-all duration-200 text-center h-8 flex items-center justify-center border {{ $book['osis_id'] === $currentBook['osis_id'] ? 'border-blue-300 dark:border-blue-400' : 'border-gray-200 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800' }}">
+                                {{ $book['name'] }}
+                            </button>
+                        @endforeach
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2 flex items-center">
+                        ✝️ NEW TESTAMENT <span class="ml-2 text-xs text-gray-400 dark:text-gray-500">({{ $newTestament->count() }})</span>
+                    </h4>
+                    <div class="grid gap-2" style="grid-template-columns: repeat(3, 1fr);">
+                        @foreach($newTestament as $book)
+                            <button onclick="selectBook('{{ $book['osis_id'] }}', '{{ $book['name'] }}', '{{ $book['short_name'] }}')"
+                               class="touch-friendly p-2 {{ $book['osis_id'] === $currentBook['osis_id'] ? 'text-blue-600 dark:text-blue-400 shadow-md' : 'text-gray-800 dark:text-gray-200 shadow-sm hover:shadow-md' }} text-xs font-semibold transition-all duration-200 text-center h-8 flex items-center justify-center border {{ $book['osis_id'] === $currentBook['osis_id'] ? 'border-blue-300 dark:border-blue-400' : 'border-gray-200 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800' }}">
+                                {{ $book['name'] }}
+                            </button>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fixed Footer -->
+        <div class="p-4 border-t border-gray-200 dark:border-gray-600" style="flex-shrink: 0;">
+            <button onclick="hideBookSelector()"
+                    class="touch-friendly px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg font-medium transition-colors w-full text-sm">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Dynamic Chapter Selector Modal -->
+<div id="dynamicChapterSelector" class="fixed inset-0 bg-gray-900/20 dark:bg-black/30 hidden z-50">
+    <div class="ios-card w-full rounded-none" style="height: 100vh; display: flex; flex-direction: column;">
+        <!-- Fixed Header -->
+        <div class="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-600" style="flex-shrink: 0;">
+            <h3 id="dynamicChapterTitle" class="text-sm font-semibold text-gray-900 dark:text-gray-100">Select Chapter</h3>
+            <button onclick="hideDynamicChapterSelector()" class="touch-friendly p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Loading State -->
+        <div id="chapterLoadingState" class="flex items-center justify-center py-8">
+            <div class="text-center">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+                <p class="text-sm text-gray-600 dark:text-gray-400">Loading chapters...</p>
+            </div>
+        </div>
+
+        <!-- Scrollable Content -->
+        <div id="chapterContent" class="p-4 hidden" style="flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; height: calc(100vh - 140px);">
+            <!-- Chapters Grid will be populated dynamically -->
+            <div id="chaptersGrid" class="grid gap-3 mb-4" style="grid-template-columns: repeat(4, 1fr);">
+            </div>
+        </div>
+
+        <!-- Fixed Footer -->
+        <div class="p-4 border-t border-gray-200 dark:border-gray-600" style="flex-shrink: 0;">
+            <button onclick="hideDynamicChapterSelector()"
+                    class="touch-friendly px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg font-medium transition-colors w-full text-sm">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+@endif
+
 @push('scripts')
 <script>
-    // Handle desktop search form submission
-    document.addEventListener('DOMContentLoaded', function() {
-        const desktopInput = document.querySelector('.hidden.sm\\:flex input[name="q"]');
-        if (desktopInput) {
-            desktopInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    const form = document.createElement('form');
-                    form.method = 'GET';
-                    form.action = '{{ route("bible.search") }}';
-                    const input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = 'q';
-                    input.value = this.value;
-                    form.appendChild(input);
-                    document.body.appendChild(form);
-                    form.submit();
-                }
-            });
-        }
-    });
-
-    // Dark mode functionality
+    // Dark mode toggle functionality
     function toggleDarkMode() {
-        const isDark = document.documentElement.classList.toggle('dark');
-        localStorage.setItem('darkMode', isDark);
+        document.documentElement.classList.toggle('dark');
+        localStorage.setItem('darkMode', document.documentElement.classList.contains('dark'));
     }
 
-    // Mobile menu functionality
+    // Initialize dark mode from localStorage
+    if (localStorage.getItem('darkMode') === 'true') {
+        document.documentElement.classList.add('dark');
+    }
+
     function toggleMobileMenu() {
         const menu = document.getElementById('mobile-menu');
         const openIcon = document.getElementById('menu-open');
@@ -226,10 +336,11 @@
 
         // Close search if open
         const search = document.getElementById('mobile-search');
-        search.classList.add('hidden');
+        if (!search.classList.contains('hidden')) {
+            search.classList.add('hidden');
+        }
     }
 
-    // Mobile search functionality
     function toggleMobileSearch() {
         const search = document.getElementById('mobile-search');
         search.classList.toggle('hidden');
@@ -252,5 +363,130 @@
             }, 100);
         }
     }
+
+    // Handle desktop search form submission
+    document.addEventListener('DOMContentLoaded', function() {
+        const desktopInput = document.querySelector('.hidden.sm\\:flex input[name="q"]');
+        if (desktopInput) {
+            desktopInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const form = document.createElement('form');
+                    form.method = 'GET';
+                    form.action = '{{ route("bible.search") }}';
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'q';
+                    input.value = this.value;
+                    form.appendChild(input);
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
+        }
+    });
+
+    // Book selector functionality
+    @if(isset($currentBook) && isset($books))
+    function disableBodyScroll() {
+        document.body.style.overflow = 'hidden';
+    }
+
+    function enableBodyScroll() {
+        document.body.style.overflow = '';
+    }
+
+    function hideFloatingNavigation() {
+        const prevBtn = document.getElementById('prevChapterBtn');
+        const nextBtn = document.getElementById('nextChapterBtn');
+        if (prevBtn) prevBtn.style.display = 'none';
+        if (nextBtn) nextBtn.style.display = 'none';
+    }
+
+    function showFloatingNavigation() {
+        const prevBtn = document.getElementById('prevChapterBtn');
+        const nextBtn = document.getElementById('nextChapterBtn');
+        if (prevBtn) prevBtn.style.display = 'flex';
+        if (nextBtn) nextBtn.style.display = 'flex';
+    }
+
+    function showBookSelector() {
+        document.getElementById('bookSelector').classList.remove('hidden');
+        hideFloatingNavigation();
+        disableBodyScroll();
+    }
+
+    function hideBookSelector() {
+        document.getElementById('bookSelector').classList.add('hidden');
+        showFloatingNavigation();
+        enableBodyScroll();
+    }
+
+    // Dynamic chapter selector functions
+    function selectBook(bookOsisId, bookName, bookShortName) {
+        hideBookSelector();
+        showDynamicChapterSelector(bookOsisId, bookName, bookShortName);
+    }
+
+    function showDynamicChapterSelector(bookOsisId, bookName, bookShortName) {
+        const modal = document.getElementById('dynamicChapterSelector');
+        const title = document.getElementById('dynamicChapterTitle');
+        const loading = document.getElementById('chapterLoadingState');
+        const content = document.getElementById('chapterContent');
+        const grid = document.getElementById('chaptersGrid');
+
+        // Update title
+        title.textContent = `${bookShortName} Chapters`;
+
+        // Show modal and loading state
+        modal.classList.remove('hidden');
+        loading.classList.remove('hidden');
+        content.classList.add('hidden');
+
+        hideFloatingNavigation();
+        disableBodyScroll();
+
+        // Fetch chapters for the selected book
+        fetch(`/api/${bookOsisId}/chapters`)
+            .then(response => response.json())
+            .then(chapters => {
+                // Clear existing grid
+                grid.innerHTML = '';
+
+                // Populate chapters grid
+                chapters.forEach(chapter => {
+                    const button = document.createElement('button');
+                    button.onclick = () => navigateToChapter(bookOsisId, chapter.chapter_number);
+                    button.className = 'touch-friendly p-2 text-gray-800 dark:text-gray-200 shadow-sm hover:shadow-md text-sm font-semibold transition-all duration-200 text-center h-10 flex items-center justify-center border border-gray-200 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800 active:scale-95';
+                    button.textContent = chapter.chapter_number;
+                    grid.appendChild(button);
+                });
+
+                // Hide loading, show content
+                loading.classList.add('hidden');
+                content.classList.remove('hidden');
+            })
+            .catch(error => {
+                console.error('Error loading chapters:', error);
+                // Hide loading and show error
+                loading.innerHTML = `
+                    <div class="text-center">
+                        <p class="text-sm text-red-600 dark:text-red-400">Error loading chapters</p>
+                        <button onclick="hideDynamicChapterSelector()" class="mt-2 px-4 py-2 bg-gray-500 text-white rounded-lg text-sm">Close</button>
+                    </div>
+                `;
+            });
+    }
+
+    function hideDynamicChapterSelector() {
+        document.getElementById('dynamicChapterSelector').classList.add('hidden');
+        showFloatingNavigation();
+        enableBodyScroll();
+    }
+
+    function navigateToChapter(bookOsisId, chapterNumber) {
+        window.location.href = `/${bookOsisId}/${chapterNumber}`;
+    }
+    @endif
 </script>
 @endpush

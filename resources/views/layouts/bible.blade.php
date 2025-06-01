@@ -95,9 +95,6 @@
         @yield('content')
     </main>
 
-    <!-- Bottom Safe Area Spacer -->
-    <div class="h-4 sm:h-8"></div>
-
     <script>
         // Handle iOS viewport height issues
         function setViewportHeight() {

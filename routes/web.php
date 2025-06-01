@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [BibleController::class, 'index'])->name('bible.index');
 Route::get('/search', [BibleController::class, 'search'])->name('bible.search');
 Route::post('/switch-translation', [BibleController::class, 'switchTranslation'])->name('bible.switch-translation');
+Route::post('/clear-last-visited', [BibleController::class, 'clearLastVisited'])->name('bible.clear-last-visited');
 
 // Strong's Concordance routes
 Route::prefix('strongs')->name('strongs.')->group(function () {
@@ -22,18 +23,14 @@ Route::prefix('strongs')->name('strongs.')->group(function () {
     Route::get('/{strongsNumber}/relationships', [StrongsController::class, 'relationships'])->name('relationships');
 });
 
-Route::get('/{bookOsisId}', [BibleController::class, 'book'])->name('bible.book');
-Route::get('/{bookOsisId}/{chapterNumber}', [BibleController::class, 'chapter'])->name('bible.chapter');
-Route::get('/{bookOsisId}/{chapterNumber}/{verseNumber}', [BibleController::class, 'verse'])->name('bible.verse');
-
 // API routes for Bible data
 Route::prefix('api')->group(function () {
     Route::get('/books', [BibleController::class, 'apiBooks'])->name('api.bible.books');
     Route::get('/capabilities', [BibleController::class, 'apiCapabilities'])->name('api.bible.capabilities');
+    Route::get('/search', [BibleController::class, 'apiSearch'])->name('api.bible.search');
     Route::get('/{bookOsisId}/chapters', [BibleController::class, 'apiChapters'])->name('api.bible.chapters');
     Route::get('/{bookOsisId}/{chapterNumber}/verses', [BibleController::class, 'apiVerses'])->name('api.bible.verses');
     Route::get('/{bookOsisId}/{chapterNumber}/{verseNumber}', [BibleController::class, 'apiVerseDetails'])->name('api.bible.verse.details');
-    Route::get('/search', [BibleController::class, 'apiSearch'])->name('api.bible.search');
 
     // Strong's API routes
     Route::prefix('strongs')->name('api.strongs.')->group(function () {
@@ -42,3 +39,7 @@ Route::prefix('api')->group(function () {
         Route::get('/{strongsNumber}/relationships', [StrongsController::class, 'relationships'])->name('relationships');
     });
 });
+
+Route::get('/{bookOsisId}', [BibleController::class, 'book'])->name('bible.book');
+Route::get('/{bookOsisId}/{chapterNumber}', [BibleController::class, 'chapter'])->name('bible.chapter');
+Route::get('/{bookOsisId}/{chapterNumber}/{verseNumber}', [BibleController::class, 'verse'])->name('bible.verse');

@@ -20,6 +20,10 @@
     --color-bible-gold: #d97706;
 }
 
+@layer base {
+    /* Other base styles can go here */
+}
+
 /* Ensure transChange elements are properly italicized */
 em.italic,
 em[class*="italic"] {
@@ -51,6 +55,7 @@ em[class*="italic"] {
     border-radius: 4px;
     padding: 2px 4px;
     margin: -2px -4px;
+    display: block;
 }
 
 .verse-hoverable:hover {
@@ -70,6 +75,7 @@ em[class*="italic"] {
     border-radius: 2px;
     padding: 0px 1px;
     margin: 0px -1px;
+    display: inline;
 }
 
 .paragraph-verse-hoverable:hover {
@@ -154,6 +160,33 @@ mark {
     line-height: 1;
     vertical-align: super;
     margin-right: 0.25rem;
+    /* Prevent verse number from being orphaned */
+    display: inline;
+    white-space: nowrap;
+}
+
+/* Prevent verse numbers from appearing alone at end of lines */
+.verse-content {
+    display: inline;
+    /* Prevent awkward breaking of verse content */
+    orphans: 2;
+    widows: 2;
+    /* Ensure verse flows naturally but keep number with text */
+    hyphens: none;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+}
+
+/* Specifically for verse number containers */
+.verse-content .verse-number {
+    /* Keep verse number attached to text - prevent line break after number */
+    margin-right: 0;
+}
+
+/* Add very small non-breaking space after verse number */
+.verse-content .verse-number::after {
+    content: "\00A0"; /* Non-breaking space */
+    font-size: 0.75rem;
 }
 
 /* Chapter headers with classic styling */
@@ -344,4 +377,18 @@ mark {
 
 .dark .psalm-verse .verse-number {
     color: #60a5fa;
+}
+
+/* Allow the verse text itself to wrap normally after the number */
+.paragraph-verse-hoverable .text-gray-800,
+.paragraph-verse-hoverable .text-gray-900,
+.paragraph-verse-hoverable .text-gray-200,
+.paragraph-verse-hoverable .text-gray-100 {
+    white-space: normal;
+    display: inline;
+}
+
+.verse-hoverable .verse-number {
+    display: inline;
+    white-space: nowrap;
 }

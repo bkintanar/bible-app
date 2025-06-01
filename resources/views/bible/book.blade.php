@@ -4,12 +4,6 @@
 
 @section('content')
 <div class="space-y-4">
-    <!-- Breadcrumb Component -->
-    @include('components.bible-breadcrumb', [
-        'currentBook' => $currentBook,
-        'books' => $books
-    ])
-
     <!-- Mobile-Optimized Chapters Grid -->
     <div class="ios-card rounded-2xl shadow-sm p-4">
         <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center">

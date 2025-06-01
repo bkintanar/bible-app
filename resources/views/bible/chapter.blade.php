@@ -4,19 +4,11 @@
 
 @section('content')
 <div class="space-y-4">
-    <!-- Breadcrumb Component -->
-    @include('components.bible-breadcrumb', [
-        'currentBook' => $currentBook,
-        'chapterNumber' => $chapterNumber,
-        'books' => $books,
-        'chapters' => $chapters
-    ])
-
     <!-- Floating Navigation Buttons -->
     @if($chapterNumber > 1)
         <a href="{{ route('bible.chapter', [$currentBook['osis_id'], $chapterNumber - 1]) }}"
            id="prevChapterBtn"
-           class="fixed z-50 touch-friendly h-16 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-800 dark:text-gray-200 shadow-sm hover:shadow-md rounded-r-xl flex items-center justify-center transition-all duration-200 border border-gray-200 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800 active:scale-95"
+           class="fixed z-50 touch-friendly h-16 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-800 dark:text-gray-200 shadow-sm hover:shadow-md flex items-center justify-center transition-all duration-200 border border-gray-200 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800 active:scale-95"
            style="left: 0; top: 50%; transform: translateY(-50%); width: 30px !important; min-width: 30px; max-width: 30px;"
            title="Previous Chapter">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -28,7 +20,7 @@
     @if($chapterNumber < $chapters->count())
         <a href="{{ route('bible.chapter', [$currentBook['osis_id'], $chapterNumber + 1]) }}"
            id="nextChapterBtn"
-           class="fixed z-50 touch-friendly h-16 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-800 dark:text-gray-200 shadow-sm hover:shadow-md rounded-l-xl flex items-center justify-center transition-all duration-200 border border-gray-200 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800 active:scale-95"
+           class="fixed z-50 touch-friendly h-16 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-800 dark:text-gray-200 shadow-sm hover:shadow-md flex items-center justify-center transition-all duration-200 border border-gray-200 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800 active:scale-95"
            style="right: 0; top: 50%; transform: translateY(-50%); width: 30px !important; min-width: 30px; max-width: 30px;"
            title="Next Chapter">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -38,7 +30,7 @@
     @endif
 
     <!-- Mobile-Optimized Chapter Text -->
-    <div class="ios-card rounded-2xl shadow-sm p-4 sm:p-8">
+    <div class="ios-card shadow-sm p-4 sm:p-8">
         <div id="verseContainer" class="bible-text prose prose-lg dark:prose-invert max-w-none" style="font-size: 1.125rem;">
             @if($formatStyle === 'paragraph' && $paragraphs)
                 <!-- Display chapter titles if they exist (before paragraphs) -->
@@ -120,23 +112,21 @@
                                     @if($group['highlighted'])
                                         <span class="bg-yellow-100 dark:bg-yellow-900 px-2 py-1 rounded" style="display: inline;">
                                             @foreach($group['verses'] as $verse)
-                                                <span class="paragraph-verse-hoverable">
+                                                <span class="paragraph-verse-hoverable verse-content">
                                                     <span class="verse-number text-blue-600 dark:text-blue-400"
                                                           id="verse-{{ $verse['verse_number'] }}">
                                                         {{ $verse['verse_number'] }}
-                                                    </span><!--
-                                                    --><span class="text-gray-900 dark:text-gray-100">{!! $verse['text'] !!}</span>
+                                                    </span><span class="text-gray-900 dark:text-gray-100">{!! $verse['text'] !!}</span>
                                                 </span>@if(!$loop->last) @endif
                                             @endforeach
                                         </span>
                                     @else
                                         @foreach($group['verses'] as $verse)
-                                            <span class="paragraph-verse-hoverable">
+                                            <span class="paragraph-verse-hoverable verse-content">
                                                 <span class="verse-number text-blue-600 dark:text-blue-400"
                                                       id="verse-{{ $verse['verse_number'] }}">
                                                     {{ $verse['verse_number'] }}
-                                                </span><!--
-                                                --><span class="text-gray-800 dark:text-gray-200">{!! $verse['text'] !!}</span>
+                                                </span><span class="text-gray-800 dark:text-gray-200">{!! $verse['text'] !!}</span>
                                             </span>@if(!$loop->last) @endif
                                         @endforeach
                                     @endif
@@ -174,12 +164,11 @@
                         }
                     @endphp
 
-                    <p class="mb-4 leading-relaxed {{ $highlightClass }} verse-hoverable"
+                    <p class="mb-4 leading-relaxed {{ $highlightClass }} verse-hoverable verse-content"
                        id="verse-{{ $verse['verse_number'] }}">
                         <span class="verse-number text-blue-600 dark:text-blue-400">
                             {{ $verse['verse_number'] }}
-                        </span>
-                        <span class="text-gray-800 dark:text-gray-200">{!! $verse['text'] !!}</span>
+                        </span><span class="text-gray-800 dark:text-gray-200">{!! $verse['text'] !!}</span>
                     </p>
                 @endforeach
             @endif
@@ -250,6 +239,79 @@
 
 @push('scripts')
 <script>
+// Prevent verse number orphaning
+function preventVerseNumberOrphaning() {
+    // Find all verse containers
+    const verseContainers = document.querySelectorAll('.verse-content');
+
+    verseContainers.forEach(container => {
+        const verseNumber = container.querySelector('.verse-number');
+        if (!verseNumber) return;
+
+        const textSpan = verseNumber.nextElementSibling;
+        if (!textSpan) return;
+
+        // Use textContent to safely get the first word without breaking HTML
+        const textContent = textSpan.textContent || textSpan.innerText;
+        const firstWordMatch = textContent.match(/^(\s*)(\S+)(\s*)/);
+
+        if (firstWordMatch) {
+            const [fullMatch, leadingSpace, firstWord, trailingSpace] = firstWordMatch;
+
+            // Create a non-breaking wrapper for verse number + first word
+            const wrapper = document.createElement('span');
+            wrapper.style.whiteSpace = 'nowrap';
+            wrapper.style.display = 'inline';
+
+            // Move verse number into wrapper
+            wrapper.appendChild(verseNumber.cloneNode(true));
+
+            // Create a styled span for the first word that inherits text styling
+            const firstWordSpan = document.createElement('span');
+            firstWordSpan.textContent = leadingSpace + firstWord + trailingSpace;
+            // Copy all classes from the original text span to preserve styling
+            firstWordSpan.className = textSpan.className;
+            // Also copy inline styles if any
+            if (textSpan.style.cssText) {
+                firstWordSpan.style.cssText = textSpan.style.cssText;
+            }
+            wrapper.appendChild(firstWordSpan);
+
+            // Remove the first word from the original text span
+            // This approach preserves all HTML formatting
+            const walker = document.createTreeWalker(
+                textSpan,
+                NodeFilter.SHOW_TEXT,
+                null,
+                false
+            );
+
+            let firstTextNode = walker.nextNode();
+            if (firstTextNode) {
+                const nodeText = firstTextNode.textContent;
+                // Remove the exact match we found
+                if (nodeText.startsWith(fullMatch)) {
+                    firstTextNode.textContent = nodeText.substring(fullMatch.length);
+                }
+            }
+
+            // Replace original verse number with wrapper
+            container.insertBefore(wrapper, textSpan);
+            verseNumber.remove();
+        }
+    });
+}
+
+// Run on page load and after any dynamic content changes
+document.addEventListener('DOMContentLoaded', preventVerseNumberOrphaning);
+
+// Also run when window resizes (text reflows)
+let resizeTimeout;
+window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(preventVerseNumberOrphaning, 100);
+});
+
 function copyChapter() {
     @if($formatStyle === 'paragraph' && $paragraphs)
         const paragraphs = @json($paragraphs);

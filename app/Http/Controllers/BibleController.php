@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 
 class BibleController extends Controller
 {
@@ -19,10 +20,74 @@ class BibleController extends Controller
     }
 
     /**
-     * Display the Bible home page with list of books
+     * Store the last visited page in cache
      */
-    public function index(): View
+    private function storeLastVisitedPage(string $route, array $parameters = []): void
     {
+        $sessionId = session()->getId();
+        $cacheKey = "last_visited_page_{$sessionId}";
+
+        $pageData = [
+            'route' => $route,
+            'parameters' => $parameters,
+            'url' => request()->url(),
+            'timestamp' => now()
+        ];
+
+        // Store for 30 days
+        Cache::put($cacheKey, $pageData, now()->addDays(30));
+    }
+
+    /**
+     * Get the last visited page from cache
+     */
+    private function getLastVisitedPage(): ?array
+    {
+        $sessionId = session()->getId();
+        $cacheKey = "last_visited_page_{$sessionId}";
+
+        return Cache::get($cacheKey);
+    }
+
+    /**
+     * Display the Bible home page with list of books or redirect to last visited page
+     */
+    public function index(Request $request): View|RedirectResponse
+    {
+        // Check if user wants to force showing the index page (e.g., ?fresh=1)
+        $forceIndex = $request->has('fresh');
+
+        // Check if there's a last visited page and we're not forcing index
+        if (!$forceIndex) {
+            $lastPage = $this->getLastVisitedPage();
+
+            if ($lastPage && isset($lastPage['route']) && $lastPage['route'] !== 'bible.index') {
+                // Validate that the route still exists and parameters are valid
+                try {
+                    if ($lastPage['route'] === 'bible.book' && isset($lastPage['parameters']['bookOsisId'])) {
+                        return redirect()->route('bible.book', $lastPage['parameters']['bookOsisId']);
+                    } elseif ($lastPage['route'] === 'bible.chapter' && isset($lastPage['parameters']['bookOsisId'], $lastPage['parameters']['chapterNumber'])) {
+                        return redirect()->route('bible.chapter', [
+                            $lastPage['parameters']['bookOsisId'],
+                            $lastPage['parameters']['chapterNumber']
+                        ]);
+                    } elseif ($lastPage['route'] === 'bible.verse' && isset($lastPage['parameters']['bookOsisId'], $lastPage['parameters']['chapterNumber'], $lastPage['parameters']['verseNumber'])) {
+                        return redirect()->route('bible.verse', [
+                            $lastPage['parameters']['bookOsisId'],
+                            $lastPage['parameters']['chapterNumber'],
+                            $lastPage['parameters']['verseNumber']
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    // If redirect fails, redirect to Genesis 1 as default
+                    return redirect()->route('bible.chapter', ['Gen', 1]);
+                }
+            } else {
+                // No cached page found, redirect to Genesis 1 as default starting point
+                return redirect()->route('bible.chapter', ['Gen', 1]);
+            }
+        }
+
         $bibleInfo = $this->bibleService->getBibleInfo();
         $books = $this->bibleService->getBooks();
         $currentTranslation = $this->bibleService->getCurrentTranslation();
@@ -50,6 +115,9 @@ class BibleController extends Controller
             abort(404, 'Book not found');
         }
 
+        // Store this page as the last visited
+        $this->storeLastVisitedPage('bible.book', ['bookOsisId' => $bookOsisId]);
+
         $chapters = $this->bibleService->getChapters($bookOsisId);
         $currentTranslation = $this->bibleService->getCurrentTranslation();
         $availableTranslations = $this->bibleService->getAvailableTranslations();
@@ -76,6 +144,12 @@ class BibleController extends Controller
         if (!$currentBook) {
             abort(404, 'Book not found');
         }
+
+        // Store this page as the last visited
+        $this->storeLastVisitedPage('bible.chapter', [
+            'bookOsisId' => $bookOsisId,
+            'chapterNumber' => $chapterNumber
+        ]);
 
         // Get available chapters for navigation
         $chapters = $this->bibleService->getChapters($bookOsisId);
@@ -127,6 +201,13 @@ class BibleController extends Controller
         if (!$currentBook) {
             abort(404, 'Book not found');
         }
+
+        // Store this page as the last visited
+        $this->storeLastVisitedPage('bible.verse', [
+            'bookOsisId' => $bookOsisId,
+            'chapterNumber' => $chapterNumber,
+            'verseNumber' => $verseNumber
+        ]);
 
         $verseOsisId = $bookOsisId . '.' . $chapterNumber . '.' . $verseNumber;
 
@@ -490,5 +571,18 @@ class BibleController extends Controller
     public function apiCapabilities(): JsonResponse
     {
         return response()->json($this->bibleService->getCapabilities());
+    }
+
+    /**
+     * Clear the last visited page from cache
+     */
+    public function clearLastVisited(): RedirectResponse
+    {
+        $sessionId = session()->getId();
+        $cacheKey = "last_visited_page_{$sessionId}";
+
+        Cache::forget($cacheKey);
+
+        return redirect()->route('bible.index')->with('success', 'Reading history cleared');
     }
 }
