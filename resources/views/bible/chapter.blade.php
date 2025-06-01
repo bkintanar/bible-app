@@ -3,125 +3,43 @@
 @section('title', $currentBook['short_name'] . ' ' . $chapterNumber . ' - Bible Reader')
 
 @section('content')
-<div class="space-y-6">
-    <!-- Breadcrumb -->
-    <nav class="flex" aria-label="Breadcrumb">
-        <ol class="flex items-center space-x-4">
-            <li>
-                <a href="{{ route('bible.index') }}" class="text-bible-blue hover:text-blue-800">
-                    📖 Bible
-                </a>
-            </li>
-            <li>
-                <span class="text-gray-400">/</span>
-            </li>
-            <li>
-                <a href="{{ route('bible.book', $currentBook['osis_id']) }}" class="text-bible-blue hover:text-blue-800">
-                    {{ $currentBook['short_name'] }}
-                </a>
-            </li>
-            <li>
-                <span class="text-gray-400">/</span>
-            </li>
-            <li>
-                <span class="text-gray-600">Chapter {{ $chapterNumber }}</span>
-            </li>
-        </ol>
-    </nav>
+<div class="space-y-4">
+    <!-- Breadcrumb Component -->
+    @include('components.bible-breadcrumb', [
+        'currentBook' => $currentBook,
+        'chapterNumber' => $chapterNumber,
+        'books' => $books,
+        'chapters' => $chapters
+    ])
 
-    <!-- Chapter Header -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-        <div class="flex items-center justify-between mb-4">
-            <div>
-                <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100 chapter-title">{{ $currentBook['name'] }} {{ $chapterNumber }}</h1>
-                <p class="text-gray-600 dark:text-gray-400 mt-1">{{ $currentBook['testament'] }}</p>
-            </div>
-            <div class="text-right">
-                <div class="text-2xl font-bold text-bible-blue dark:text-blue-400">
-                    {{ $formatStyle === 'paragraph' && $paragraphs ? $paragraphs->sum(function($p) { return count($p['verses']); }) : ($verses ? $verses->count() : 0) }}
-                </div>
-                <div class="text-sm text-gray-500 dark:text-gray-400">Verses</div>
-            </div>
-        </div>
+    <!-- Floating Navigation Buttons -->
+    @if($chapterNumber > 1)
+        <a href="{{ route('bible.chapter', [$currentBook['osis_id'], $chapterNumber - 1]) }}"
+           id="prevChapterBtn"
+           class="fixed z-50 touch-friendly h-16 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-800 dark:text-gray-200 shadow-sm hover:shadow-md rounded-r-xl flex items-center justify-center transition-all duration-200 border border-gray-200 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800 active:scale-95"
+           style="left: 0; top: 50%; transform: translateY(-50%); width: 30px !important; min-width: 30px; max-width: 30px;"
+           title="Previous Chapter">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"></path>
+            </svg>
+        </a>
+    @endif
 
-        <!-- Chapter Navigation -->
-        <div class="flex items-center justify-between">
-            <div class="flex space-x-2">
-                @if($chapterNumber > 1)
-                    <a href="{{ route('bible.chapter', [$currentBook['osis_id'], $chapterNumber - 1]) }}"
-                       class="flex items-center px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-bible-blue dark:hover:bg-blue-600 hover:text-white rounded-md text-sm transition-colors">
-                        ← Previous
-                    </a>
-                @endif
-            </div>
+    @if($chapterNumber < $chapters->count())
+        <a href="{{ route('bible.chapter', [$currentBook['osis_id'], $chapterNumber + 1]) }}"
+           id="nextChapterBtn"
+           class="fixed z-50 touch-friendly h-16 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-800 dark:text-gray-200 shadow-sm hover:shadow-md rounded-l-xl flex items-center justify-center transition-all duration-200 border border-gray-200 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800 active:scale-95"
+           style="right: 0; top: 50%; transform: translateY(-50%); width: 30px !important; min-width: 30px; max-width: 30px;"
+           title="Next Chapter">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path>
+            </svg>
+        </a>
+    @endif
 
-            <div class="flex items-center space-x-2">
-                <span class="text-sm text-gray-500 dark:text-gray-400">Chapter:</span>
-                <select onchange="window.location.href=this.value"
-                        class="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-bible-blue dark:focus:ring-blue-400 focus:border-transparent">
-                    @foreach($chapters as $chapter)
-                        <option value="{{ route('bible.chapter', [$currentBook['osis_id'], $chapter['chapter_number']]) }}"
-                                {{ $chapter['chapter_number'] == $chapterNumber ? 'selected' : '' }}>
-                            {{ $chapter['chapter_number'] }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-
-            <div class="flex space-x-2">
-                @if($chapterNumber < $chapters->count())
-                    <a href="{{ route('bible.chapter', [$currentBook['osis_id'], $chapterNumber + 1]) }}"
-                       class="flex items-center px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-bible-blue dark:hover:bg-blue-600 hover:text-white rounded-md text-sm transition-colors">
-                        Next →
-                    </a>
-                @endif
-            </div>
-        </div>
-    </div>
-
-    <!-- Reading Controls -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
-        <div class="flex flex-wrap items-center justify-between gap-4">
-            <div class="flex flex-wrap items-center gap-2">
-                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Display Options:</span>
-
-                <button onclick="toggleRedLetters()" id="redLetterToggle"
-                        class="flex items-center px-3 py-2 bg-red-100 dark:bg-red-900 hover:bg-red-200 dark:hover:bg-red-800 text-red-800 dark:text-red-200 rounded-md text-sm transition-colors">
-                    🔴 Red Letters
-                </button>
-
-                <a href="{{ request()->fullUrlWithQuery(['style' => $formatStyle === 'paragraph' ? 'verse' : 'paragraph']) }}"
-                   class="flex items-center px-3 py-2 bg-blue-100 dark:bg-blue-900 hover:bg-blue-200 dark:hover:bg-blue-800 text-blue-800 dark:text-blue-200 rounded-md text-sm transition-colors">
-                    {{ $formatStyle === 'paragraph' ? '📖 Paragraph Style' : '📝 Verse Style' }}
-                </a>
-
-                <button onclick="toggleFormattingGuide()" id="formattingGuideToggle"
-                        class="flex items-center px-3 py-2 bg-green-100 dark:bg-green-900 hover:bg-green-200 dark:hover:bg-green-800 text-green-800 dark:text-green-200 rounded-md text-sm transition-colors">
-                    ❓ Text Guide
-                </button>
-            </div>
-
-            <div class="flex items-center gap-2">
-                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Font Size:</span>
-                <button onclick="decreaseFontSize()" id="fontDecreaseBtn"
-                        class="flex items-center px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-md text-sm transition-colors">
-                    🔍− Smaller
-                </button>
-                <button onclick="increaseFontSize()" id="fontIncreaseBtn"
-                        class="flex items-center px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-md text-sm transition-colors">
-                    🔍+ Larger
-                </button>
-                <button onclick="resetFontSize()" id="fontResetBtn"
-                        class="flex items-center px-2 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-md text-sm transition-colors">
-                    Reset
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Verses -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-8">
-        <div id="verseContainer" class="bible-text prose prose-xl dark:prose-invert max-w-none" style="font-size: 1.125rem;">
+    <!-- Mobile-Optimized Chapter Text -->
+    <div class="ios-card rounded-2xl shadow-sm p-4 sm:p-8">
+        <div id="verseContainer" class="bible-text prose prose-lg dark:prose-invert max-w-none" style="font-size: 1.125rem;">
             @if($formatStyle === 'paragraph' && $paragraphs)
                 <!-- Display chapter titles if they exist (before paragraphs) -->
                 @if($paragraphs->isNotEmpty() && isset($paragraphs->first()['verses'][0]['chapter_titles']) && !empty($paragraphs->first()['verses'][0]['chapter_titles']))
@@ -203,7 +121,7 @@
                                         <span class="bg-yellow-100 dark:bg-yellow-900 px-2 py-1 rounded" style="display: inline;">
                                             @foreach($group['verses'] as $verse)
                                                 <span class="paragraph-verse-hoverable">
-                                                    <span class="verse-number text-bible-blue dark:text-blue-400"
+                                                    <span class="verse-number text-blue-600 dark:text-blue-400"
                                                           id="verse-{{ $verse['verse_number'] }}">
                                                         {{ $verse['verse_number'] }}
                                                     </span><!--
@@ -214,7 +132,7 @@
                                     @else
                                         @foreach($group['verses'] as $verse)
                                             <span class="paragraph-verse-hoverable">
-                                                <span class="verse-number text-bible-blue dark:text-blue-400"
+                                                <span class="verse-number text-blue-600 dark:text-blue-400"
                                                       id="verse-{{ $verse['verse_number'] }}">
                                                     {{ $verse['verse_number'] }}
                                                 </span><!--
@@ -258,7 +176,7 @@
 
                     <p class="mb-4 leading-relaxed {{ $highlightClass }} verse-hoverable"
                        id="verse-{{ $verse['verse_number'] }}">
-                        <span class="verse-number text-bible-blue dark:text-blue-400">
+                        <span class="verse-number text-blue-600 dark:text-blue-400">
                             {{ $verse['verse_number'] }}
                         </span>
                         <span class="text-gray-800 dark:text-gray-200">{!! $verse['text'] !!}</span>
@@ -268,21 +186,13 @@
         </div>
     </div>
 
-    <!-- Copy Chapter -->
-    <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-        <button onclick="copyChapter()"
-                class="flex items-center px-4 py-2 bg-bible-blue dark:bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 dark:hover:bg-blue-500 transition-colors">
-            📋 Copy Chapter Text
-        </button>
-    </div>
-
-    <!-- Formatting Guide Modal -->
+    <!-- Mobile-Optimized Formatting Guide Modal -->
     <div id="formattingGuide" class="fixed inset-0 bg-black bg-opacity-50 dark:bg-black dark:bg-opacity-70 hidden z-50">
         <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
+            <div class="ios-card rounded-2xl max-w-sm w-full p-6 max-h-[80vh] overflow-y-auto">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">📖 Bible Text Guide</h3>
-                    <button onclick="toggleFormattingGuide()" class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">✕</button>
+                    <button onclick="toggleFormattingGuide()" class="touch-friendly p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">✕</button>
                 </div>
 
                 <div class="space-y-4 text-sm">
@@ -291,25 +201,15 @@
                         <div class="space-y-2">
                             <div class="flex items-start gap-2">
                                 <span class="text-red-600 dark:text-red-400 font-medium">Red text</span>
-                                <span class="text-gray-600 dark:text-gray-400">- Jesus' words (Red Letter Bible)</span>
+                                <span class="text-gray-600 dark:text-gray-400">- Jesus' words</span>
                             </div>
                             <div class="flex items-start gap-2">
                                 <em class="text-gray-600 dark:text-gray-400 font-normal">Italic text</em>
-                                <span class="text-gray-600 dark:text-gray-400">- Words added by translators for clarity</span>
+                                <span class="text-gray-600 dark:text-gray-400">- Added words</span>
                             </div>
                             <div class="flex items-start gap-2">
-                                <span class="text-xs font-bold text-bible-blue dark:text-blue-400">1</span>
-                                <span class="text-gray-600 dark:text-gray-400">- Verse numbers (traditional style)</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-2">Special Elements:</h4>
-                        <div class="space-y-2">
-                            <div class="flex items-start gap-2">
-                                <div class="text-center text-sm font-medium text-gray-700 dark:text-gray-300 italic border-b border-gray-200 dark:border-gray-600 pb-1 px-2">Psalm Title</div>
-                                <span class="text-gray-600 dark:text-gray-400">- Psalm headings and attributions</span>
+                                <span class="text-xs font-bold text-blue-600 dark:text-blue-400">1</span>
+                                <span class="text-gray-600 dark:text-gray-400">- Verse numbers</span>
                             </div>
                         </div>
                     </div>
@@ -319,19 +219,19 @@
                         <div class="space-y-2">
                             <div class="flex items-start gap-2">
                                 <span class="text-sm">📖</span>
-                                <span class="text-gray-600 dark:text-gray-400">Paragraph Style - verses flow naturally together</span>
+                                <span class="text-gray-600 dark:text-gray-400">Paragraph - verses flow together</span>
                             </div>
                             <div class="flex items-start gap-2">
                                 <span class="text-sm">📝</span>
-                                <span class="text-gray-600 dark:text-gray-400">Verse Style - each verse on its own line</span>
+                                <span class="text-gray-600 dark:text-gray-400">Verse - each verse separate</span>
                             </div>
                             <div class="flex items-start gap-2">
                                 <span class="text-sm">🔴</span>
-                                <span class="text-gray-600 dark:text-gray-400">Toggle Jesus' words between red and normal</span>
+                                <span class="text-gray-600 dark:text-gray-400">Toggle red letter text</span>
                             </div>
                             <div class="flex items-start gap-2">
                                 <span class="text-sm">🔍</span>
-                                <span class="text-gray-600 dark:text-gray-400">Font size controls - adjust text size to your preference</span>
+                                <span class="text-gray-600 dark:text-gray-400">Adjust text size</span>
                             </div>
                         </div>
                     </div>
@@ -339,7 +239,7 @@
 
                 <div class="mt-6 text-center">
                     <button onclick="toggleFormattingGuide()"
-                            class="px-4 py-2 bg-bible-blue dark:bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 dark:hover:bg-blue-500 transition-colors">
+                            class="touch-friendly px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-medium transition-colors w-full">
                         Got it!
                     </button>
                 </div>
@@ -377,7 +277,13 @@ function copyChapter() {
     @endif
 
     navigator.clipboard.writeText(text).then(() => {
-        alert('Chapter copied to clipboard!');
+        // Show mobile-friendly feedback
+        const button = event.target;
+        const originalText = button.innerHTML;
+        button.innerHTML = '✅ Copied!';
+        setTimeout(() => {
+            button.innerHTML = originalText;
+        }, 2000);
     }).catch(err => {
         console.error('Failed to copy text: ', err);
     });
@@ -418,7 +324,7 @@ let redLettersEnabled = true;
 function toggleRedLetters() {
     redLettersEnabled = !redLettersEnabled;
     const redSpans = document.querySelectorAll('.text-red-600');
-    const toggleButton = document.getElementById('redLetterToggle');
+    const toggleButtonMobile = document.getElementById('redLetterToggleMobile');
 
     redSpans.forEach(span => {
         if (redLettersEnabled) {
@@ -430,13 +336,15 @@ function toggleRedLetters() {
         }
     });
 
-    // Update button appearance
-    if (redLettersEnabled) {
-        toggleButton.className = 'flex items-center px-3 py-2 bg-red-100 dark:bg-red-900 hover:bg-red-200 dark:hover:bg-red-800 text-red-800 dark:text-red-200 rounded-md text-sm transition-colors';
-        toggleButton.innerHTML = '🔴 Red Letters';
-    } else {
-        toggleButton.className = 'flex items-center px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-md text-sm transition-colors';
-        toggleButton.innerHTML = '⚫ Red Letters';
+    // Update mobile button appearance
+    if (toggleButtonMobile) {
+        if (redLettersEnabled) {
+            toggleButtonMobile.className = toggleButtonMobile.className.replace(/bg-gray-\d+/g, 'bg-red-50').replace(/text-gray-\d+/g, 'text-red-800');
+            toggleButtonMobile.innerHTML = '🔴 Red Letters';
+        } else {
+            toggleButtonMobile.className = toggleButtonMobile.className.replace(/bg-red-\d+/g, 'bg-gray-50').replace(/text-red-\d+/g, 'text-gray-800');
+            toggleButtonMobile.innerHTML = '⚫ Red Letters';
+        }
     }
 }
 
@@ -449,9 +357,10 @@ function toggleFormattingGuide() {
 // Close modal when clicking outside
 document.addEventListener('click', function(e) {
     const modal = document.getElementById('formattingGuide');
-    const toggleButton = document.getElementById('formattingGuideToggle');
+    const toggleButtonMobile = document.getElementById('formattingGuideToggleMobile');
 
-    if (modal && !modal.querySelector('.bg-white').contains(e.target) && e.target !== toggleButton && !toggleButton.contains(e.target)) {
+    if (modal && !modal.querySelector('.ios-card').contains(e.target) &&
+        e.target !== toggleButtonMobile && !toggleButtonMobile?.contains(e.target)) {
         modal.classList.add('hidden');
     }
 });
@@ -480,26 +389,29 @@ function updateFontSize() {
 }
 
 function updateFontButtons() {
-    const decreaseBtn = document.getElementById('fontDecreaseBtn');
-    const increaseBtn = document.getElementById('fontIncreaseBtn');
+    const buttons = [
+        { decrease: document.getElementById('fontDecreaseBtnMobile'), increase: document.getElementById('fontIncreaseBtnMobile') }
+    ];
 
-    if (decreaseBtn && increaseBtn) {
-        decreaseBtn.disabled = currentFontSize <= minFontSize;
-        increaseBtn.disabled = currentFontSize >= maxFontSize;
+    buttons.forEach(({ decrease, increase }) => {
+        if (decrease && increase) {
+            decrease.disabled = currentFontSize <= minFontSize;
+            increase.disabled = currentFontSize >= maxFontSize;
 
-        // Update button styling based on disabled state
-        if (currentFontSize <= minFontSize) {
-            decreaseBtn.className = 'flex items-center px-3 py-2 bg-gray-50 text-gray-400 rounded-md text-sm cursor-not-allowed';
-        } else {
-            decreaseBtn.className = 'flex items-center px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-md text-sm transition-colors';
+            // Update styling based on disabled state
+            if (currentFontSize <= minFontSize) {
+                decrease.className = decrease.className.replace(/hover:bg-\S+/g, '').replace(/bg-gray-\d+/g, 'bg-gray-200') + ' cursor-not-allowed opacity-50';
+            } else {
+                decrease.className = decrease.className.replace(/cursor-not-allowed|opacity-50/g, '').replace(/bg-gray-200/g, 'bg-gray-50') + ' hover:bg-gray-100 dark:hover:bg-gray-600';
+            }
+
+            if (currentFontSize >= maxFontSize) {
+                increase.className = increase.className.replace(/hover:bg-\S+/g, '').replace(/bg-gray-\d+/g, 'bg-gray-200') + ' cursor-not-allowed opacity-50';
+            } else {
+                increase.className = increase.className.replace(/cursor-not-allowed|opacity-50/g, '').replace(/bg-gray-200/g, 'bg-gray-50') + ' hover:bg-gray-100 dark:hover:bg-gray-600';
+            }
         }
-
-        if (currentFontSize >= maxFontSize) {
-            increaseBtn.className = 'flex items-center px-3 py-2 bg-gray-50 text-gray-400 rounded-md text-sm cursor-not-allowed';
-        } else {
-            increaseBtn.className = 'flex items-center px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-md text-sm transition-colors';
-        }
-    }
+    });
 }
 
 function increaseFontSize() {

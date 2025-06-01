@@ -3,94 +3,109 @@
 @section('title', $bibleInfo['title'] . ' - Bible Reader')
 
 @section('content')
-<div class="space-y-8">
-    <!-- Bible Info Header -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">{{ $bibleInfo['title'] }}</h1>
+<div class="space-y-4">
+    <!-- Mobile-First Bible Info Header -->
+    <div class="ios-card rounded-2xl shadow-sm p-4 sm:p-6">
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">{{ $bibleInfo['title'] }}</h1>
         @if($bibleInfo['description'])
-            <p class="text-gray-600 dark:text-gray-400 mb-4">{{ $bibleInfo['description'] }}</p>
+            <p class="text-gray-600 dark:text-gray-400 text-sm sm:text-base mb-3">{{ $bibleInfo['description'] }}</p>
         @endif
-        <div class="flex flex-wrap gap-4 text-sm text-gray-500 dark:text-gray-400">
+        <div class="flex flex-wrap gap-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
             @if($bibleInfo['publisher'])
-                <span>📚 {{ $bibleInfo['publisher'] }}</span>
+                <span class="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">📚 {{ $bibleInfo['publisher'] }}</span>
             @endif
             @if($bibleInfo['language'])
-                <span>🌍 {{ $bibleInfo['language'] }}</span>
+                <span class="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">🌍 {{ $bibleInfo['language'] }}</span>
             @endif
         </div>
     </div>
 
-    <!-- Old Testament -->
+    <!-- Strong's Concordance Feature -->
+    <div class="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl shadow-lg p-4 sm:p-6 text-white">
+        <div class="flex flex-col space-y-4">
+            <div>
+                <h2 class="text-xl sm:text-2xl font-bold mb-2">🔤 Strong's Concordance</h2>
+                <p class="text-indigo-100 text-sm sm:text-base mb-3">Explore Hebrew and Greek words with detailed definitions, etymology, and Biblical usage</p>
+                <div class="flex flex-wrap gap-2 text-xs">
+                    <span class="bg-white/20 px-2 py-1 rounded-full">📚 Comprehensive Lexicon</span>
+                    <span class="bg-white/20 px-2 py-1 rounded-full">🔍 Word Studies</span>
+                    <span class="bg-white/20 px-2 py-1 rounded-full">🌳 Word Relationships</span>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <a href="{{ route('strongs.index') }}" class="touch-friendly bg-white/20 hover:bg-white/30 px-4 py-3 rounded-xl transition-colors text-center font-medium text-sm">
+                    🔤 Browse Lexicon
+                </a>
+                <a href="{{ route('strongs.index', ['search' => 'G2316']) }}" class="touch-friendly bg-white text-indigo-600 hover:bg-gray-100 px-4 py-3 rounded-xl transition-colors text-center font-medium text-sm">
+                    📖 Try Example
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Testament Sections -->
     @php
         $oldTestamentBooks = $books->where('testament', 'Old Testament');
         $newTestamentBooks = $books->where('testament', 'New Testament');
     @endphp
 
+    <!-- Old Testament -->
     @if($oldTestamentBooks->isNotEmpty())
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center">
-            <span class="text-bible-gold dark:text-yellow-400 mr-2">📜</span>
-            Old Testament
-            <span class="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">({{ $oldTestamentBooks->count() }} books)</span>
-        </h2>
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+    <div class="ios-card rounded-2xl shadow-sm p-4 sm:p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center">
+                <span class="text-yellow-500 mr-2">📜</span>
+                Old Testament
+            </h2>
+            <span class="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">
+                {{ $oldTestamentBooks->count() }} books
+            </span>
+        </div>
+
+        <!-- Mobile Grid: 2 columns, Tablet: 3, Desktop: 4+ -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3">
             @foreach($oldTestamentBooks as $book)
                 <a href="{{ route('bible.book', $book['osis_id']) }}"
-                   class="block p-4 bg-gray-50 dark:bg-gray-700 hover:bg-bible-blue dark:hover:bg-blue-600 hover:text-white rounded-lg transition-all duration-200 group">
-                    <div class="font-semibold text-sm text-gray-900 dark:text-gray-100 group-hover:text-white">{{ $book['short_name'] }}</div>
-                    <div class="text-xs opacity-75 mt-1 group-hover:opacity-100 text-gray-600 dark:text-gray-300 group-hover:text-white">{{ $book['name'] }}</div>
+                class="touch-friendly block p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 hover:bg-blue-500 dark:hover:bg-blue-600 hover:text-white rounded-xl transition-all duration-200 group">
+                    <div class="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 group-hover:text-white mb-1">
+                        {{ $book['short_name'] }}
+                    </div>
+                    <div class="text-xs opacity-75 group-hover:opacity-100 text-gray-600 dark:text-gray-300 group-hover:text-white leading-tight">
+                        {{ $book['name'] }}
+                    </div>
                 </a>
             @endforeach
         </div>
     </div>
     @endif
 
-    <!-- New Testament -->
+    <!-- New Testament (Mobile First) -->
     @if($newTestamentBooks->isNotEmpty())
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center">
-            <span class="text-bible-gold dark:text-yellow-400 mr-2">✝️</span>
-            New Testament
-            <span class="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">({{ $newTestamentBooks->count() }} books)</span>
-        </h2>
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+    <div class="ios-card rounded-2xl shadow-sm p-4 sm:p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center">
+                <span class="text-yellow-500 mr-2">✝️</span>
+                New Testament
+            </h2>
+            <span class="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">
+                {{ $newTestamentBooks->count() }} books
+            </span>
+        </div>
+
+        <!-- Mobile Grid: 2 columns, Tablet: 3, Desktop: 4+ -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3">
             @foreach($newTestamentBooks as $book)
                 <a href="{{ route('bible.book', $book['osis_id']) }}"
-                   class="block p-4 bg-gray-50 dark:bg-gray-700 hover:bg-bible-blue dark:hover:bg-blue-600 hover:text-white rounded-lg transition-all duration-200 group">
-                    <div class="font-semibold text-sm text-gray-900 dark:text-gray-100 group-hover:text-white">{{ $book['short_name'] }}</div>
-                    <div class="text-xs opacity-75 mt-1 group-hover:opacity-100 text-gray-600 dark:text-gray-300 group-hover:text-white">{{ $book['name'] }}</div>
+                   class="touch-friendly block p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 hover:bg-blue-500 dark:hover:bg-blue-600 hover:text-white rounded-xl transition-all duration-200 group">
+                    <div class="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 group-hover:text-white mb-1">
+                        {{ $book['short_name'] }}
+                    </div>
+                    <div class="text-xs opacity-75 group-hover:opacity-100 text-gray-600 dark:text-gray-300 group-hover:text-white leading-tight">
+                        {{ $book['name'] }}
+                    </div>
                 </a>
             @endforeach
         </div>
     </div>
     @endif
-
-    <!-- Quick Stats -->
-    <div class="bg-gradient-to-r from-bible-blue to-blue-600 dark:from-blue-700 dark:to-blue-800 text-white rounded-lg p-6">
-        <h3 class="text-lg font-semibold mb-4">Quick Stats</h3>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="text-center">
-                <div class="text-2xl font-bold">{{ $books->count() }}</div>
-                <div class="text-sm opacity-90">Total Books</div>
-            </div>
-            <div class="text-center">
-                <div class="text-2xl font-bold">{{ $oldTestamentBooks->count() }}</div>
-                <div class="text-sm opacity-90">Old Testament</div>
-            </div>
-            <div class="text-center">
-                <div class="text-2xl font-bold">{{ $newTestamentBooks->count() }}</div>
-                <div class="text-sm opacity-90">New Testament</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4 text-sm text-blue-800 dark:text-blue-300">
-        <p class="font-medium mb-2">💡 Search Tips:</p>
-        <div class="space-y-1">
-            <p><strong>For specific verses:</strong> Try "Acts 2:38", "John 3:16", "genesis1:1", "ps23"</p>
-            <p><strong>For verse ranges:</strong> Try "deut 6:1-4", "1cor 13:4-8", "matt5:3-12"</p>
-            <p><strong>For text search:</strong> Try "love", "faith", "salvation", "shepherd"</p>
-        </div>
-    </div>
-</div>
 @endsection
