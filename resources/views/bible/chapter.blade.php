@@ -6,27 +6,27 @@
 <div class="space-y-4">
     <!-- Floating Navigation Buttons -->
     @if($chapterNumber > 1)
-        <a href="{{ route('bible.chapter', [$currentBook['osis_id'], $chapterNumber - 1]) }}"
+        <button onclick="navigateToChapter('{{ $currentBook['osis_id'] }}', {{ $chapterNumber - 1 }})"
            id="prevChapterBtn"
-           class="fixed z-40 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-800 dark:text-gray-200 shadow-sm hover:shadow-md flex items-center justify-center transition-colors duration-200 border border-gray-200 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800"
-           style="left: 0; top: 50%; width: 30px; min-width: 30px; height: 64px; margin-top: -32px;"
+           class="fixed z-40 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-800 dark:text-gray-200 flex items-center justify-center border border-gray-200 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800"
+           style="left: 0; top: 50%; width: 30px; min-width: 30px; height: 64px; transform: translateY(-50%); box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);"
            title="Previous Chapter">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"></path>
             </svg>
-        </a>
+        </button>
     @endif
 
     @if($chapterNumber < $chapters->count())
-        <a href="{{ route('bible.chapter', [$currentBook['osis_id'], $chapterNumber + 1]) }}"
+        <button onclick="navigateToChapter('{{ $currentBook['osis_id'] }}', {{ $chapterNumber + 1 }})"
            id="nextChapterBtn"
-           class="fixed z-40 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-800 dark:text-gray-200 shadow-sm hover:shadow-md flex items-center justify-center transition-colors duration-200 border border-gray-200 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800"
-           style="right: 0; top: 50%; width: 30px; min-width: 30px; height: 64px; margin-top: -32px;"
+           class="fixed z-40 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-800 dark:text-gray-200 flex items-center justify-center border border-gray-200 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800"
+           style="right: 0; top: 50%; width: 30px; min-width: 30px; height: 64px; transform: translateY(-50%); box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);"
            title="Next Chapter">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path>
             </svg>
-        </a>
+        </button>
     @endif
 
     <!-- Mobile-Optimized Chapter Text -->
@@ -162,6 +162,132 @@
 
 @push('scripts')
 <script>
+// AJAX Chapter Navigation
+let isNavigating = false;
+
+function navigateToChapter(bookOsisId, chapterNumber) {
+    if (isNavigating) return; // Prevent multiple simultaneous requests
+
+    isNavigating = true;
+
+    // Show loading state on buttons
+    showNavigationLoading();
+
+    // Fetch the new chapter content
+    fetch(`/${bookOsisId}/${chapterNumber}?ajax=1`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.text();
+        })
+        .then(html => {
+            // Parse the response to extract the main content
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+
+            // Update the page content
+            updatePageContent(doc, bookOsisId, chapterNumber);
+
+            // Update browser history
+            const newUrl = `/${bookOsisId}/${chapterNumber}`;
+            window.history.pushState({bookOsisId, chapterNumber}, '', newUrl);
+
+            // Update page title
+            const newTitle = doc.title;
+            document.title = newTitle;
+
+            // Scroll to top smoothly
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            isNavigating = false;
+            hideNavigationLoading();
+        })
+        .catch(error => {
+            console.error('Navigation error:', error);
+            // Fallback to regular navigation
+            window.location.href = `/${bookOsisId}/${chapterNumber}`;
+            isNavigating = false;
+        });
+}
+
+function updatePageContent(doc, bookOsisId, chapterNumber) {
+    // Update the main content area
+    const newContent = doc.querySelector('.space-y-4').innerHTML;
+    document.querySelector('.space-y-4').innerHTML = newContent;
+
+    // Update the header with new book/chapter info
+    const headerButtons = document.querySelectorAll('button[onclick*="showBookSelector"]');
+    const newHeaderButton = doc.querySelector('button[onclick*="showBookSelector"]');
+    if (headerButtons.length > 0 && newHeaderButton) {
+        headerButtons.forEach(button => {
+            button.innerHTML = newHeaderButton.innerHTML;
+        });
+    }
+
+    // Re-run initialization scripts
+    if (typeof preventVerseNumberOrphaning === 'function') {
+        preventVerseNumberOrphaning();
+    }
+
+    // Re-initialize font size
+    if (typeof updateFontSize === 'function') {
+        updateFontSize();
+    }
+
+    // Clear any existing highlights from session
+    clearSessionHighlights();
+}
+
+function showNavigationLoading() {
+    const prevBtn = document.getElementById('prevChapterBtn');
+    const nextBtn = document.getElementById('nextChapterBtn');
+
+    [prevBtn, nextBtn].forEach(btn => {
+        if (btn) {
+            btn.disabled = true;
+            btn.style.opacity = '0.7';
+            const svg = btn.querySelector('svg');
+            if (svg) {
+                svg.style.animation = 'pulse 1s infinite';
+            }
+        }
+    });
+}
+
+function hideNavigationLoading() {
+    const prevBtn = document.getElementById('prevChapterBtn');
+    const nextBtn = document.getElementById('nextChapterBtn');
+
+    [prevBtn, nextBtn].forEach(btn => {
+        if (btn) {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            const svg = btn.querySelector('svg');
+            if (svg) {
+                svg.style.animation = '';
+            }
+        }
+    });
+}
+
+function clearSessionHighlights() {
+    // Remove any existing highlight classes that might persist
+    document.querySelectorAll('.bg-yellow-100, .dark\\:bg-yellow-900').forEach(el => {
+        el.classList.remove('bg-yellow-100', 'dark:bg-yellow-900');
+    });
+}
+
+// Handle browser back/forward buttons
+window.addEventListener('popstate', function(e) {
+    if (e.state && e.state.bookOsisId && e.state.chapterNumber) {
+        navigateToChapter(e.state.bookOsisId, e.state.chapterNumber);
+    } else {
+        // Fallback: reload the page
+        window.location.reload();
+    }
+});
+
 // Prevent verse number orphaning
 function preventVerseNumberOrphaning() {
     // Find all verse containers

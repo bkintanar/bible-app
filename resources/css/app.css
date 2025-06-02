@@ -428,3 +428,23 @@ mark {
     display: inline;
     white-space: nowrap;
 }
+
+/* Safe area background for iOS status bar */
+.safe-area-background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background-color: inherit;
+    z-index: 40;
+}
+
+/* Navigation loading animation */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
