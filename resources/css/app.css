@@ -18,30 +18,17 @@
     }
 }
 
-/* iOS Mobile Web App Optimizations */
-@media screen and (max-width: 768px) {
-    /* The main-container now handles all scrolling */
-    .main-container {
-        -webkit-overflow-scrolling: touch;
-        overscroll-behavior-y: none;
-        /* Ensure proper height calculations on mobile */
-        height: calc(100vh - var(--total-header-height));
-        height: calc(var(--vh, 1vh) * 100 - var(--total-header-height));
-    }
+/* Prevent body scrolling - use container scrolling instead */
+html, body {
+    height: 100%;
+    overflow: hidden;
 }
 
-/* iOS status bar background - ensures solid color behind status bar */
-@supports (padding: env(safe-area-inset-top)) {
-    .fixed-header::before {
-        content: '';
-        position: absolute;
-        top: calc(-1 * env(safe-area-inset-top));
-        left: 0;
-        right: 0;
-        height: env(safe-area-inset-top);
-        background: inherit;
-        z-index: -1;
-    }
+/* Main container takes full height */
+.main-container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
 @theme {
@@ -447,4 +434,51 @@ mark {
     50% {
         opacity: 0.5;
     }
+}
+
+/* Touch-friendly class for iOS without width override */
+.touch-friendly {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: manipulation;
+}
+
+/* iOS-style full-screen card/modal */
+.ios-card {
+    background-color: white;
+    border-radius: 0;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+.dark .ios-card {
+    background-color: var(--color-gray-900); /* dark:bg-gray-800 */
+}
+
+/* Ensure navigation buttons maintain exact sizing */
+.touch-friendly[style*="width: 30px"] {
+    width: 30px !important;
+    min-width: 30px !important;
+    max-width: 30px !important;
+}
+
+/* iOS Safe Area Container */
+.ios-safe-container {
+    height: 100vh;
+    height: 100dvh; /* Dynamic viewport height for modern browsers */
+    min-height: 100vh;
+    min-height: 100dvh;
+}
+
+/* iOS Safe Area Header */
+.ios-safe-header {
+    padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* iOS Safe Area Content */
+.ios-safe-content {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    /* Ensure content doesn't get hidden behind home indicator */
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 20px);
 }

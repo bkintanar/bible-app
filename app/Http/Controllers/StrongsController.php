@@ -7,7 +7,8 @@ use App\Models\StrongsLexicon;
 use App\Models\WordRelationship;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Illuminate\Http\Response;
 
 class StrongsController extends Controller
 {
@@ -16,33 +17,25 @@ class StrongsController extends Controller
     ) {}
 
     /**
-     * Display Strong's lexicon browser
+     * Display the Strong's Concordance index
      */
-    public function index(Request $request): View
+    public function index(Request $request): Response
     {
-        $searchQuery = $request->get('search', '');
-        $language = $request->get('language', 'all');
-        $partOfSpeech = $request->get('pos', 'all');
-        $limit = (int) $request->get('limit', 50);
+        $searchQuery = $request->get('q', '');
+        $language = $request->get('language', '');
+        $partOfSpeech = $request->get('part_of_speech', '');
+        $limit = min((int) $request->get('limit', 50), 100);
 
-        $query = StrongsLexicon::query();
+        $lexiconEntries = $this->strongsService->searchLexicon(
+            $searchQuery,
+            $limit,
+            $language,
+            $partOfSpeech
+        );
 
-        if (!empty($searchQuery)) {
-            $lexiconEntries = $this->strongsService->searchLexicon($searchQuery, $limit);
-        } else {
-            if ($language !== 'all') {
-                $query->where('language', $language);
-            }
-
-            if ($partOfSpeech !== 'all') {
-                $query->where('part_of_speech', $partOfSpeech);
-            }
-
-            $lexiconEntries = $query->orderBy('strongs_number')->limit($limit)->get();
-        }
-
-        // Get filter options
+        // Get available filters
         $languages = StrongsLexicon::select('language')
+            ->whereNotNull('language')
             ->groupBy('language')
             ->orderBy('language')
             ->pluck('language');
@@ -53,21 +46,21 @@ class StrongsController extends Controller
             ->orderBy('part_of_speech')
             ->pluck('part_of_speech');
 
-        return view('strongs.index', compact(
-            'lexiconEntries',
-            'searchQuery',
-            'language',
-            'partOfSpeech',
-            'languages',
-            'partsOfSpeech',
-            'limit'
-        ));
+        return Inertia::render('Strongs/Index', [
+            'lexiconEntries' => $lexiconEntries,
+            'searchQuery' => $searchQuery,
+            'language' => $language,
+            'partOfSpeech' => $partOfSpeech,
+            'languages' => $languages,
+            'partsOfSpeech' => $partsOfSpeech,
+            'limit' => $limit,
+        ]);
     }
 
     /**
      * Display detailed Strong's number study
      */
-    public function show(string $strongsNumber): View
+    public function show(string $strongsNumber): Response
     {
         $lexicon = $this->strongsService->getStrongsDetails($strongsNumber);
 
@@ -139,14 +132,14 @@ class StrongsController extends Controller
             \Log::error("Error getting verses for {$strongsNumber}: " . $e->getMessage());
         }
 
-        return view('strongs.show', compact(
-            'lexicon',
-            'usageStats',
-            'relatedWords',
-            'morphologyAnalysis',
-            'sampleVerses',
-            'strongsNumber'
-        ));
+        return Inertia::render('Strongs/Show', [
+            'lexicon' => $lexicon,
+            'usageStats' => $usageStats,
+            'relatedWords' => $relatedWords,
+            'morphologyAnalysis' => $morphologyAnalysis,
+            'sampleVerses' => $sampleVerses,
+            'strongsNumber' => $strongsNumber,
+        ]);
     }
 
     /**
@@ -227,7 +220,7 @@ class StrongsController extends Controller
     /**
      * Compare multiple Strong's numbers
      */
-    public function compare(Request $request): View
+    public function compare(Request $request): Response
     {
         $strongsNumbers = $request->get('numbers', []);
 
@@ -253,13 +246,17 @@ class StrongsController extends Controller
             $thematicGroups = $this->strongsService->getThematicGroups($strongsNumbers);
         }
 
-        return view('strongs.compare', compact('comparisons', 'thematicGroups', 'strongsNumbers'));
+        return Inertia::render('Strongs/Compare', [
+            'comparisons' => $comparisons,
+            'thematicGroups' => $thematicGroups,
+            'strongsNumbers' => $strongsNumbers,
+        ]);
     }
 
     /**
      * Word family tree view
      */
-    public function family(string $strongsNumber): View
+    public function family(string $strongsNumber): Response
     {
         $wordFamily = $this->strongsService->getWordFamily($strongsNumber);
         $lexicon = $this->strongsService->getStrongsDetails($strongsNumber);
@@ -268,7 +265,11 @@ class StrongsController extends Controller
             abort(404, "Strong's number {$strongsNumber} not found");
         }
 
-        return view('strongs.family', compact('wordFamily', 'lexicon', 'strongsNumber'));
+        return Inertia::render('Strongs/Family', [
+            'wordFamily' => $wordFamily,
+            'lexicon' => $lexicon,
+            'strongsNumber' => $strongsNumber,
+        ]);
     }
 
     /**
@@ -321,7 +322,7 @@ class StrongsController extends Controller
     /**
      * Statistics dashboard
      */
-    public function stats(): View
+    public function stats(): Response
     {
         $stats = [
             'total_entries' => StrongsLexicon::count(),
@@ -356,6 +357,10 @@ class StrongsController extends Controller
                 ];
             });
 
-        return view('strongs.stats', compact('stats', 'topWords', 'languageDistribution'));
+        return Inertia::render('Strongs/Stats', [
+            'stats' => $stats,
+            'topWords' => $topWords,
+            'languageDistribution' => $languageDistribution,
+        ]);
     }
 }

@@ -6,9 +6,10 @@ use App\Services\BibleService;
 use App\Services\TranslationService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class BibleController extends Controller
 {
@@ -52,7 +53,7 @@ class BibleController extends Controller
     /**
      * Display the Bible home page with list of books or redirect to last visited page
      */
-    public function index(Request $request): View|RedirectResponse
+    public function index(Request $request): Response|RedirectResponse
     {
         // Check if user wants to force showing the index page (e.g., ?fresh=1)
         $forceIndex = $request->has('fresh');
@@ -97,20 +98,20 @@ class BibleController extends Controller
         // Separate books by testament
         $testamentBooks = $this->separateBooksByTestament($books);
 
-        return view('bible.index', compact(
-            'bibleInfo',
-            'books',
-            'testamentBooks',
-            'currentTranslation',
-            'availableTranslations',
-            'capabilities'
-        ));
+        return Inertia::render('Bible/Index', [
+            'bibleInfo' => $bibleInfo,
+            'books' => $books,
+            'testamentBooks' => $testamentBooks,
+            'currentTranslation' => $currentTranslation,
+            'availableTranslations' => $availableTranslations,
+            'capabilities' => $capabilities,
+        ]);
     }
 
     /**
      * Display chapters for a specific book
      */
-    public function book(string $bookOsisId): View
+    public function book(string $bookOsisId): Response
     {
         $books = $this->bibleService->getBooks();
         $currentBook = $books->firstWhere('osis_id', $bookOsisId);
@@ -123,6 +124,7 @@ class BibleController extends Controller
         $this->storeLastVisitedPage('bible.book', ['bookOsisId' => $bookOsisId]);
 
         $chapters = $this->bibleService->getChapters($bookOsisId);
+
         $currentTranslation = $this->bibleService->getCurrentTranslation();
         $availableTranslations = $this->bibleService->getAvailableTranslations();
         $capabilities = $this->bibleService->getCapabilities();
@@ -133,22 +135,22 @@ class BibleController extends Controller
         // Separate books by testament for header
         $testamentBooks = $this->separateBooksByTestament($books);
 
-        return view('bible.book', compact(
-            'currentBook',
-            'chapters',
-            'books',
-            'testamentBooks',
-            'popularChapters',
-            'currentTranslation',
-            'availableTranslations',
-            'capabilities'
-        ));
+        return Inertia::render('Bible/Book', [
+            'currentBook' => $currentBook,
+            'chapters' => $chapters,
+            'books' => $books,
+            'testamentBooks' => $testamentBooks,
+            'popularChapters' => $popularChapters,
+            'currentTranslation' => $currentTranslation,
+            'availableTranslations' => $availableTranslations,
+            'capabilities' => $capabilities,
+        ]);
     }
 
     /**
      * Display verses for a specific chapter
      */
-    public function chapter(string $bookOsisId, int $chapterNumber, Request $request): View
+    public function chapter(string $bookOsisId, int $chapterNumber, Request $request): Response
     {
         $books = $this->bibleService->getBooks();
         $currentBook = $books->firstWhere('osis_id', $bookOsisId);
@@ -192,25 +194,25 @@ class BibleController extends Controller
         // Separate books by testament for header
         $testamentBooks = $this->separateBooksByTestament($books);
 
-        return view('bible.chapter', compact(
-            'currentBook',
-            'chapterNumber',
-            'verses',
-            'paragraphs',
-            'formatStyle',
-            'chapters',
-            'books',
-            'testamentBooks',
-            'currentTranslation',
-            'availableTranslations',
-            'capabilities'
-        ));
+        return Inertia::render('Bible/Chapter', [
+            'currentBook' => $currentBook,
+            'chapterNumber' => $chapterNumber,
+            'verses' => $verses,
+            'paragraphs' => $paragraphs,
+            'formatStyle' => $formatStyle,
+            'chapters' => $chapters,
+            'books' => $books,
+            'testamentBooks' => $testamentBooks,
+            'currentTranslation' => $currentTranslation,
+            'availableTranslations' => $availableTranslations,
+            'capabilities' => $capabilities,
+        ]);
     }
 
     /**
      * Display a specific verse with enhanced details
      */
-    public function verse(string $bookOsisId, int $chapterNumber, int $verseNumber): View
+    public function verse(string $bookOsisId, int $chapterNumber, int $verseNumber): Response
     {
         $books = $this->bibleService->getBooks();
         $currentBook = $books->firstWhere('osis_id', $bookOsisId);
@@ -247,17 +249,17 @@ class BibleController extends Controller
         // Separate books by testament for header
         $testamentBooks = $this->separateBooksByTestament($books);
 
-        return view('bible.verse', compact(
-            'currentBook',
-            'chapterNumber',
-            'verseNumber',
-            'verseDetails',
-            'books',
-            'testamentBooks',
-            'currentTranslation',
-            'availableTranslations',
-            'capabilities'
-        ));
+        return Inertia::render('Bible/Verse', [
+            'currentBook' => $currentBook,
+            'chapterNumber' => $chapterNumber,
+            'verseNumber' => $verseNumber,
+            'verseDetails' => $verseDetails,
+            'books' => $books,
+            'testamentBooks' => $testamentBooks,
+            'currentTranslation' => $currentTranslation,
+            'availableTranslations' => $availableTranslations,
+            'capabilities' => $capabilities,
+        ]);
     }
 
     /**
@@ -279,7 +281,7 @@ class BibleController extends Controller
     /**
      * Search for verses
      */
-    public function search(Request $request): View
+    public function search(Request $request): Response
     {
         $searchTerm = $request->get('q', '');
         $limit = (int) $request->get('limit', 50);
@@ -327,33 +329,32 @@ class BibleController extends Controller
                                 $parsedRef['verse']
                             );
                             if ($verse) {
-                                // Normalize verse result structure
-                                $normalizedVerse = $this->normalizeVerseResult($verse, 'reference');
-                                $results = collect([$normalizedVerse]);
+                                $results = collect([$this->normalizeVerseResult($verse, 'reference')]);
                             }
                         } elseif ($parsedRef['type'] === 'chapter') {
-                            $chapterOsisRef = $parsedRef['book_osis_id'] . '.' . $parsedRef['chapter'];
-                            $verses = $this->bibleService->getVerses($chapterOsisRef);
-                            // Normalize chapter verses
-                            $results = $verses->map(function ($verse) {
-                                return $this->normalizeVerseResult($verse, 'chapter');
-                            });
+                            $verses = $this->bibleService->getVerses(
+                                $parsedRef['book_osis_id'] . '.' . $parsedRef['chapter']
+                            );
+                            $results = $verses->map(fn($verse) => $this->normalizeVerseResult($verse, 'reference'));
                         }
                     }
                     break;
 
                 case 'text':
                 default:
-                    $results = $this->bibleService->searchVerses($searchTerm, $limit + 1); // +1 to detect if there are more results
+                    $results = $this->bibleService->searchVerses($searchTerm, $limit + 1);
                     $hasMoreResults = $results->count() > $limit;
                     if ($hasMoreResults) {
-                        $results = $results->take($limit); // Remove the extra result
+                        $results = $results->take($limit);
                     }
+                    $results = $results->map(fn($verse) => $this->normalizeVerseResult($verse, 'search'));
                     break;
             }
 
-            $searchInfo['time_ms'] = round((microtime(true) - $startTime) * 1000, 2);
+            $endTime = microtime(true);
+            $searchInfo['time_ms'] = round(($endTime - $startTime) * 1000, 2);
             $searchInfo['count'] = $results->count();
+
             $totalFound = $results->count();
 
             // Group results by book for better presentation
@@ -370,21 +371,21 @@ class BibleController extends Controller
         $books = $this->bibleService->getBooks();
         $testamentBooks = $this->separateBooksByTestament($books);
 
-        return view('bible.search', compact(
-            'searchTerm',
-            'searchType',
-            'results',
-            'searchInfo',
-            'groupedResults',
-            'totalFound',
-            'hasMoreResults',
-            'limit',
-            'books',
-            'testamentBooks',
-            'currentTranslation',
-            'availableTranslations',
-            'capabilities'
-        ));
+        return Inertia::render('Bible/Search', [
+            'searchTerm' => $searchTerm,
+            'searchType' => $searchType,
+            'results' => $results,
+            'searchInfo' => $searchInfo,
+            'groupedResults' => $groupedResults,
+            'totalFound' => $totalFound,
+            'hasMoreResults' => $hasMoreResults,
+            'limit' => $limit,
+            'books' => $books,
+            'testamentBooks' => $testamentBooks,
+            'currentTranslation' => $currentTranslation,
+            'availableTranslations' => $availableTranslations,
+            'capabilities' => $capabilities,
+        ]);
     }
 
     /**
