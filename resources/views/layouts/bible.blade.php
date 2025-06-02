@@ -27,13 +27,12 @@
     <style>
         /* iOS safe area support */
         body {
-            padding-top: env(safe-area-inset-top);
-            padding-bottom: env(safe-area-inset-bottom);
             padding-left: env(safe-area-inset-left);
             padding-right: env(safe-area-inset-right);
+            padding-bottom: env(safe-area-inset-bottom);
         }
 
-        /* Fixed header offset - ensures scrollbar starts after header */
+        /* Fixed header offset - ensures content starts after header */
         body {
             padding-top: calc(4rem + env(safe-area-inset-top)); /* 64px header height + safe area */
         }
@@ -46,13 +45,13 @@
 
         /* iOS-style cards */
         .ios-card {
-            background: rgba(255, 255, 255, 0.8);
+            background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.18);
         }
 
         .dark .ios-card {
-            background: rgba(28, 28, 30, 0.8);
+            background: rgba(28, 28, 30, 0.95);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
 

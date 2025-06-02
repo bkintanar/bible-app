@@ -750,7 +750,7 @@ class ImportOsisCommand extends Command
         // Basic transformations
         $html = str_replace('<transChange type="added">', '<em class="text-gray-600 dark:text-gray-400 font-normal italic">', $html);
         $html = str_replace('</transChange>', '</em>', $html);
-        $html = str_replace('<divineName>', '<span class="text-purple-600 dark:text-purple-400 font-semibold">', $html);
+        $html = str_replace('<divineName>', '<span style="font-variant: small-caps; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; font-size: 0.95em;">', $html);
         $html = str_replace('</divineName>', '</span>', $html);
 
         // Remove word markup for display while preserving spacing

@@ -31,3 +31,6 @@ bible_app.sqlite
 coverage.xml
 clover.xml
 *.coverage
+
+# NativePHP
+nativephp

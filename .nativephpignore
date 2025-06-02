@@ -1,0 +1,64 @@
+# Development and build files
+node_modules/
+.git/
+.github/
+tests/
+.phpunit.result.cache
+phpunit.xml
+pest.php
+
+# Storage files (except framework and database)
+storage/logs/*
+storage/app/public/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/testing/*
+storage/framework/views/*
+!storage/framework/.gitkeep
+!storage/app/.gitkeep
+!storage/logs/.gitkeep
+
+# Environment and config
+.env*
+!.env.example
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+public/hot
+public/storage
+bootstrap/cache/*.php
+
+# Composer dev dependencies (if not needed in production)
+# vendor/bin/
+# vendor/phpunit/
+# vendor/fakerphp/
+# vendor/mockery/
+# vendor/nunomaduro/
+
+# Large database files (but KEEP our main database files)
+*.sqlite-wal
+*.sqlite-shm
+# !bible_app.sqlite
+# !database/bible_app.sqlite
+# !database/database.sqlite
+
+# Coverage reports
+coverage/
+.coverage/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Test files
+test-divine-names.html

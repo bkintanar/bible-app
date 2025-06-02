@@ -1,18 +1,18 @@
 <!-- Mobile-First Navigation Header -->
-<nav class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-white/90 dark:bg-gray-800/90 w-full">
+<nav class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 fixed top-0 left-0 right-0 z-50 w-full" style="padding-top: env(safe-area-inset-top);">
     <div class="px-4 sm:px-6 w-full max-w-none">
         <!-- Main Navigation Row -->
         <div class="flex justify-between items-center h-16 w-full">
             <!-- Book and Chapter Info (Center) -->
             @if(isset($currentBook) && isset($chapterNumber))
                 <div class="flex items-center">
-                    <button onclick="showBookSelector()" class="touch-friendly px-4 py-3 text-gray-900 dark:text-white shadow-md font-semibold transition-all duration-200 rounded-lg flex items-center justify-center gap-1 whitespace-nowrap" style="font-family: var(--font-bible); font-size: 1.5rem; letter-spacing: 0.025em;">
+                    <button onclick="showBookSelector()" class="touch-friendly px-4 py-3 text-gray-900 dark:text-white font-semibold transition-all duration-200 rounded-lg flex items-center justify-center gap-1 whitespace-nowrap" style="font-family: var(--font-bible); font-size: 1.5rem; letter-spacing: 0.025em;">
                         <span>{{ $currentBook['short_name'] }} {{ $chapterNumber }}</span>
                     </button>
                 </div>
             @elseif(isset($currentBook))
                 <div class="flex items-center">
-                    <button onclick="showBookSelector()" class="touch-friendly px-4 py-3 text-gray-900 dark:text-white shadow-md font-semibold transition-all duration-200 rounded-lg flex items-center justify-center gap-1 whitespace-nowrap" style="font-family: var(--font-bible); font-size: 1.5rem; letter-spacing: 0.025em;">
+                    <button onclick="showBookSelector()" class="touch-friendly px-4 py-3 text-gray-900 dark:text-white font-semibold transition-all duration-200 rounded-lg flex items-center justify-center gap-1 whitespace-nowrap" style="font-family: var(--font-bible); font-size: 1.5rem; letter-spacing: 0.025em;">
                         <span>{{ $currentBook['short_name'] }}</span>
                     </button>
                 </div>
