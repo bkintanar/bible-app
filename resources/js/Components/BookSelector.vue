@@ -151,18 +151,31 @@ export default {
       this.selectedBook = book
       this.isLoading = true
 
-      // Get popular chapters for this book
-      this.popularChapters = this.getPopularChapters(book.osis_id)
-
       // Fetch chapters for the selected book
       try {
         const response = await fetch(`/api/${book.osis_id}/chapters`)
         const allChapters = await response.json()
         // Filter out chapters with no verses
         this.chapters = allChapters.filter(chapter => chapter.verse_count > 0)
+
+        if (this.chapters.length === 0) {
+          // This book has no chapters with verses available
+          alert(`${book.name} is not available in this Bible version yet. Please select another book.`)
+          this.isLoading = false
+          this.selectedBook = null
+          return
+        }
+
+        // Get popular chapters for this book (only if chapters are available)
+        this.popularChapters = this.getPopularChapters(book.osis_id)
+
       } catch (error) {
         console.error('Error fetching chapters:', error)
+        alert('Unable to load chapters. Please try again.')
         this.chapters = []
+        this.isLoading = false
+        this.selectedBook = null
+        return
       }
 
       this.isLoading = false

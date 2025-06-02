@@ -4,27 +4,29 @@
     <nav class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 flex-shrink-0 z-50 ios-safe-header">
       <div class="px-4 sm:px-6 w-full max-w-none">
         <!-- Main Navigation Row -->
-        <div class="flex justify-between items-center h-16 w-full">
-          <!-- Book and Chapter Info (Center) -->
-          <div v-if="currentBook && chapterNumber" class="flex items-center">
-            <button @click="showBookSelector = true"
-                    class="touch-friendly px-4 py-3 text-gray-900 dark:text-white font-semibold transition-all duration-200 rounded-lg flex items-center justify-center gap-1 whitespace-nowrap"
-                    style="font-family: var(--font-bible); font-size: 1.5rem; letter-spacing: 0.025em;">
-              <span>{{ currentBook.short_name }} {{ chapterNumber }}</span>
-            </button>
-          </div>
-          <div v-else-if="currentBook" class="flex items-center">
-            <button @click="showBookSelector = true"
-                    class="touch-friendly px-4 py-3 text-gray-900 dark:text-white font-semibold transition-all duration-200 rounded-lg flex items-center justify-center gap-1 whitespace-nowrap"
-                    style="font-family: var(--font-bible); font-size: 1.5rem; letter-spacing: 0.025em;">
-              <span>{{ currentBook.short_name }}</span>
-            </button>
+        <div class="flex items-center h-16 w-full">
+          <!-- Book and Chapter Info (Left side with flex-1 to take remaining space) -->
+          <div class="flex-1">
+            <div v-if="currentBook && chapterNumber" class="flex items-center">
+              <button @click="showBookSelector = true"
+                      class="touch-friendly px-4 py-3 text-gray-900 dark:text-white font-semibold transition-all duration-200 rounded-lg flex items-center justify-center gap-1 whitespace-nowrap"
+                      style="font-family: var(--font-bible); font-size: 1.5rem; letter-spacing: 0.025em;">
+                <span>{{ currentBook.short_name }} {{ chapterNumber }}</span>
+              </button>
+            </div>
+            <div v-else-if="currentBook" class="flex items-center">
+              <button @click="showBookSelector = true"
+                      class="touch-friendly px-4 py-3 text-gray-900 dark:text-white font-semibold transition-all duration-200 rounded-lg flex items-center justify-center gap-1 whitespace-nowrap"
+                      style="font-family: var(--font-bible); font-size: 1.5rem; letter-spacing: 0.025em;">
+                <span>{{ currentBook.short_name }}</span>
+              </button>
+            </div>
           </div>
 
           <!-- Mobile Actions -->
           <div class="flex items-center space-x-1 sm:hidden">
             <!-- Search Toggle (Mobile) -->
-            <button @click="showMobileSearch = !showMobileSearch"
+            <button v-if="!hideHeaderSearch" @click="showMobileSearch = !showMobileSearch"
                     class="touch-friendly p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -73,19 +75,11 @@
             </div>
 
             <!-- Desktop Search Form -->
-            <div class="relative">
-              <input v-model="searchQuery"
-                     @keypress.enter="performSearch"
-                     type="text"
-                     placeholder="Search verses..."
-                     style="padding-left: 2.5rem;"
-                     class="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500 dark:placeholder-gray-400 w-64">
-              <div style="position: absolute; top: 50%; left: 0.75rem; transform: translateY(-50%); pointer-events: none;">
-                <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                </svg>
-              </div>
-            </div>
+            <SearchForm
+              v-if="!hideHeaderSearch"
+              variant="header-desktop"
+              :show-button="false"
+            />
 
             <!-- Desktop Dark Mode Toggle -->
             <button @click="toggleDarkMode"
@@ -102,20 +96,11 @@
       </div>
 
       <!-- Mobile Search Bar -->
-      <div v-show="showMobileSearch" class="border-t border-gray-200 dark:border-gray-700 p-4 sm:hidden">
-        <div class="relative">
-          <input v-model="searchQuery"
-                 @keypress.enter="performSearch"
-                 type="text"
-                 placeholder="Search verses, words, or Strong's numbers..."
-                 style="padding-left: 2.5rem; width: 100%;"
-                 class="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500 dark:placeholder-gray-400">
-          <div style="position: absolute; top: 50%; left: 0.75rem; transform: translateY(-50%); pointer-events: none;">
-            <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-            </svg>
-          </div>
-        </div>
+      <div v-show="showMobileSearch && !hideHeaderSearch" class="border-t border-gray-200 dark:border-gray-700 p-4 sm:hidden">
+        <SearchForm
+          variant="header-mobile"
+          placeholder="Search verses, words, or Strong's numbers..."
+        />
       </div>
 
       <!-- Mobile Menu -->
@@ -183,11 +168,13 @@
 import { ref, computed, onMounted } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
 import BookSelector from '@/Components/BookSelector.vue'
+import SearchForm from '@/Components/SearchForm.vue'
 
 export default {
   components: {
     Link,
     BookSelector,
+    SearchForm,
   },
   props: {
     currentBook: Object,
@@ -197,12 +184,15 @@ export default {
     currentTranslation: Object,
     availableTranslations: Array,
     capabilities: Object,
+    hideHeaderSearch: {
+      type: Boolean,
+      default: false,
+    },
   },
   setup(props) {
     const showMobileSearch = ref(false)
     const showMobileMenu = ref(false)
     const showBookSelector = ref(false)
-    const searchQuery = ref('')
     const selectedTranslation = ref(props.currentTranslation?.key || '')
     const isDarkMode = ref(false)
 
@@ -218,15 +208,6 @@ export default {
       isDarkMode.value = !isDarkMode.value
       document.documentElement.classList.toggle('dark')
       localStorage.setItem('darkMode', isDarkMode.value)
-    }
-
-    const performSearch = () => {
-      if (searchQuery.value.trim()) {
-        router.visit('/search', {
-          method: 'get',
-          data: { q: searchQuery.value },
-        })
-      }
     }
 
     const switchTranslation = () => {
@@ -248,11 +229,9 @@ export default {
       showMobileSearch,
       showMobileMenu,
       showBookSelector,
-      searchQuery,
       selectedTranslation,
       isDarkMode,
       toggleDarkMode,
-      performSearch,
       switchTranslation,
       clearLastVisited,
       handleBookSelected,
