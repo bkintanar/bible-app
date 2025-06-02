@@ -8,6 +8,42 @@
 @variant dark (prefers-color-scheme: dark);
 @variant dark (.dark &);
 
+/* iOS Safe Area and Mobile Web App Styles */
+@supports (padding: env(safe-area-inset-top)) {
+    :root {
+        --safe-area-inset-top: env(safe-area-inset-top);
+        --safe-area-inset-bottom: env(safe-area-inset-bottom);
+        --safe-area-inset-left: env(safe-area-inset-left);
+        --safe-area-inset-right: env(safe-area-inset-right);
+    }
+}
+
+/* iOS Mobile Web App Optimizations */
+@media screen and (max-width: 768px) {
+    /* The main-container now handles all scrolling */
+    .main-container {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-y: none;
+        /* Ensure proper height calculations on mobile */
+        height: calc(100vh - var(--total-header-height));
+        height: calc(var(--vh, 1vh) * 100 - var(--total-header-height));
+    }
+}
+
+/* iOS status bar background - ensures solid color behind status bar */
+@supports (padding: env(safe-area-inset-top)) {
+    .fixed-header::before {
+        content: '';
+        position: absolute;
+        top: calc(-1 * env(safe-area-inset-top));
+        left: 0;
+        right: 0;
+        height: env(safe-area-inset-top);
+        background: inherit;
+        z-index: -1;
+    }
+}
+
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';

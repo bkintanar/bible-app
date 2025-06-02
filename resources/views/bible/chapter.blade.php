@@ -8,8 +8,8 @@
     @if($chapterNumber > 1)
         <a href="{{ route('bible.chapter', [$currentBook['osis_id'], $chapterNumber - 1]) }}"
            id="prevChapterBtn"
-           class="fixed z-50 touch-friendly h-16 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-800 dark:text-gray-200 shadow-sm hover:shadow-md flex items-center justify-center transition-all duration-200 border border-gray-200 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800 active:scale-95"
-           style="left: 0; top: 50%; transform: translateY(-50%); width: 30px !important; min-width: 30px; max-width: 30px;"
+           class="fixed z-40 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-800 dark:text-gray-200 shadow-sm hover:shadow-md flex items-center justify-center transition-colors duration-200 border border-gray-200 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800"
+           style="left: 0; top: 50%; width: 30px; min-width: 30px; height: 64px; margin-top: -32px;"
            title="Previous Chapter">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"></path>
@@ -20,8 +20,8 @@
     @if($chapterNumber < $chapters->count())
         <a href="{{ route('bible.chapter', [$currentBook['osis_id'], $chapterNumber + 1]) }}"
            id="nextChapterBtn"
-           class="fixed z-50 touch-friendly h-16 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-800 dark:text-gray-200 shadow-sm hover:shadow-md flex items-center justify-center transition-all duration-200 border border-gray-200 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800 active:scale-95"
-           style="right: 0; top: 50%; transform: translateY(-50%); width: 30px !important; min-width: 30px; max-width: 30px;"
+           class="fixed z-40 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-800 dark:text-gray-200 shadow-sm hover:shadow-md flex items-center justify-center transition-colors duration-200 border border-gray-200 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800"
+           style="right: 0; top: 50%; width: 30px; min-width: 30px; height: 64px; margin-top: -32px;"
            title="Next Chapter">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path>
@@ -49,66 +49,9 @@
                     @else
                         <!-- Render normal paragraph -->
                         <div class="mb-6">
-                            @php
-                                // Determine which verses should be highlighted
-                                $highlightedVerses = [];
-                                foreach ($paragraph['verses'] as $verse) {
-                                    $shouldHighlight = false;
-
-                                    // Single verse highlighting
-                                    if (session('highlightVerse') == $verse['verse_number']) {
-                                        $shouldHighlight = true;
-                                    }
-
-                                    // Verse range highlighting
-                                    $verseRange = session('highlightVerseRange');
-                                    if ($verseRange &&
-                                        $verse['verse_number'] >= $verseRange['start'] &&
-                                        $verse['verse_number'] <= $verseRange['end']) {
-                                        $shouldHighlight = true;
-                                    }
-
-                                    $highlightedVerses[$verse['verse_number']] = $shouldHighlight;
-                                }
-
-                                // Group consecutive highlighted verses
-                                $verseGroups = [];
-                                $currentGroup = [];
-                                $inHighlight = false;
-
-                                foreach ($paragraph['verses'] as $index => $verse) {
-                                    $isHighlighted = $highlightedVerses[$verse['verse_number']];
-
-                                    if ($isHighlighted && !$inHighlight) {
-                                        // Start new highlight group
-                                        if (!empty($currentGroup)) {
-                                            $verseGroups[] = ['verses' => $currentGroup, 'highlighted' => false];
-                                        }
-                                        $currentGroup = [$verse];
-                                        $inHighlight = true;
-                                    } elseif ($isHighlighted && $inHighlight) {
-                                        // Continue highlight group
-                                        $currentGroup[] = $verse;
-                                    } elseif (!$isHighlighted && $inHighlight) {
-                                        // End highlight group
-                                        $verseGroups[] = ['verses' => $currentGroup, 'highlighted' => true];
-                                        $currentGroup = [$verse];
-                                        $inHighlight = false;
-                                    } else {
-                                        // Continue normal group
-                                        $currentGroup[] = $verse;
-                                    }
-                                }
-
-                                // Add final group
-                                if (!empty($currentGroup)) {
-                                    $verseGroups[] = ['verses' => $currentGroup, 'highlighted' => $inHighlight];
-                                }
-                            @endphp
-
                             <p class="mb-4 leading-relaxed"
                                id="paragraph-{{ $paragraph['verses'][0]['verse_number'] ?? '' }}">
-                                @foreach($verseGroups as $group)
+                                @foreach($paragraph['verse_groups'] as $group)
                                     @if($group['highlighted'])
                                         <span class="bg-yellow-100 dark:bg-yellow-900 px-2 py-1 rounded" style="display: inline;">
                                             @foreach($group['verses'] as $verse)
@@ -144,27 +87,7 @@
                 @endif
 
                 @foreach($verses as $verse)
-                    @php
-                        $isHighlighted = false;
-                        $highlightClass = '';
-
-                        // Single verse highlighting
-                        if (session('highlightVerse') == $verse['verse_number']) {
-                            $isHighlighted = true;
-                            $highlightClass = 'bg-yellow-100 dark:bg-yellow-900 border-l-4 border-yellow-400 dark:border-yellow-500 pl-4 py-2';
-                        }
-
-                        // Verse range highlighting
-                        $verseRange = session('highlightVerseRange');
-                        if ($verseRange &&
-                            $verse['verse_number'] >= $verseRange['start'] &&
-                            $verse['verse_number'] <= $verseRange['end']) {
-                            $isHighlighted = true;
-                            $highlightClass = 'bg-yellow-100 dark:bg-yellow-900 border-l-4 border-yellow-400 dark:border-yellow-500 pl-4 py-2';
-                        }
-                    @endphp
-
-                    <p class="mb-4 leading-relaxed {{ $highlightClass }} verse-hoverable verse-content"
+                    <p class="mb-4 leading-relaxed {{ $verse['highlight_class'] }} verse-hoverable verse-content"
                        id="verse-{{ $verse['verse_number'] }}">
                         <span class="verse-number text-blue-600 dark:text-blue-400">
                             {{ $verse['verse_number'] }}
@@ -181,7 +104,7 @@
             <div class="ios-card rounded-2xl max-w-sm w-full p-6 max-h-[80vh] overflow-y-auto">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">📖 Bible Text Guide</h3>
-                    <button onclick="toggleFormattingGuide()" class="touch-friendly p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">✕</button>
+                    <button onclick="toggleFormattingGuide()" class="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">✕</button>
                 </div>
 
                 <div class="space-y-4 text-sm">

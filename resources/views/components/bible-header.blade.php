@@ -1,5 +1,5 @@
 <!-- Mobile-First Navigation Header -->
-<nav class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 fixed top-0 left-0 right-0 z-50 w-full" style="padding-top: env(safe-area-inset-top);">
+<nav class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 fixed-header w-full">
     <div class="px-4 sm:px-6 w-full max-w-none">
         <!-- Main Navigation Row -->
         <div class="flex justify-between items-center h-16 w-full">
@@ -227,18 +227,13 @@
         <!-- Scrollable Content -->
         <div class="p-3" style="flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; height: calc(100vh - 140px);">
             <!-- Old Testament -->
-            @php
-                $oldTestament = $books->where('testament', 'Old Testament');
-                $newTestament = $books->where('testament', 'New Testament');
-            @endphp
-
             <div class="space-y-4">
                 <div>
                     <h4 class="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2 flex items-center">
-                        📜 OLD TESTAMENT <span class="ml-2 text-xs text-gray-400 dark:text-gray-500">({{ $oldTestament->count() }})</span>
+                        📜 OLD TESTAMENT <span class="ml-2 text-xs text-gray-400 dark:text-gray-500">({{ $testamentBooks['oldTestament']->count() }})</span>
                     </h4>
                     <div class="grid gap-2 mb-3" style="grid-template-columns: repeat(3, 1fr);">
-                        @foreach($oldTestament as $book)
+                        @foreach($testamentBooks['oldTestament'] as $book)
                             <button onclick="selectBook('{{ $book['osis_id'] }}', '{{ $book['name'] }}', '{{ $book['short_name'] }}')"
                                class="touch-friendly p-2 {{ $book['osis_id'] === $currentBook['osis_id'] ? 'text-blue-600 dark:text-blue-400 shadow-md' : 'text-gray-800 dark:text-gray-200 shadow-sm hover:shadow-md' }} text-xs font-semibold transition-all duration-200 text-center h-8 flex items-center justify-center border {{ $book['osis_id'] === $currentBook['osis_id'] ? 'border-blue-300 dark:border-blue-400' : 'border-gray-200 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800' }}">
                                 {{ $book['name'] }}
@@ -249,10 +244,10 @@
 
                 <div>
                     <h4 class="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2 flex items-center">
-                        ✝️ NEW TESTAMENT <span class="ml-2 text-xs text-gray-400 dark:text-gray-500">({{ $newTestament->count() }})</span>
+                        ✝️ NEW TESTAMENT <span class="ml-2 text-xs text-gray-400 dark:text-gray-500">({{ $testamentBooks['newTestament']->count() }})</span>
                     </h4>
                     <div class="grid gap-2" style="grid-template-columns: repeat(3, 1fr);">
-                        @foreach($newTestament as $book)
+                        @foreach($testamentBooks['newTestament'] as $book)
                             <button onclick="selectBook('{{ $book['osis_id'] }}', '{{ $book['name'] }}', '{{ $book['short_name'] }}')"
                                class="touch-friendly p-2 {{ $book['osis_id'] === $currentBook['osis_id'] ? 'text-blue-600 dark:text-blue-400 shadow-md' : 'text-gray-800 dark:text-gray-200 shadow-sm hover:shadow-md' }} text-xs font-semibold transition-all duration-200 text-center h-8 flex items-center justify-center border {{ $book['osis_id'] === $currentBook['osis_id'] ? 'border-blue-300 dark:border-blue-400' : 'border-gray-200 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800' }}">
                                 {{ $book['name'] }}

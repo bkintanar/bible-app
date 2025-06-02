@@ -44,13 +44,9 @@
     </div>
 
     <!-- Testament Sections -->
-    @php
-        $oldTestamentBooks = $books->where('testament', 'Old Testament');
-        $newTestamentBooks = $books->where('testament', 'New Testament');
-    @endphp
 
     <!-- Old Testament -->
-    @if($oldTestamentBooks->isNotEmpty())
+    @if($testamentBooks['oldTestament']->isNotEmpty())
     <div class="ios-card rounded-2xl shadow-sm p-4 sm:p-6">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center">
@@ -58,13 +54,13 @@
                 Old Testament
             </h2>
             <span class="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">
-                {{ $oldTestamentBooks->count() }} books
+                {{ $testamentBooks['oldTestament']->count() }} books
             </span>
         </div>
 
         <!-- Mobile Grid: 2 columns, Tablet: 3, Desktop: 4+ -->
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3">
-            @foreach($oldTestamentBooks as $book)
+            @foreach($testamentBooks['oldTestament'] as $book)
                 <a href="{{ route('bible.book', $book['osis_id']) }}"
                 class="touch-friendly block p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 hover:bg-blue-500 dark:hover:bg-blue-600 hover:text-white rounded-xl transition-all duration-200 group">
                     <div class="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 group-hover:text-white mb-1">
@@ -80,7 +76,7 @@
     @endif
 
     <!-- New Testament (Mobile First) -->
-    @if($newTestamentBooks->isNotEmpty())
+    @if($testamentBooks['newTestament']->isNotEmpty())
     <div class="ios-card rounded-2xl shadow-sm p-4 sm:p-6">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center">
@@ -88,13 +84,13 @@
                 New Testament
             </h2>
             <span class="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">
-                {{ $newTestamentBooks->count() }} books
+                {{ $testamentBooks['newTestament']->count() }} books
             </span>
         </div>
 
         <!-- Mobile Grid: 2 columns, Tablet: 3, Desktop: 4+ -->
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3">
-            @foreach($newTestamentBooks as $book)
+            @foreach($testamentBooks['newTestament'] as $book)
                 <a href="{{ route('bible.book', $book['osis_id']) }}"
                    class="touch-friendly block p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 hover:bg-blue-500 dark:hover:bg-blue-600 hover:text-white rounded-xl transition-all duration-200 group">
                     <div class="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 group-hover:text-white mb-1">
@@ -108,4 +104,5 @@
         </div>
     </div>
     @endif
+</div>
 @endsection

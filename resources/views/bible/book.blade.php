@@ -22,22 +22,12 @@
     </div>
 
     <!-- Popular Chapters (Simplified) -->
-    @if(in_array($currentBook['osis_id'], ['Ps', 'Prov', 'John', 'Rom', '1Cor']))
+    @if(in_array($currentBook['osis_id'], ['Ps', 'Prov', 'John', 'Rom', '1Cor']) && !empty($popularChapters))
         <div class="ios-card rounded-2xl shadow-sm p-4">
             <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center">
                 🌟 Popular
             </h3>
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                @php
-                    $popularChapters = [];
-                    switch($currentBook['osis_id']) {
-                        case 'Ps': $popularChapters = [23, 91, 139, 1]; break;
-                        case 'Prov': $popularChapters = [31, 3, 27, 16]; break;
-                        case 'John': $popularChapters = [3, 14, 15, 1]; break;
-                        case 'Rom': $popularChapters = [8, 12, 3, 6]; break;
-                        case '1Cor': $popularChapters = [13, 15, 10, 2]; break;
-                    }
-                @endphp
                 @foreach($popularChapters as $chapter)
                     @if($chapter <= $chapters->count())
                         <a href="{{ route('bible.chapter', [$currentBook['osis_id'], $chapter]) }}"

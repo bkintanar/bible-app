@@ -94,9 +94,13 @@ class BibleController extends Controller
         $availableTranslations = $this->bibleService->getAvailableTranslations();
         $capabilities = $this->bibleService->getCapabilities();
 
+        // Separate books by testament
+        $testamentBooks = $this->separateBooksByTestament($books);
+
         return view('bible.index', compact(
             'bibleInfo',
             'books',
+            'testamentBooks',
             'currentTranslation',
             'availableTranslations',
             'capabilities'
@@ -123,10 +127,18 @@ class BibleController extends Controller
         $availableTranslations = $this->bibleService->getAvailableTranslations();
         $capabilities = $this->bibleService->getCapabilities();
 
+        // Get popular chapters for this book
+        $popularChapters = $this->getPopularChapters($bookOsisId);
+
+        // Separate books by testament for header
+        $testamentBooks = $this->separateBooksByTestament($books);
+
         return view('bible.book', compact(
             'currentBook',
             'chapters',
             'books',
+            'testamentBooks',
+            'popularChapters',
             'currentTranslation',
             'availableTranslations',
             'capabilities'
@@ -162,9 +174,10 @@ class BibleController extends Controller
         // Get verses based on format style
         if ($formatStyle === 'paragraph') {
             $verses = $this->bibleService->getVersesParagraphStyle($chapterOsisRef);
-            $paragraphs = $verses; // For paragraph style, verses are already grouped
+            $paragraphs = $this->processHighlightingForParagraphs($verses); // Process highlighting in controller
         } else {
             $verses = $this->bibleService->getVerses($chapterOsisRef);
+            $verses = $this->processHighlightingForVerses($verses); // Process highlighting in controller
             $paragraphs = null; // No paragraph grouping for verse style
         }
 
@@ -176,6 +189,9 @@ class BibleController extends Controller
         $availableTranslations = $this->bibleService->getAvailableTranslations();
         $capabilities = $this->bibleService->getCapabilities();
 
+        // Separate books by testament for header
+        $testamentBooks = $this->separateBooksByTestament($books);
+
         return view('bible.chapter', compact(
             'currentBook',
             'chapterNumber',
@@ -184,6 +200,7 @@ class BibleController extends Controller
             'formatStyle',
             'chapters',
             'books',
+            'testamentBooks',
             'currentTranslation',
             'availableTranslations',
             'capabilities'
@@ -227,12 +244,16 @@ class BibleController extends Controller
         $availableTranslations = $this->bibleService->getAvailableTranslations();
         $capabilities = $this->bibleService->getCapabilities();
 
+        // Separate books by testament for header
+        $testamentBooks = $this->separateBooksByTestament($books);
+
         return view('bible.verse', compact(
             'currentBook',
             'chapterNumber',
             'verseNumber',
             'verseDetails',
             'books',
+            'testamentBooks',
             'currentTranslation',
             'availableTranslations',
             'capabilities'
@@ -345,6 +366,10 @@ class BibleController extends Controller
         $availableTranslations = $this->bibleService->getAvailableTranslations();
         $capabilities = $this->bibleService->getCapabilities();
 
+        // Separate books by testament for header
+        $books = $this->bibleService->getBooks();
+        $testamentBooks = $this->separateBooksByTestament($books);
+
         return view('bible.search', compact(
             'searchTerm',
             'searchType',
@@ -354,6 +379,8 @@ class BibleController extends Controller
             'totalFound',
             'hasMoreResults',
             'limit',
+            'books',
+            'testamentBooks',
             'currentTranslation',
             'availableTranslations',
             'capabilities'
@@ -584,5 +611,144 @@ class BibleController extends Controller
         Cache::forget($cacheKey);
 
         return redirect()->route('bible.index')->with('success', 'Reading history cleared');
+    }
+
+    /**
+     * Process highlighting for paragraph format
+     */
+    private function processHighlightingForParagraphs($paragraphs)
+    {
+        return $paragraphs->map(function ($paragraph) {
+            if (isset($paragraph['type']) && $paragraph['type'] === 'line_break') {
+                return $paragraph; // No processing needed for line breaks
+            }
+
+            // Determine which verses should be highlighted
+            $highlightedVerses = [];
+            foreach ($paragraph['verses'] as $verse) {
+                $shouldHighlight = $this->shouldHighlightVerse($verse['verse_number']);
+                $highlightedVerses[$verse['verse_number']] = $shouldHighlight;
+            }
+
+            // Group consecutive highlighted verses
+            $verseGroups = $this->groupVersesByHighlight($paragraph['verses'], $highlightedVerses);
+
+            $paragraph['verse_groups'] = $verseGroups;
+            return $paragraph;
+        });
+    }
+
+    /**
+     * Process highlighting for verse format
+     */
+    private function processHighlightingForVerses($verses)
+    {
+        return $verses->map(function ($verse) {
+            $isHighlighted = $this->shouldHighlightVerse($verse['verse_number']);
+            $verse['is_highlighted'] = $isHighlighted;
+            $verse['highlight_class'] = $isHighlighted ?
+                'bg-yellow-100 dark:bg-yellow-900 border-l-4 border-yellow-400 dark:border-yellow-500 pl-4 py-2' : '';
+
+            return $verse;
+        });
+    }
+
+    /**
+     * Determine if a verse should be highlighted
+     */
+    private function shouldHighlightVerse(int $verseNumber): bool
+    {
+        // Single verse highlighting
+        if (session('highlightVerse') == $verseNumber) {
+            return true;
+        }
+
+        // Verse range highlighting
+        $verseRange = session('highlightVerseRange');
+        if ($verseRange &&
+            $verseNumber >= $verseRange['start'] &&
+            $verseNumber <= $verseRange['end']) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Group verses by highlight status for paragraph format
+     */
+    private function groupVersesByHighlight(array $verses, array $highlightedVerses): array
+    {
+        $verseGroups = [];
+        $currentGroup = [];
+        $inHighlight = false;
+
+        foreach ($verses as $index => $verse) {
+            $isHighlighted = $highlightedVerses[$verse['verse_number']];
+
+            if ($isHighlighted && !$inHighlight) {
+                // Start new highlight group
+                if (!empty($currentGroup)) {
+                    $verseGroups[] = ['verses' => $currentGroup, 'highlighted' => false];
+                }
+                $currentGroup = [$verse];
+                $inHighlight = true;
+            } elseif ($isHighlighted && $inHighlight) {
+                // Continue highlight group
+                $currentGroup[] = $verse;
+            } elseif (!$isHighlighted && $inHighlight) {
+                // End highlight group
+                $verseGroups[] = ['verses' => $currentGroup, 'highlighted' => true];
+                $currentGroup = [$verse];
+                $inHighlight = false;
+            } else {
+                // Continue normal group
+                $currentGroup[] = $verse;
+            }
+        }
+
+        // Add final group
+        if (!empty($currentGroup)) {
+            $verseGroups[] = ['verses' => $currentGroup, 'highlighted' => $inHighlight];
+        }
+
+        return $verseGroups;
+    }
+
+    /**
+     * Separate books by testament
+     */
+    private function separateBooksByTestament($books): array
+    {
+        return [
+            'oldTestament' => $books->where('testament', 'Old Testament'),
+            'newTestament' => $books->where('testament', 'New Testament')
+        ];
+    }
+
+    /**
+     * Get popular chapters for specific books
+     */
+    private function getPopularChapters(string $bookOsisId): array
+    {
+        $popularChapters = [];
+        switch($bookOsisId) {
+            case 'Ps':
+                $popularChapters = [23, 91, 139, 1];
+                break;
+            case 'Prov':
+                $popularChapters = [31, 3, 27, 16];
+                break;
+            case 'John':
+                $popularChapters = [3, 14, 15, 1];
+                break;
+            case 'Rom':
+                $popularChapters = [8, 12, 3, 6];
+                break;
+            case '1Cor':
+                $popularChapters = [13, 15, 10, 2];
+                break;
+        }
+        return $popularChapters;
     }
 }
