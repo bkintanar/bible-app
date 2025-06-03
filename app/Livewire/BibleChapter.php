@@ -28,6 +28,11 @@ class BibleChapter extends Component
     public $showBookSelector = false;
     public $selectedBookForChapters = null;
     public $selectorMode = 'books'; // 'books' or 'chapters'
+    public $searchResults = [];
+    public $isSearching = false;
+    public $searchStats = [];
+    public $showSearchResults = false;
+    public $returnToChapter = []; // Store chapter info to return to
 
     protected $bibleService;
 
@@ -187,14 +192,49 @@ class BibleChapter extends Component
         $this->showSearch = !$this->showSearch;
         if (!$this->showSearch) {
             $this->searchQuery = '';
+            $this->searchResults = [];
+            $this->searchStats = [];
+            $this->isSearching = false;
+            $this->showSearchResults = false;
         }
     }
 
     public function search()
     {
         if (!empty($this->searchQuery)) {
-            return redirect("/search?q=" . urlencode($this->searchQuery));
+            $this->isSearching = true;
+
+            // Store current chapter info for returning
+            $this->returnToChapter = [
+                'book_osis_id' => $this->bookOsisId,
+                'chapter_number' => $this->chapterNumber,
+                'book_name' => $this->currentBook['name'] ?? $this->bookOsisId
+            ];
+
+            // Use the BibleService to search for verses
+            $searchData = $this->bibleService->search($this->searchQuery, 50);
+
+            $this->searchResults = $searchData['results'] ?? [];
+            $this->searchStats = [
+                'total_found' => $searchData['total_found'] ?? 0,
+                'search_time_ms' => $searchData['search_time_ms'] ?? 0,
+                'query' => $this->searchQuery
+            ];
+
+            $this->isSearching = false;
+
+            // Switch to search results view
+            $this->showSearchResults = true;
+            $this->showSearch = false;
         }
+    }
+
+    public function backToChapter()
+    {
+        $this->showSearchResults = false;
+        $this->searchResults = [];
+        $this->searchStats = [];
+        $this->searchQuery = '';
     }
 
     public function goToPreviousChapter()

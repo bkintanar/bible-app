@@ -17,12 +17,30 @@ class SearchComponent extends Component
     public $searchInfo = [];
     public $hasMoreResults = false;
     public $scrollToIndex = null;
+    public $searchExpanded = false;
 
     public function mount()
     {
         if ($this->query) {
+            $this->searchExpanded = true;
             $this->performSearch();
         }
+    }
+
+    public function expandSearch()
+    {
+        $this->searchExpanded = true;
+    }
+
+    public function cancelSearch()
+    {
+        $this->searchExpanded = false;
+        $this->query = '';
+        $this->results = [];
+        $this->searchInfo = [];
+        $this->hasMoreResults = false;
+        $this->limit = 50;
+        $this->scrollToIndex = null;
     }
 
     public function search()

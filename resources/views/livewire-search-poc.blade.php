@@ -17,7 +17,7 @@
                         🧪 Livewire vs Href POC
                     </h1>
                     <a href="/search" class="text-blue-600 hover:text-blue-700 text-sm">
-                        ← Back to Original Search
+                        ← Back to Main Search
                     </a>
                 </div>
             </div>

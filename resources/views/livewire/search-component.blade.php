@@ -1,35 +1,59 @@
 <div class="flex flex-col h-full">
-    <!-- Fixed Search Form -->
-    <div class="flex-shrink-0 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 p-4 sm:p-8">
-        <div class="max-w-2xl mx-auto">
-            <div class="flex gap-2">
-                <div class="relative flex-1">
-                    <input
-                        wire:model.live.debounce.300ms="query"
-                        wire:keydown.enter="search"
-                        type="text"
-                        placeholder="Search for verses, words, or references..."
-                        class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg pl-10 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500 dark:placeholder-gray-400"
-                    >
-                    <div class="absolute left-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                        <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0z"/>
-                        </svg>
-                    </div>
-                </div>
+    <!-- iOS-style Search Header -->
+    <div class="flex-shrink-0 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+
+        <!-- Collapsed Search State (Search Icon Only) -->
+        @if(!$searchExpanded)
+            <div class="flex items-center justify-between p-4 sm:p-6 transition-all duration-300 ease-in-out">
+                <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                    🧪 Bible Search POC
+                </h1>
                 <button
-                    wire:click="search"
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition-colors whitespace-nowrap touch-friendly"
+                    wire:click="expandSearch"
+                    class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                 >
-                    Search
+                    <svg class="h-6 w-6 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0z"/>
+                    </svg>
                 </button>
             </div>
-        </div>
+        @endif
+
+        <!-- Expanded Search State (Full Search Bar) -->
+        @if($searchExpanded)
+            <div class="p-4 sm:p-6 transition-all duration-300 ease-in-out">
+                <div class="flex items-center gap-3">
+                    <!-- Search Input -->
+                    <div class="relative flex-1">
+                        <input
+                            wire:model.live.debounce.300ms="query"
+                            wire:keydown.enter="search"
+                            type="text"
+                            placeholder="Search verses, words, or references..."
+                            class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg pl-10 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500 dark:placeholder-gray-400 transition-all duration-200"
+                        >
+                        <div class="absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                            <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0z"/>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Cancel Button -->
+                    <button
+                        wire:click="cancelSearch"
+                        class="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium py-3 px-2 transition-colors whitespace-nowrap"
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        @endif
     </div>
 
     <!-- Scrollable Content Area -->
     <div class="flex-1 overflow-y-auto p-4 sm:p-8">
-        @if($query)
+        @if($query && $searchExpanded)
             <!-- Search Info -->
             <div class="mb-6">
                 <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
@@ -130,17 +154,39 @@
                     </div>
                 </div>
             @endif
-        @else
-            <!-- Initial State -->
+        @elseif($searchExpanded && !$query)
+            <!-- Search Active but No Query -->
             <div class="text-center py-12">
                 <div class="text-gray-500 dark:text-gray-400">
                     <svg class="mx-auto h-16 w-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0z"/>
                     </svg>
-                    <h3 class="text-xl font-medium mb-2">🧪 Livewire Search POC</h3>
+                    <h3 class="text-xl font-medium mb-2">Start searching</h3>
                     <p class="max-w-md mx-auto">
-                        Test Livewire vs href navigation in NativePHP. Search for "love", "peace", or any word.
+                        Enter keywords, phrases, or verse references to search the Bible.
                     </p>
+                </div>
+            </div>
+        @else
+            <!-- Initial State - Search Collapsed -->
+            <div class="text-center py-12">
+                <div class="text-gray-500 dark:text-gray-400">
+                    <svg class="mx-auto h-16 w-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                    </svg>
+                    <h3 class="text-xl font-medium mb-2">🧪 Livewire Search POC</h3>
+                    <p class="max-w-md mx-auto mb-4">
+                        Test Livewire vs href navigation in NativePHP with iOS-style search.
+                    </p>
+                    <button
+                        wire:click="expandSearch"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors inline-flex items-center gap-2"
+                    >
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0z"/>
+                        </svg>
+                        Start Search
+                    </button>
                 </div>
             </div>
         @endif

@@ -6,6 +6,12 @@ use Illuminate\Support\Facades\Route;
 // Bible routes (main application)
 Route::get('/', [BibleController::class, 'livewireIndex'])->name('bible.index');
 Route::get('/search', [BibleController::class, 'livewireSearch'])->name('bible.search');
+
+// POC route for testing search component
+Route::get('/livewire-search-poc', function () {
+    return view('livewire-search-poc');
+})->name('bible.search.poc');
+
 Route::post('/switch-translation', [BibleController::class, 'switchTranslation'])->name('bible.switch-translation');
 Route::post('/clear-last-visited', [BibleController::class, 'clearLastVisited'])->name('bible.clear-last-visited');
 

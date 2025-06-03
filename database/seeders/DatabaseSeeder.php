@@ -13,7 +13,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             BookGroupSeeder::class,
-            // BookSeeder::class, // Books will be created by OSIS import
+            BookSeeder::class, // Books will be created by OSIS import
         ]);
     }
 }
