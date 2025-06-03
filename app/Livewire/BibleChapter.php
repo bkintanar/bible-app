@@ -48,7 +48,16 @@ class BibleChapter extends Component
         });
 
         if (!$this->currentBook) {
-            abort(404, 'Book not found');
+            dd([
+                'error' => 'Book not found',
+                'requested_book_osis_id' => $bookOsisId,
+                'requested_chapter_number' => $chapterNumber,
+                'available_books' => $this->books->pluck('osis_id', 'name')->toArray(),
+                'database_query_attempted' => "Looking for book with osis_id matching: {$bookOsisId}",
+                'service_method' => 'BibleService::getBooks()',
+                'books_count' => $this->books->count(),
+                'db_path' => database_path('bible_app.sqlite'),
+            ]);
         }
 
         // Store this page as the last visited
@@ -75,7 +84,20 @@ class BibleChapter extends Component
         }
 
         if ($this->verses->isEmpty()) {
-            abort(404, 'Chapter not found');
+            dd([
+                'error' => 'Chapter not found',
+                'book_osis_id' => $bookOsisId,
+                'chapter_number' => $chapterNumber,
+                'chapter_osis_ref' => $chapterOsisRef,
+                'book_name' => $this->currentBook['name'] ?? 'Unknown',
+                'database_query_attempted' => "Looking for verses in chapter: {$chapterOsisRef}",
+                'service_method' => strtolower($bookOsisId) === 'ps' && $chapterNumber == 119 ? 'BibleService::getVerses()' : 'BibleService::getVersesParagraphStyle()',
+                'available_chapters' => $this->chapters->pluck('chapter_number')->toArray(),
+                'verses_result' => $this->verses,
+                'current_translation' => $this->bibleService->getCurrentTranslation(),
+                'is_psalm_119' => strtolower($bookOsisId) === 'ps' && $chapterNumber == 119,
+                'db_path' => database_path('bible_app.sqlite'),
+            ]);
         }
 
         $this->testamentBooks = $this->getTestamentBooks($this->books);
