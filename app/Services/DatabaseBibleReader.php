@@ -151,8 +151,157 @@ class DatabaseBibleReader implements BibleReaderInterface
     {
         $verses = $this->getVerses($chapterOsisRef);
 
-        // For now, group verses into paragraphs of 3-5 verses each
-        // This can be enhanced with actual paragraph markup from the database
+        // Try to get actual paragraph data from database first
+        $paragraphData = $this->getParagraphDataFromDatabase($chapterOsisRef);
+
+        if ($paragraphData->isNotEmpty()) {
+            return $this->groupVersesByParagraphData($verses, $paragraphData);
+        }
+
+        // Fallback: Extract paragraph markers from OSIS text
+        $paragraphs = $this->extractParagraphsFromOsis($verses);
+
+        if ($paragraphs->isNotEmpty()) {
+            return $paragraphs;
+        }
+
+        // Final fallback: use artificial grouping
+        return $this->createArtificialParagraphs($verses);
+    }
+
+    /**
+     * Get paragraph data from database if available
+     */
+    private function getParagraphDataFromDatabase(string $chapterOsisRef): Collection
+    {
+        return DB::table('paragraphs as p')
+            ->join('chapters as c', 'p.chapter_id', '=', 'c.id')
+            ->join('verses as start_v', 'p.start_verse_id', '=', 'start_v.id')
+            ->leftJoin('verses as end_v', 'p.end_verse_id', '=', 'end_v.id')
+            ->select([
+                'p.paragraph_type',
+                'start_v.verse_number as start_verse',
+                'end_v.verse_number as end_verse',
+                'p.text_content'
+            ])
+            ->where('c.osis_id', $chapterOsisRef)
+            ->where('c.version_id', $this->versionId)
+            ->orderBy('start_v.verse_number')
+            ->get();
+    }
+
+    /**
+     * Group verses by stored paragraph data
+     */
+    private function groupVersesByParagraphData(Collection $verses, Collection $paragraphData): Collection
+    {
+        $paragraphs = collect();
+
+        foreach ($paragraphData as $paragraph) {
+            $startVerse = $paragraph->start_verse;
+            $endVerse = $paragraph->end_verse ?? $startVerse;
+
+            $paragraphVerses = $verses->filter(function ($verse) use ($startVerse, $endVerse) {
+                return $verse['verse_number'] >= $startVerse && $verse['verse_number'] <= $endVerse;
+            })->values();
+
+            if ($paragraphVerses->isNotEmpty()) {
+                $combinedText = $paragraphVerses->pluck('text')->implode(' ');
+
+                $paragraphs->push([
+                    'verses' => $paragraphVerses->toArray(),
+                    'combined_text' => $combinedText,
+                    'type' => $paragraph->paragraph_type,
+                    'start_verse' => $startVerse,
+                    'end_verse' => $endVerse
+                ]);
+            }
+        }
+
+        return $paragraphs;
+    }
+
+    /**
+     * Extract paragraphs from OSIS markup in verse text
+     */
+    private function extractParagraphsFromOsis(Collection $verses): Collection
+    {
+        $paragraphs = collect();
+        $currentParagraph = [];
+        $currentText = '';
+
+        foreach ($verses as $verse) {
+            // Check if this verse starts a new paragraph
+            $hasNewParagraphMarker = $this->hasNewParagraphMarker($verse);
+
+            // If we have verses in current paragraph and this verse starts a new one
+            if (!empty($currentParagraph) && $hasNewParagraphMarker) {
+                // Finish the current paragraph
+                $paragraphs->push([
+                    'verses' => $currentParagraph,
+                    'combined_text' => trim($currentText),
+                    'type' => 'paragraph',
+                    'has_paragraph_marker' => true
+                ]);
+
+                // Start new paragraph
+                $currentParagraph = [$verse];
+                $currentText = $verse['text'] . ' ';
+            } else {
+                // Add to current paragraph
+                $currentParagraph[] = $verse;
+                $currentText .= $verse['text'] . ' ';
+            }
+        }
+
+        // Add the final paragraph
+        if (!empty($currentParagraph)) {
+            $paragraphs->push([
+                'verses' => $currentParagraph,
+                'combined_text' => trim($currentText),
+                'type' => 'paragraph',
+                'has_paragraph_marker' => true
+            ]);
+        }
+
+        return $paragraphs;
+    }
+
+    /**
+     * Check if a verse contains a new paragraph marker
+     */
+    private function hasNewParagraphMarker(array $verse): bool
+    {
+        // Look for OSIS paragraph markers in the verse text or titles
+        $textToCheck = $verse['text'] . ' ' . ($verse['chapter_titles'] ?? '');
+
+        // Check for common paragraph indicators:
+        // 1. ¶ symbol (pilcrow)
+        // 2. Milestone markers that weren't cleaned up
+        // 3. Strong verse breaks (multiple sentences ending)
+
+        if (str_contains($textToCheck, '¶')) {
+            return true;
+        }
+
+        // Check for milestone markers in formatted text
+        if (preg_match('/<milestone[^>]*type="x-p"[^>]*>/', $textToCheck)) {
+            return true;
+        }
+
+        // For verse 1 of any chapter (always start a new paragraph)
+        if ($verse['verse_number'] === 1) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Create artificial paragraphs as fallback
+     */
+    private function createArtificialParagraphs(Collection $verses): Collection
+    {
         $paragraphs = collect();
         $currentParagraph = [];
         $currentText = '';
@@ -168,7 +317,8 @@ class DatabaseBibleReader implements BibleReaderInterface
                 $paragraphs->push([
                     'verses' => $currentParagraph,
                     'combined_text' => trim($currentText),
-                    'type' => 'paragraph'
+                    'type' => 'paragraph',
+                    'artificial' => true
                 ]);
 
                 $currentParagraph = [];
@@ -182,7 +332,8 @@ class DatabaseBibleReader implements BibleReaderInterface
             $paragraphs->push([
                 'verses' => $currentParagraph,
                 'combined_text' => trim($currentText),
-                'type' => 'paragraph'
+                'type' => 'paragraph',
+                'artificial' => true
             ]);
         }
 
@@ -579,16 +730,20 @@ class DatabaseBibleReader implements BibleReaderInterface
      */
 
     /**
-     * Enhance verse text with additional features when using database reader
+     * Enhance verse text with additional formatting and information
      */
     private function enhanceVerseText(string $text, string $verseOsisId, bool $includeTitles = true): string
     {
         $enhancedText = $text;
 
-        // Add titles that come before this verse
+        // Remove OSIS markup but preserve paragraph markers
+        $enhancedText = $this->cleanOsisMarkup($enhancedText, true);
+
+        // Add titles if requested
         if ($includeTitles) {
             $titles = $this->getTitles($verseOsisId);
             $titleHtml = '';
+
             foreach ($titles as $title) {
                 if ($title['placement'] === 'before') {
                     $titleClass = match($title['type']) {
@@ -599,45 +754,67 @@ class DatabaseBibleReader implements BibleReaderInterface
                         'sub' => 'sub-title text-center text-base font-semibold text-gray-800 dark:text-gray-200 mb-3',
                         default => 'title text-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'
                     };
-                    // Title text is already formatted HTML, so use it directly
                     $titleHtml .= '<div class="' . $titleClass . '">' . $title['text'] . '</div>';
                 }
             }
 
-            // Check if this verse has poetry structure
-            $poetryStructure = $this->getPoetryStructure($verseOsisId);
-            if ($poetryStructure->isNotEmpty()) {
-                $poetryHtml = '';
-                foreach ($poetryStructure as $structure) {
-                    if ($structure['type'] === 'lg') {
-                        $poetryHtml .= '<div class="line-group mb-2">';
-                    } elseif ($structure['type'] === 'l') {
-                        $indentClass = match($structure['level']) {
-                            2 => 'ml-4',
-                            3 => 'ml-8',
-                            4 => 'ml-12',
-                            default => ''
-                        };
-
-                        // Use the structure text if available, otherwise use the original verse text
-                        $lineText = !empty($structure['text']) ? $structure['text'] : $enhancedText;
-                        $poetryHtml .= '<div class="poetry-line leading-relaxed text-gray-900 dark:text-gray-100 ' . $indentClass . '">' . $lineText . '</div>';
-                    }
-                }
-                if (str_contains($poetryHtml, 'line-group')) {
-                    $poetryHtml .= '</div>'; // Close line-group
-                }
-
-                // If we have poetry structure, use that instead of regular text
-                if ($poetryHtml) {
-                    $enhancedText = $poetryHtml;
-                }
+            if ($titleHtml) {
+                $enhancedText = $titleHtml . $enhancedText;
             }
-
-            $enhancedText = $titleHtml . $enhancedText;
         }
 
+        // Add enhanced formatting
+        $enhancedText = $this->addTextFormatting($enhancedText);
+
         return $enhancedText;
+    }
+
+    /**
+     * Clean OSIS markup from text while optionally preserving paragraph markers
+     */
+    private function cleanOsisMarkup(string $text, bool $preserveParagraphMarkers = false): string
+    {
+        $cleanText = $text;
+
+        if ($preserveParagraphMarkers) {
+            // Replace paragraph milestone markers with pilcrow symbol for detection
+            $cleanText = preg_replace('/<milestone[^>]*type="x-p"[^>]*>/i', '¶', $cleanText);
+        }
+
+        // Remove other OSIS tags but keep content
+        $cleanText = preg_replace('/<w[^>]*>(.*?)<\/w>/i', '$1', $cleanText);
+        $cleanText = preg_replace('/<transChange[^>]*>(.*?)<\/transChange>/i', '$1', $cleanText);
+        $cleanText = preg_replace('/<divineName[^>]*>(.*?)<\/divineName>/i', '$1', $cleanText);
+        $cleanText = preg_replace('/<note[^>]*>.*?<\/note>/i', '', $cleanText);
+        $cleanText = preg_replace('/<verse[^>]*\/?>/i', '', $cleanText);
+        $cleanText = preg_replace('/<chapter[^>]*\/?>/i', '', $cleanText);
+
+        if (!$preserveParagraphMarkers) {
+            $cleanText = preg_replace('/<milestone[^>]*>/i', '', $cleanText);
+        }
+
+        // Always remove pilcrow symbols from display text - they should not be shown to users
+        $cleanText = str_replace('¶', '', $cleanText);
+
+        // Clean up whitespace
+        $cleanText = preg_replace('/\s+/', ' ', $cleanText);
+        $cleanText = trim($cleanText);
+
+        return $cleanText;
+    }
+
+    /**
+     * Add enhanced text formatting
+     */
+    private function addTextFormatting(string $text): string
+    {
+        // Add basic text enhancements
+        $formatted = $text;
+
+        // Highlight divine names (already handled in cleanOsisMarkup)
+        // Could add more formatting here as needed
+
+        return $formatted;
     }
 
     /**

@@ -24,8 +24,14 @@ class ImportOsisCommand extends Command
     private $redLetterCount = 0;
     private $titleCount = 0;
     private $poetryLineCount = 0;
+    private $paragraphCount = 0;
     private $xpath;
     private $doc;
+
+    // Paragraph tracking
+    private $currentParagraphStart = null;
+    private $currentParagraphVerses = [];
+    private $currentChapterId = null;
 
     public function handle()
     {
@@ -55,6 +61,9 @@ class ImportOsisCommand extends Command
             $this->processAllBookTitles();
 
             $this->importVerses($chunkSize);
+
+            // Finalize any remaining paragraphs
+            $this->finalizeParagraphs();
 
             // Update FTS tables
             $this->updateFTSTables();
@@ -405,6 +414,25 @@ class ImportOsisCommand extends Command
         $chapterId = $this->chapters[$chapterRef] ?? null;
         if (!$chapterId) return;
 
+        // Handle paragraph tracking when switching chapters
+        if ($this->currentChapterId !== $chapterId) {
+            // Save previous chapter's final paragraph if exists
+            if ($this->currentChapterId && $this->currentParagraphStart !== null && !empty($this->currentParagraphVerses)) {
+                $this->saveParagraph($this->currentChapterId, $this->currentParagraphStart, $this->currentParagraphVerses);
+            }
+
+            // Reset for new chapter
+            $this->currentChapterId = $chapterId;
+            $this->currentParagraphStart = null;
+            $this->currentParagraphVerses = [];
+
+            // Always start a paragraph at verse 1 of each chapter
+            if ($verseNum === 1) {
+                $this->currentParagraphStart = 1;
+                $this->currentParagraphVerses = [1];
+            }
+        }
+
         // Check if this verse already exists in this chapter
         $existingVerse = DB::table('verses')
             ->where('chapter_id', $chapterId)
@@ -444,6 +472,18 @@ class ImportOsisCommand extends Command
         }
 
         $this->verseCount++;
+
+        // Check for paragraph markers in verse content BEFORE adding to current paragraph
+        $hasNewParagraphMarker = preg_match('/<milestone[^>]*type="x-p"[^>]*marker="¶"[^>]*>/', $content['xml']);
+
+        if ($hasNewParagraphMarker) {
+            $this->processParagraphMarkers($content['xml'], $verseNum);
+        } else {
+            // Add verse to current paragraph tracking only if it doesn't start a new paragraph
+            if ($this->currentParagraphStart !== null && !in_array($verseNum, $this->currentParagraphVerses)) {
+                $this->currentParagraphVerses[] = $verseNum;
+            }
+        }
 
         // Check for titles that come before this verse (especially for verse 1)
         if ($verseNum === 1) {
@@ -1008,6 +1048,9 @@ class ImportOsisCommand extends Command
         // Remove notes for basic display
         $html = preg_replace('/<note[^>]*>.*?<\/note>/s', '', $html);
 
+        // Remove pilcrow symbols - they should not be displayed to users
+        $html = str_replace('¶', '', $html);
+
         // Clean up multiple spaces
         $html = preg_replace('/\s+/', ' ', $html);
 
@@ -1103,6 +1146,7 @@ class ImportOsisCommand extends Command
         $this->line("   📚 Books: " . count($this->books));
         $this->line("   📖 Chapters: " . count($this->chapters));
         $this->line("   📝 Verses: " . $this->verseCount);
+        $this->line("   📄 Paragraphs: " . $this->paragraphCount);
         $this->line("   🔤 Word Elements: " . $this->wordElementCount);
         $this->line("   ✒️  Translator Changes: " . $this->translatorChangeCount);
         $this->line("   👑 Divine Names: " . $this->divineNameCount);
@@ -1214,5 +1258,94 @@ class ImportOsisCommand extends Command
 
         DB::table('titles')->insert($titleData);
         $this->titleCount++;
+    }
+
+    /**
+     * Process paragraph markers found in verse content
+     */
+    private function processParagraphMarkers($xmlContent, $verseNum)
+    {
+        // Check for OSIS paragraph markers
+        if (preg_match('/<milestone[^>]*type="x-p"[^>]*marker="¶"[^>]*>/', $xmlContent)) {
+            // Found a paragraph marker - save current paragraph and start new one
+            if ($this->currentParagraphStart !== null && !empty($this->currentParagraphVerses)) {
+                // End the current paragraph at the verse BEFORE this new paragraph marker
+                $previousParagraphVerses = array_filter($this->currentParagraphVerses, function($v) use ($verseNum) {
+                    return $v < $verseNum;
+                });
+
+                if (!empty($previousParagraphVerses)) {
+                    $this->saveParagraph($this->currentChapterId, $this->currentParagraphStart, $previousParagraphVerses);
+                }
+            }
+
+            // Start new paragraph at this verse
+            $this->currentParagraphStart = $verseNum;
+            $this->currentParagraphVerses = [$verseNum];
+        }
+    }
+
+    /**
+     * Save a paragraph to the database
+     */
+    private function saveParagraph($chapterId, $startVerse, $verses)
+    {
+        $endVerse = max($verses);
+
+        // Get verse IDs
+        $startVerseId = DB::table('verses')
+            ->where('chapter_id', $chapterId)
+            ->where('verse_number', $startVerse)
+            ->value('id');
+
+        $endVerseId = null;
+        if ($endVerse !== $startVerse) {
+            $endVerseId = DB::table('verses')
+                ->where('chapter_id', $chapterId)
+                ->where('verse_number', $endVerse)
+                ->value('id');
+        }
+
+        if ($startVerseId) {
+            // Get combined text content
+            $textContent = DB::table('verses')
+                ->where('chapter_id', $chapterId)
+                ->whereIn('verse_number', $verses)
+                ->orderBy('verse_number')
+                ->pluck('formatted_text')
+                ->implode(' ');
+
+            // Check if this paragraph already exists
+            $existingParagraph = DB::table('paragraphs')
+                ->where('chapter_id', $chapterId)
+                ->where('start_verse_id', $startVerseId)
+                ->where('end_verse_id', $endVerseId)
+                ->first();
+
+            if (!$existingParagraph) {
+                DB::table('paragraphs')->insert([
+                    'chapter_id' => $chapterId,
+                    'start_verse_id' => $startVerseId,
+                    'end_verse_id' => $endVerseId,
+                    'paragraph_type' => 'normal',
+                    'text_content' => $textContent,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+
+                $this->paragraphCount++;
+            }
+        }
+    }
+
+    /**
+     * Finalize any remaining paragraphs at the end of import
+     */
+    private function finalizeParagraphs()
+    {
+        // Save any remaining paragraphs
+        if ($this->currentParagraphStart !== null && !empty($this->currentParagraphVerses)) {
+            $this->saveParagraph($this->currentChapterId, $this->currentParagraphStart, $this->currentParagraphVerses);
+        }
     }
 }

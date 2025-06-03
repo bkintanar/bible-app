@@ -77,46 +77,69 @@
                     <div class="prose prose-lg max-w-none dark:prose-invert">
                         <!-- Display verses grouped by paragraphs -->
                         @foreach($verses as $paragraph)
-                            <div>
+                            <div class="{{ isset($paragraph['has_paragraph_marker']) ? 'mb-8  osis-paragraph' : 'mb-3 artificial-paragraph' }} {{ isset($paragraph['type']) && $paragraph['type'] === 'individual_verse' ? 'mb-3' : 'mb-8' }}">
                                 @if(isset($paragraph['verses']) && !empty($paragraph['verses']))
                                     @if(isset($paragraph['type']) && $paragraph['type'] === 'individual_verse')
                                         <!-- Individual verse display (for Psalm 119 with acrostic titles) -->
+                                        @php
+                                            $titlesDisplayed = false;
+                                        @endphp
                                         @foreach($paragraph['verses'] as $verse)
-                                            <!-- Display any titles for this verse -->
-                                            @if(isset($verse['chapter_titles']) && !empty($verse['chapter_titles']))
+                                            <!-- Display titles only once per paragraph -->
+                                            @if(!$titlesDisplayed && isset($verse['chapter_titles']) && !empty($verse['chapter_titles']))
                                                 <div class="mb-4 block w-full">
-                                                    {!! $verse['chapter_titles'] !!}
+                                                    <div class="acrostic-title text-center text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3 font-serif border-b border-gray-200 dark:border-gray-600 pb-2">{!! strip_tags($verse['chapter_titles'], '<em><strong><sup><sub><foreign>') !!}</div>
                                                 </div>
+                                                @php $titlesDisplayed = true; @endphp
                                             @endif
 
-                                            <div class="mb-3 text-gray-900 dark:text-gray-100 leading-relaxed {{ $this->getFontSizeClass() }} font-serif" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.7; letter-spacing: 0.01em;" id="verse-{{ $verse['verse_number'] }}">
-                                                <span class="text-xs font-medium text-gray-500 dark:text-gray-400 mr-2 align-super font-sans">{{ $verse['verse_number'] }}</span>{!! strip_tags($verse['text'], '<em><strong><sup><sub>') !!}
-                                            </div>
+                                            @if($verse['verse_number'] === 1)
+                                                <!-- Proper drop cap implementation -->
+                                                <div class="mb-2 text-gray-900 dark:text-gray-100 leading-relaxed {{ $this->getFontSizeClass() }} font-serif" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.7; letter-spacing: 0.01em;">
+                                                    <span class="text-gray-700 dark:text-gray-300 font-serif" style="float: left; font-size: 4rem; line-height: 3.2rem; margin-right: 0.5rem; margin-top: 0rem; font-weight: bold;">{{ $chapterNumber }}</span><span class="inline" id="verse-{{ $verse['verse_number'] }}">{!! strip_tags($verse['text'], '<em><strong><sup><sub>') !!}</span>
+                                                </div>
+                                            @else
+                                                <div class="mb-2 text-gray-900 dark:text-gray-100 leading-relaxed {{ $this->getFontSizeClass() }} font-serif" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.7; letter-spacing: 0.01em;" id="verse-{{ $verse['verse_number'] }}">
+                                                    <!-- Regular verse number for other verses -->
+                                                    <span class="text-xs font-medium text-gray-600 dark:text-gray-400 mr-2 align-super font-serif">{{ $verse['verse_number'] }}</span>
+                                                    {!! strip_tags($verse['text'], '<em><strong><sup><sub>') !!}
+                                                </div>
+                                            @endif
                                         @endforeach
                                     @else
-                                        <!-- Paragraph with multiple verses (default behavior) -->
-                                        <div class="mb-3 text-gray-900 dark:text-gray-100 leading-relaxed {{ $this->getFontSizeClass() }} text-justify font-serif" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.7; letter-spacing: 0.01em;">
+                                        <!-- Bible-style paragraph formatting -->
+                                        <div class="mb-6 text-gray-900 dark:text-gray-100 leading-relaxed {{ $this->getFontSizeClass() }} text-justify font-serif {{ $loop->first ? '' : 'first-line:indent-8' }} after:content-[''] after:table after:clear-both" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.8; letter-spacing: 0.01em;">
+                                            @php
+                                                $titlesDisplayed = false;
+                                            @endphp
                                             @foreach($paragraph['verses'] as $verse)
-                                                <!-- Display any titles for this verse -->
-                                                @if(isset($verse['chapter_titles']) && !empty($verse['chapter_titles']))
-                                                    <div class="mb-4 block w-full">
+                                                <!-- Display titles only once per paragraph (from first verse) -->
+                                                @if(!$titlesDisplayed && isset($verse['chapter_titles']) && !empty($verse['chapter_titles']))
+                                                    <div class="mb-4 block w-full -indent-8">
                                                         {!! $verse['chapter_titles'] !!}
                                                     </div>
+                                                    @php $titlesDisplayed = true; @endphp
                                                 @endif
 
-                                                <span class="inline" id="verse-{{ $verse['verse_number'] }}">
-                                                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400 mr-1 align-super font-sans">{{ $verse['verse_number'] }}</span><!--
-                                                    -->{!! strip_tags($verse['text'], '<em><strong><sup><sub>') !!}<!--
-                                                    -->@if(!$loop->last) @endif
-                                                </span>
+                                                @if($verse['verse_number'] === 1)
+                                                    <!-- Proper drop cap implementation -->
+                                                    <span class="text-gray-700 dark:text-gray-300 font-serif" style="float: left; font-size: 4rem; line-height: 3.2rem; margin-right: 0.5rem; margin-top: 0rem; font-weight: bold;">{{ $chapterNumber }}</span><span class="inline" id="verse-{{ $verse['verse_number'] }}">{!! strip_tags($verse['text'], '<em><strong><sup><sub>') !!}</span>
+                                                @else
+                                                    <span class="inline" id="verse-{{ $verse['verse_number'] }}">
+                                                        <!-- Regular verse number for other verses -->
+                                                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 mr-2 align-super font-serif">{{ $verse['verse_number'] }}</span>
+                                                        {!! strip_tags($verse['text'], '<em><strong><sup><sub>') !!}
+                                                    </span>
+                                                @endif
+                                                @if(!$loop->last) @endif
                                             @endforeach
                                         </div>
                                     @endif
                                 @elseif(isset($paragraph['combined_text']))
                                     <!-- Combined paragraph text (fallback) -->
-                                    <p class="temb-3 xt-gray-900 dark:text-gray-100 leading-relaxed {{ $this->getFontSizeClass() }} text-justify font-serif" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.7; letter-spacing: 0.01em;">
+                                    <div class="mb-6 text-gray-900 dark:text-gray-100 leading-relaxed {{ $this->getFontSizeClass() }} text-justify font-serif {{ $loop->first ? '' : 'first-line:indent-8' }}" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.8; letter-spacing: 0.01em;">
                                         {!! strip_tags($paragraph['combined_text'], '<em><strong><sup><sub>') !!}
-                                    </p>
+                                    </div>
                                 @endif
                             </div>
                         @endforeach
@@ -224,13 +247,13 @@
                 @elseif($selectorMode === 'chapters' && $selectedBookForChapters)
                     <!-- Chapters List -->
                     <div class="p-4 sm:p-6">
-                        <div class="max-w-4xl mx-auto">
-                            <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-3">
+                        <div class="max-w-7xl mx-auto">
+                            <div class="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-3">
                                 @if(isset($selectedBookForChapters['chapters']))
                                     @foreach($selectedBookForChapters['chapters'] as $chapter)
                                         <button wire:click="goToChapter('{{ $selectedBookForChapters['osis_id'] }}', {{ $chapter['chapter_number'] }})"
-                                                class="aspect-square flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-blue-50 dark:hover:bg-gray-700 hover:border-blue-200 dark:hover:border-gray-600 transition-colors {{ $chapter['chapter_number'] == $chapterNumber && $selectedBookForChapters['osis_id'] === $bookOsisId ? 'bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-600' : '' }}">
-                                            <span class="font-medium text-gray-900 dark:text-white font-serif">
+                                                class="aspect-square p-2 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-center hover:bg-blue-50 dark:hover:bg-gray-700 hover:border-blue-200 dark:hover:border-gray-600 transition-colors {{ $chapter['chapter_number'] == $chapterNumber && $selectedBookForChapters['osis_id'] === $bookOsisId ? 'bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-600' : '' }}">
+                                            <span class="font-medium text-gray-900 dark:text-white font-serif text-sm">
                                                 {{ $chapter['chapter_number'] }}
                                             </span>
                                         </button>
