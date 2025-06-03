@@ -7,6 +7,7 @@ use App\Services\OsisReader;
 use App\Services\DatabaseBibleReader;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\DB;
 
 class BibleService
 {
@@ -20,18 +21,20 @@ class BibleService
     /**
      * Get the current Bible reader based on configuration
      */
-    public function getCurrentReader(string $translationKey = null): ?BibleReaderInterface
+    public function getCurrentReader(?string $translationKey = null): ?BibleReaderInterface
     {
         $translationKey = $translationKey ?: $this->translationService->getCurrentTranslationKey();
-        $readerType = Config::get('bible.reader_type', 'xml'); // 'xml' or 'database'
+        $readerType = Config::get('bible.reader_type', 'database'); // 'xml' or 'database'
 
         switch ($readerType) {
             case 'database':
                 return new DatabaseBibleReader($translationKey);
 
             case 'xml':
-            default:
                 return $this->translationService->createReader($translationKey);
+
+            default:
+                return new DatabaseBibleReader($translationKey);
         }
     }
 
@@ -88,7 +91,7 @@ class BibleService
      */
     public function getReaderType(): string
     {
-        return Config::get('bible.reader_type', 'xml');
+        return Config::get('bible.reader_type', 'database');
     }
 
     /**
@@ -139,6 +142,37 @@ class BibleService
     {
         $reader = $this->getCurrentReader();
         return $reader ? $reader->searchVerses($searchTerm, $limit) : collect();
+    }
+
+    /**
+     * Search for verses and return formatted results for Livewire
+     */
+    public function search(string $searchTerm, int $limit = 100): array
+    {
+        $startTime = microtime(true);
+
+        $results = $this->searchVerses($searchTerm, $limit);
+
+        $endTime = microtime(true);
+        $searchTimeMs = ($endTime - $startTime) * 1000;
+
+        // Format results for Livewire component
+        $formattedResults = $results->map(function ($result) {
+            return [
+                'book_osis_id' => $result['book_osis_id'] ?? '',
+                'chapter' => $result['chapter'] ?? 1,
+                'verse' => $result['verse'] ?? 1,
+                'reference' => $result['reference'] ?? '',
+                'text' => $result['text'] ?? '',
+            ];
+        })->toArray();
+
+        return [
+            'results' => $formattedResults,
+            'total_found' => count($formattedResults),
+            'has_more_results' => count($formattedResults) >= $limit,
+            'search_time_ms' => round($searchTimeMs, 2),
+        ];
     }
 
     public function getBibleInfo(): array
@@ -272,5 +306,59 @@ class BibleService
             'enhanced' => $this->hasEnhancedFeatures() ? $enhancedCapabilities : [],
             'reader_type' => $this->getReaderType()
         ];
+    }
+
+    /**
+     * Get chapter title for a specific chapter
+     */
+    public function getChapterTitle(string $chapterOsisRef): ?array
+    {
+        // Only try to get titles from database if we're using the database reader
+        if ($this->getReaderType() !== 'database') {
+            return null;
+        }
+
+        // Get the first verse of the chapter to find associated title
+        $firstVerse = $this->getVerses($chapterOsisRef)->first();
+        if (!$firstVerse || !isset($firstVerse['id'])) {
+            return null;
+        }
+
+        $title = DB::table('titles')
+            ->where('verse_id', $firstVerse['id'])
+            ->where('title_type', 'chapter')
+            ->where('placement', 'before')
+            ->first();
+
+        return $title ? (array) $title : null;
+    }
+
+    /**
+     * Get paragraph information for a chapter
+     */
+    public function getChapterParagraphs(string $chapterOsisRef): Collection
+    {
+        // Only try to get paragraphs from database if we're using the database reader
+        if ($this->getReaderType() !== 'database') {
+            return collect();
+        }
+
+        // Get chapter info
+        list($bookOsisId, $chapterNumber) = explode('.', $chapterOsisRef);
+
+        $chapterInfo = DB::table('chapters')
+            ->join('books', 'chapters.book_id', '=', 'books.id')
+            ->where('books.osis_id', $bookOsisId)
+            ->where('chapters.chapter_number', $chapterNumber)
+            ->first();
+
+        if (!$chapterInfo) {
+            return collect();
+        }
+
+        return DB::table('paragraphs')
+            ->where('chapter_id', $chapterInfo->id)
+            ->orderBy('start_verse_id')
+            ->get();
     }
 }

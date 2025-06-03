@@ -50,6 +50,10 @@ class ImportOsisCommand extends Command
             // Import structure and content
             $this->importBooks();
             $this->importChapters();
+
+            // Process book titles after chapters are available
+            $this->processAllBookTitles();
+
             $this->importVerses($chunkSize);
 
             // Update FTS tables
@@ -91,13 +95,32 @@ class ImportOsisCommand extends Command
     {
         $this->info("📚 Creating Bible version record...");
 
+        // Extract version information from the OSIS file
+        $versionInfo = $this->extractVersionInfo();
+
+        if (!$versionInfo) {
+            throw new Exception("Could not extract version information from OSIS file");
+        }
+
+        // Check if version already exists
+        $existingVersion = DB::table('bible_versions')
+            ->where('osis_work', $versionInfo['osis_work'])
+            ->first();
+
+        if ($existingVersion) {
+            $this->warn("⚠️  Bible version '{$versionInfo['osis_work']}' already exists (ID: {$existingVersion->id})");
+            $this->warn("    This import will re-process titles and other elements.");
+            $this->versionId = $existingVersion->id;
+            return;
+        }
+
         $this->versionId = DB::table('bible_versions')->insertGetId([
-            'osis_work' => 'Bible.en.kjv',
-            'abbreviation' => 'KJV',
-            'title' => 'King James Version',
-            'language' => 'en',
-            'description' => 'King James Version imported from OSIS XML',
-            'publisher' => 'Public Domain',
+            'osis_work' => $versionInfo['osis_work'],
+            'abbreviation' => $versionInfo['abbreviation'],
+            'title' => $versionInfo['title'],
+            'language' => $versionInfo['language'],
+            'description' => $versionInfo['description'],
+            'publisher' => $versionInfo['publisher'],
             'canonical' => true,
             'created_at' => now(),
             'updated_at' => now(),
@@ -106,36 +129,115 @@ class ImportOsisCommand extends Command
         $this->info("✅ Bible version created (ID: {$this->versionId})");
     }
 
+    /**
+     * Extract version information from the OSIS XML file
+     */
+    private function extractVersionInfo()
+    {
+        // Get the osisText element to extract basic info
+        $osisText = $this->xpath->query('//osis:osisText')->item(0);
+        if (!$osisText) {
+            return null;
+        }
+
+        $osisIDWork = $osisText->getAttribute('osisIDWork') ?: 'Unknown';
+        $language = $osisText->getAttribute('xml:lang') ?: 'en';
+
+        // Get work element for detailed information
+        $workElement = $this->xpath->query('//osis:work[@osisWork]')->item(0);
+
+        $title = 'Unknown Bible Version';
+        $description = 'Bible version imported from OSIS XML';
+        $publisher = 'Unknown';
+
+        if ($workElement) {
+            // Try to get title from work element
+            $titleElement = $this->xpath->query('.//osis:title', $workElement)->item(0);
+            if ($titleElement) {
+                $title = trim($titleElement->textContent);
+            }
+
+            // Try to get description
+            $descElement = $this->xpath->query('.//osis:description', $workElement)->item(0);
+            if ($descElement) {
+                $description = trim($descElement->textContent);
+            }
+        }
+
+        // Set default values based on known versions
+        $versionMappings = [
+            'KJV' => [
+                'title' => 'King James Version',
+                'publisher' => 'Public Domain',
+                'description' => 'King James Version imported from OSIS XML'
+            ],
+            'ASV' => [
+                'title' => 'American Standard Version',
+                'publisher' => 'Public Domain',
+                'description' => 'American Standard Version imported from OSIS XML'
+            ],
+            'MAO' => [
+                'title' => 'Maori Bible',
+                'publisher' => 'Public Domain',
+                'description' => 'Maori Bible imported from OSIS XML'
+            ]
+        ];
+
+        if (isset($versionMappings[$osisIDWork])) {
+            $mapping = $versionMappings[$osisIDWork];
+            $title = $mapping['title'];
+            $publisher = $mapping['publisher'];
+            $description = $mapping['description'];
+        }
+
+        return [
+            'osis_work' => 'Bible.' . strtolower($language) . '.' . strtolower($osisIDWork),
+            'abbreviation' => $osisIDWork,
+            'title' => $title,
+            'language' => $language,
+            'description' => $description,
+            'publisher' => $publisher,
+        ];
+    }
+
     private function importBooks()
     {
-        $this->info("📚 Importing books...");
+        $this->info("📚 Loading existing books...");
 
-        // Get all book divisions with namespace
+        // Load existing books from database instead of creating new ones
+        // Books are shared across all Bible versions
+        $existingBooks = DB::table('books')->get();
+
+        foreach ($existingBooks as $book) {
+            $this->books[$book->osis_id] = $book->id;
+        }
+
+        // Verify that the OSIS file contains the expected books
         $bookDivs = $this->xpath->query('//osis:div[@type="book"]');
+        $osisBooks = [];
 
         foreach ($bookDivs as $bookDiv) {
             $osisId = $bookDiv->getAttribute('osisID');
-            if (!$osisId) continue;
-
-            $bookGroupId = $this->getBookGroupId($osisId);
-            $bookNumber = $this->getBookNumber($osisId);
-            $bookName = $this->getBookName($osisId);
-
-            $bookId = DB::table('books')->insertGetId([
-                'osis_id' => $osisId,
-                'book_group_id' => $bookGroupId,
-                'number' => $bookNumber,
-                'name' => $bookName,
-                'canonical' => true,
-                'sort_order' => $bookNumber,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-            $this->books[$osisId] = $bookId;
+            if ($osisId) {
+                $osisBooks[] = $osisId;
+            }
         }
 
-        $this->info("✅ Books imported: " . count($this->books));
+        // Check for any missing books in our database
+        $missingBooks = [];
+        foreach ($osisBooks as $osisBook) {
+            if (!isset($this->books[$osisBook])) {
+                $missingBooks[] = $osisBook;
+            }
+        }
+
+        if (!empty($missingBooks)) {
+            $this->warn("⚠️  Some books from OSIS are not in database: " . implode(', ', $missingBooks));
+            $this->warn("    You may need to add these books to the database first.");
+        }
+
+        $foundBooks = array_intersect($osisBooks, array_keys($this->books));
+        $this->info("✅ Books available for import: " . count($foundBooks) . " (Total in OSIS: " . count($osisBooks) . ")");
     }
 
     private function importChapters()
@@ -159,6 +261,18 @@ class ImportOsisCommand extends Command
             $bookId = $this->books[$bookOsis] ?? null;
             if (!$bookId) continue;
 
+            // Check if this chapter already exists for this version
+            $existingChapter = DB::table('chapters')
+                ->where('book_id', $bookId)
+                ->where('version_id', $this->versionId)
+                ->where('chapter_number', $chapterNumber)
+                ->first();
+
+            if ($existingChapter) {
+                $this->chapters[$osisId] = $existingChapter->id;
+                continue; // Skip if chapter already exists for this version
+            }
+
             $chapterTitle = $chapterElement->getAttribute('chapterTitle');
 
             $chapterId = DB::table('chapters')->insertGetId([
@@ -173,9 +287,76 @@ class ImportOsisCommand extends Command
             ]);
 
             $this->chapters[$osisId] = $chapterId;
+
+            // Process any title elements that immediately follow this chapter
+            $this->processChapterTitles($chapterElement, $chapterId);
         }
 
         $this->info("✅ Chapters imported: " . count($this->chapters));
+    }
+
+    /**
+     * Process titles that appear at the chapter level (like chapter headings)
+     */
+    private function processChapterTitles($chapterElement, $chapterId)
+    {
+        $current = $chapterElement->nextSibling;
+        $order = 1;
+
+        while ($current) {
+            if ($current->nodeType === XML_ELEMENT_NODE) {
+                $nodeName = $current->localName ?: $current->nodeName;
+
+                if ($nodeName === 'title') {
+                    $titleType = $current->getAttribute('type') ?: 'main';
+
+                    // Only process titles that should be at chapter level
+                    if ($titleType === 'chapter') {
+                        $this->importChapterTitle($current, $chapterId, $order);
+                        $order++;
+                    }
+                } elseif ($nodeName === 'verse') {
+                    // Stop when we reach the first verse
+                    break;
+                }
+            }
+            $current = $current->nextSibling;
+        }
+    }
+
+    /**
+     * Import a title specifically associated with a chapter
+     */
+    private function importChapterTitle($element, $chapterId, $order)
+    {
+        // Extract inner content and format to HTML (preserve formatting)
+        $innerContent = '';
+        foreach ($element->childNodes as $child) {
+            $innerContent .= $this->doc->saveXML($child);
+        }
+
+        // Format the title content to HTML
+        $formattedText = $this->formatToHTML($innerContent);
+
+        $titleType = $element->getAttribute('type') ?: 'chapter';
+        $canonical = $element->getAttribute('canonical') === 'true';
+
+        // Store title in database
+        $titleData = [
+            'verse_id' => null, // Chapter titles are not associated with specific verses
+            'chapter_id' => $chapterId,
+            'title_type' => $titleType,
+            'title_text' => trim($formattedText),
+            'canonical' => $canonical,
+            'placement' => 'before',
+            'title_order' => $order,
+            'attributes' => json_encode($this->getElementAttributes($element)),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];
+
+        DB::table('titles')->insert($titleData);
+        $this->titleCount++;
     }
 
     private function importVerses($chunkSize)
@@ -224,21 +405,43 @@ class ImportOsisCommand extends Command
         $chapterId = $this->chapters[$chapterRef] ?? null;
         if (!$chapterId) return;
 
-        // Extract verse content
-        $content = $this->extractVerseContent($verseElement);
+        // Check if this verse already exists in this chapter
+        $existingVerse = DB::table('verses')
+            ->where('chapter_id', $chapterId)
+            ->where('verse_number', $verseNum)
+            ->first();
 
-        // Insert verse
-        $verseId = DB::table('verses')->insertGetId([
-            'chapter_id' => $chapterId,
-            'verse_number' => $verseNum,
-            'osis_id' => $osisId,
-            'se_id' => $sId,
-            'text' => $content['text'],
-            'formatted_text' => $content['formatted'],
-            'original_xml' => $content['xml'],
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        if ($existingVerse) {
+            // Update the existing verse with ASV content instead of skipping
+            $content = $this->extractVerseContent($verseElement);
+
+            DB::table('verses')
+                ->where('id', $existingVerse->id)
+                ->update([
+                    'text' => $content['text'],
+                    'formatted_text' => $content['formatted'],
+                    'original_xml' => $content['xml'],
+                    'updated_at' => now(),
+                ]);
+
+            $verseId = $existingVerse->id;
+        } else {
+            // Extract verse content
+            $content = $this->extractVerseContent($verseElement);
+
+            // Insert new verse
+            $verseId = DB::table('verses')->insertGetId([
+                'chapter_id' => $chapterId,
+                'verse_number' => $verseNum,
+                'osis_id' => $osisId,
+                'se_id' => $sId,
+                'text' => $content['text'],
+                'formatted_text' => $content['formatted'],
+                'original_xml' => $content['xml'],
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
 
         $this->verseCount++;
 
@@ -647,8 +850,36 @@ class ImportOsisCommand extends Command
         $titleType = $element->getAttribute('type') ?: 'main';
         $canonical = $element->getAttribute('canonical') === 'true';
 
-        DB::table('titles')->insert([
-            'verse_id' => $verseId,
+        // Validate title type and map to expected values
+        $validTitleTypes = ['main', 'chapter', 'psalm', 'acrostic', 'sub'];
+        if (!in_array($titleType, $validTitleTypes)) {
+            // Log unknown title type and default to 'main'
+            $this->warn("Unknown title type '{$titleType}' found, defaulting to 'main'");
+            $titleType = 'main';
+        }
+
+        // Determine chapter_id and verse_id based on title type
+        $chapterId = null;
+        $targetVerseId = null;
+
+        if ($titleType === 'chapter') {
+            // Chapter titles should be associated with the chapter, not the verse
+            // Find the chapter this verse belongs to
+            $verse = DB::table('verses')->where('id', $verseId)->first();
+            if ($verse) {
+                $chapterId = $verse->chapter_id;
+                // For chapter titles, don't associate with a specific verse
+                $targetVerseId = null;
+            }
+        } else {
+            // All other titles (main, psalm, acrostic, sub) are associated with verses
+            $targetVerseId = $verseId;
+        }
+
+        // Store title in database
+        $titleData = [
+            'verse_id' => $targetVerseId,
+            'chapter_id' => $chapterId,
             'title_type' => $titleType,
             'title_text' => trim($formattedText),
             'canonical' => $canonical,
@@ -657,9 +888,16 @@ class ImportOsisCommand extends Command
             'attributes' => json_encode($this->getElementAttributes($element)),
             'created_at' => now(),
             'updated_at' => now(),
-        ]);
+        ];
+
+        DB::table('titles')->insert($titleData);
 
         $this->titleCount++;
+
+        // Log title type for debugging
+        if ($this->titleCount % 100 === 0) {
+            $this->line("   📝 Processed {$this->titleCount} titles...");
+        }
     }
 
     private function importLineGroup($element, $verseId, $order)
@@ -723,7 +961,9 @@ class ImportOsisCommand extends Command
         // Title formatting
         $html = preg_replace('/<title\s+type="psalm"[^>]*>/', '<div class="psalm-title text-center text-sm font-medium text-gray-700 dark:text-gray-300 italic mb-3 border-b border-gray-200 dark:border-gray-600 pb-2">', $html);
         $html = preg_replace('/<title\s+type="main"[^>]*>/', '<h2 class="main-title text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">', $html);
+        $html = preg_replace('/<title\s+type="chapter"[^>]*>/', '<h3 class="chapter-title text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3 text-center">', $html);
         $html = preg_replace('/<title\s+type="acrostic"[^>]*>/', '<div class="acrostic-title text-center text-lg font-semibold text-blue-700 dark:text-blue-400 mb-2">', $html);
+        $html = preg_replace('/<title\s+type="sub"[^>]*>/', '<h4 class="sub-title text-md font-medium text-gray-700 dark:text-gray-300 mb-2">', $html);
         $html = preg_replace('/<title[^>]*>/', '<div class="title text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">', $html);
         $html = str_replace('</title>', '</div>', $html);
 
@@ -868,9 +1108,111 @@ class ImportOsisCommand extends Command
         $this->line("   👑 Divine Names: " . $this->divineNameCount);
         $this->line("   🔴 Red Letter Text: " . $this->redLetterCount);
         $this->line("   📚 Titles: " . $this->titleCount);
+
+        // Show title type breakdown
+        $titleBreakdown = DB::table('titles')
+            ->select('title_type', DB::raw('count(*) as count'))
+            ->groupBy('title_type')
+            ->orderBy('count', 'desc')
+            ->get();
+
+        if ($titleBreakdown->count() > 0) {
+            $this->line("       Title breakdown:");
+            foreach ($titleBreakdown as $titleType) {
+                $this->line("       - {$titleType->title_type}: {$titleType->count}");
+            }
+        }
+
         $this->line("   📝 Poetry Lines: " . $this->poetryLineCount);
 
         $this->newLine();
         $this->line("✅ Database is ready for biblical scholarship!");
+    }
+
+    /**
+     * Process all book titles after chapters have been imported
+     */
+    private function processAllBookTitles()
+    {
+        $this->info("📑 Processing book titles...");
+
+        // Get all book divisions with namespace
+        $bookDivs = $this->xpath->query('//osis:div[@type="book"]');
+
+        foreach ($bookDivs as $bookDiv) {
+            $osisId = $bookDiv->getAttribute('osisID');
+            if (!$osisId) continue;
+
+            $bookId = $this->books[$osisId] ?? null;
+            if (!$bookId) continue;
+
+            // Process any main titles that appear in this book div
+            $this->processBookTitles($bookDiv, $bookId);
+        }
+    }
+
+    /**
+     * Process main book titles that appear at the book level
+     */
+    private function processBookTitles($bookDiv, $bookId)
+    {
+        // Look for title elements that are direct children of the book div
+        foreach ($bookDiv->childNodes as $child) {
+            if ($child->nodeType === XML_ELEMENT_NODE) {
+                $nodeName = $child->localName ?: $child->nodeName;
+
+                if ($nodeName === 'title') {
+                    $titleType = $child->getAttribute('type') ?: 'main';
+
+                    // Only process main titles at book level
+                    if ($titleType === 'main') {
+                        $this->importBookTitle($child, $bookId);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Import a title specifically associated with a book
+     */
+    private function importBookTitle($element, $bookId)
+    {
+        // Extract inner content and format to HTML (preserve formatting)
+        $innerContent = '';
+        foreach ($element->childNodes as $child) {
+            $innerContent .= $this->doc->saveXML($child);
+        }
+
+        // Format the title content to HTML
+        $formattedText = $this->formatToHTML($innerContent);
+
+        $titleType = $element->getAttribute('type') ?: 'main';
+        $canonical = $element->getAttribute('canonical') === 'true';
+
+        // For book titles, we'll associate them with the first chapter of the book
+        $firstChapter = DB::table('chapters')
+            ->where('book_id', $bookId)
+            ->orderBy('chapter_number')
+            ->first();
+
+        $chapterId = $firstChapter ? $firstChapter->id : null;
+
+        // Store title in database
+        $titleData = [
+            'verse_id' => null, // Book titles are not associated with specific verses
+            'chapter_id' => $chapterId, // Associate with first chapter if available
+            'title_type' => $titleType,
+            'title_text' => trim($formattedText),
+            'canonical' => $canonical,
+            'placement' => 'before',
+            'title_order' => 1, // Book titles come first
+            'attributes' => json_encode($this->getElementAttributes($element)),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];
+
+        DB::table('titles')->insert($titleData);
+        $this->titleCount++;
     }
 }

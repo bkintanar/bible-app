@@ -65,7 +65,8 @@ class DatabaseBibleReader implements BibleReaderInterface
      */
     public function getChapters(string $bookOsisId): Collection
     {
-        return Cache::remember("chapters_{$bookOsisId}_{$this->versionKey}", 3600, function () use ($bookOsisId) {
+        $normalizedBookOsisId = strtoupper($bookOsisId);
+        return Cache::remember("chapters_{$normalizedBookOsisId}_{$this->versionKey}", 3600, function () use ($bookOsisId) {
             return DB::table('chapters as c')
                 ->join('books as b', 'c.book_id', '=', 'b.id')
                 ->leftJoin('verses as v', 'c.id', '=', 'v.chapter_id')
@@ -74,7 +75,7 @@ class DatabaseBibleReader implements BibleReaderInterface
                     'c.chapter_number',
                     DB::raw('COUNT(v.id) as verse_count')
                 ])
-                ->where('b.osis_id', $bookOsisId)
+                ->whereRaw('UPPER(b.osis_id) = UPPER(?)', [$bookOsisId])
                 ->where('c.version_id', $this->versionId)
                 ->groupBy('c.id', 'c.osis_id', 'c.chapter_number')
                 ->orderBy('c.chapter_number')
@@ -94,6 +95,13 @@ class DatabaseBibleReader implements BibleReaderInterface
      */
     public function getVerses(string $chapterOsisRef): Collection
     {
+        // Convert to proper case for database lookup
+        $properCaseRef = ucfirst(strtolower($chapterOsisRef));
+        if (strpos($properCaseRef, '.') !== false) {
+            $parts = explode('.', $properCaseRef);
+            $properCaseRef = ucfirst($parts[0]) . '.' . $parts[1];
+        }
+
         $verses = DB::table('verses as v')
             ->join('chapters as c', 'v.chapter_id', '=', 'c.id')
             ->select([
@@ -101,47 +109,39 @@ class DatabaseBibleReader implements BibleReaderInterface
                 'v.verse_number',
                 'v.formatted_text as text'
             ])
-            ->where('c.osis_id', $chapterOsisRef)
+            ->where('c.osis_id', $properCaseRef)
+            ->where('c.version_id', $this->versionId)
             ->orderBy('v.verse_number')
-            ->get()
-            ->map(function ($verse) {
+            ->get();
+
+        $mappedVerses = $verses->map(function ($verse) {
+                // Get titles for each individual verse
+                $titles = $this->getTitles($verse->osis_id);
+                $titleHtml = '';
+
+                foreach ($titles as $title) {
+                    if ($title['placement'] === 'before') {
+                        $titleClass = match($title['type']) {
+                            'psalm' => 'psalm-title text-center text-sm font-medium text-gray-700 dark:text-gray-300 italic mb-3 border-b border-gray-200 dark:border-gray-600 pb-2',
+                            'main' => 'main-title text-center text-xl font-bold text-gray-900 dark:text-gray-100 mb-4',
+                            'acrostic' => 'acrostic-title text-center text-lg font-semibold text-blue-700 dark:text-blue-400 mb-2',
+                            'chapter' => 'chapter-title text-center text-lg font-bold text-gray-900 dark:text-gray-100 mb-4',
+                            'sub' => 'sub-title text-center text-base font-semibold text-gray-800 dark:text-gray-200 mb-3',
+                            default => 'title text-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'
+                        };
+                        $titleHtml .= '<div class="' . $titleClass . '">' . $title['text'] . '</div>';
+                    }
+                }
+
                 return [
                     'osis_id' => $verse->osis_id,
                     'verse_number' => (int) $verse->verse_number,
-                    'text' => $this->enhanceVerseText($verse->text, $verse->osis_id, false) // Don't include titles in verse text
+                    'text' => $this->enhanceVerseText($verse->text, $verse->osis_id, false), // Don't include titles in verse text
+                    'chapter_titles' => $titleHtml
                 ];
             });
 
-        // Add chapter titles to the first verse if it exists
-        if ($verses->isNotEmpty()) {
-            $firstVerseOsisId = $verses->first()['osis_id'];
-            $titles = $this->getTitles($firstVerseOsisId);
-            $titleHtml = '';
-
-            foreach ($titles as $title) {
-                if ($title['placement'] === 'before') {
-                    $titleClass = match($title['type']) {
-                        'psalm' => 'psalm-title text-center text-sm font-medium text-gray-700 dark:text-gray-300 italic mb-3 border-b border-gray-200 dark:border-gray-600 pb-2',
-                        'main' => 'main-title text-center text-xl font-bold text-gray-900 dark:text-gray-100 mb-4',
-                        'acrostic' => 'acrostic-title text-center text-lg font-semibold text-blue-700 dark:text-blue-400 mb-2',
-                        default => 'title text-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'
-                    };
-                    $titleHtml .= '<div class="' . $titleClass . '">' . $title['text'] . '</div>';
-                }
-            }
-
-            // Add titles as a separate field to the collection
-            $verses = $verses->map(function ($verse, $index) use ($titleHtml) {
-                if ($index === 0) {
-                    $verse['chapter_titles'] = $titleHtml;
-                } else {
-                    $verse['chapter_titles'] = '';
-                }
-                return $verse;
-            });
-        }
-
-        return $verses;
+        return $mappedVerses;
     }
 
     /**
@@ -195,7 +195,7 @@ class DatabaseBibleReader implements BibleReaderInterface
     public function getVerseText(string $verseOsisId): string
     {
         $verse = DB::table('verses')
-            ->where('osis_id', $verseOsisId)
+            ->whereRaw('UPPER(osis_id) = UPPER(?)', [$verseOsisId])
             ->first(['formatted_text', 'osis_id']);
 
         if (!$verse) {
@@ -534,7 +534,7 @@ class DatabaseBibleReader implements BibleReaderInterface
                 't.placement',
                 't.title_order'
             ])
-            ->where('v.osis_id', $verseOsisId)
+            ->whereRaw('UPPER(v.osis_id) = UPPER(?)', [$verseOsisId])
             ->orderBy('t.title_order')
             ->get()
             ->map(function ($title) {
@@ -561,7 +561,7 @@ class DatabaseBibleReader implements BibleReaderInterface
                 'ps.line_text',
                 'ps.line_order'
             ])
-            ->where('v.osis_id', $verseOsisId)
+            ->whereRaw('UPPER(v.osis_id) = UPPER(?)', [$verseOsisId])
             ->orderBy('ps.line_order')
             ->get()
             ->map(function ($structure) {
@@ -595,6 +595,8 @@ class DatabaseBibleReader implements BibleReaderInterface
                         'psalm' => 'psalm-title text-center text-sm font-medium text-gray-700 dark:text-gray-300 italic mb-3 border-b border-gray-200 dark:border-gray-600 pb-2',
                         'main' => 'main-title text-center text-xl font-bold text-gray-900 dark:text-gray-100 mb-4',
                         'acrostic' => 'acrostic-title text-center text-lg font-semibold text-blue-700 dark:text-blue-400 mb-2',
+                        'chapter' => 'chapter-title text-center text-lg font-bold text-gray-900 dark:text-gray-100 mb-4',
+                        'sub' => 'sub-title text-center text-base font-semibold text-gray-800 dark:text-gray-200 mb-3',
                         default => 'title text-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'
                     };
                     // Title text is already formatted HTML, so use it directly

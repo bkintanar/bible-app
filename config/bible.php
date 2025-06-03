@@ -6,12 +6,8 @@ return [
     | Bible Reader Type
     |--------------------------------------------------------------------------
     |
-    | Determines which reader implementation to use:
-    | - 'xml': Uses XML files directly (OsisReader)
-    | - 'database': Uses imported database content (DatabaseBibleReader)
-    |
-    | Database reader provides enhanced features like Strong's concordance,
-    | textual criticism notes, and high-performance FTS search.
+    | This value determines which reader implementation to use for Bible data.
+    | Options: 'xml' (OSIS XML files) or 'database' (SQLite database)
     |
     */
     'reader_type' => env('BIBLE_READER_TYPE', 'database'),

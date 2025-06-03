@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Services\OsisReader;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class TranslationService
 {
@@ -11,6 +12,49 @@ class TranslationService
      * Get all available translations
      */
     public function getAvailableTranslations(): Collection
+    {
+        $readerType = config('bible.reader_type', 'database');
+
+        if ($readerType === 'database') {
+            // Get translations from database
+            return $this->getAvailableTranslationsFromDatabase();
+        } else {
+            // Get translations from config file (for XML reader)
+            return $this->getAvailableTranslationsFromConfig();
+        }
+    }
+
+    /**
+     * Get available translations from database
+     */
+    private function getAvailableTranslationsFromDatabase(): Collection
+    {
+        try {
+            return DB::table('bible_versions')
+                ->where('canonical', true)
+                ->orderBy('abbreviation')
+                ->get()
+                ->map(function ($version) {
+                    return [
+                        'key' => strtolower($version->abbreviation),
+                        'name' => $version->title,
+                        'short_name' => $version->abbreviation,
+                        'language' => $this->getLanguageName($version->language),
+                        'description' => $version->description,
+                        'publisher' => $version->publisher,
+                        'is_default' => strtolower($version->abbreviation) === 'kjv',
+                    ];
+                });
+        } catch (\Exception $e) {
+            // If database is not available, fall back to config
+            return $this->getAvailableTranslationsFromConfig();
+        }
+    }
+
+    /**
+     * Get available translations from config file
+     */
+    private function getAvailableTranslationsFromConfig(): Collection
     {
         $translations = config('bible.translations', []);
 
@@ -20,9 +64,81 @@ class TranslationService
     }
 
     /**
+     * Convert language code to full language name
+     */
+    private function getLanguageName(string $languageCode): string
+    {
+        $languageMap = [
+            'en' => 'English',
+            'mi' => 'Māori',
+            'es' => 'Spanish',
+            'fr' => 'French',
+            'de' => 'German',
+            'pt' => 'Portuguese',
+            'it' => 'Italian',
+            'ru' => 'Russian',
+            'zh' => 'Chinese',
+            'ja' => 'Japanese',
+            'ko' => 'Korean',
+            'ar' => 'Arabic',
+            'he' => 'Hebrew',
+            'el' => 'Greek',
+            'la' => 'Latin',
+        ];
+
+        return $languageMap[$languageCode] ?? ucfirst($languageCode);
+    }
+
+    /**
      * Get translation configuration by key
      */
     public function getTranslation(string $translationKey): ?array
+    {
+        $readerType = config('bible.reader_type', 'database');
+
+        if ($readerType === 'database') {
+            // Get translation from database
+            return $this->getTranslationFromDatabase($translationKey);
+        } else {
+            // Get translation from config file
+            return $this->getTranslationFromConfig($translationKey);
+        }
+    }
+
+    /**
+     * Get translation from database
+     */
+    private function getTranslationFromDatabase(string $translationKey): ?array
+    {
+        try {
+            $version = DB::table('bible_versions')
+                ->whereRaw('LOWER(abbreviation) = ?', [strtolower($translationKey)])
+                ->where('canonical', true)
+                ->first();
+
+            if ($version) {
+                return [
+                    'key' => strtolower($version->abbreviation),
+                    'name' => $version->title,
+                    'short_name' => $version->abbreviation,
+                    'language' => $this->getLanguageName($version->language),
+                    'description' => $version->description,
+                    'publisher' => $version->publisher,
+                    'is_default' => strtolower($version->abbreviation) === 'kjv',
+                ];
+            }
+
+            return null;
+        } catch (\Exception $e) {
+            // If database is not available, fall back to config
+            return $this->getTranslationFromConfig($translationKey);
+        }
+    }
+
+    /**
+     * Get translation from config file
+     */
+    private function getTranslationFromConfig(string $translationKey): ?array
     {
         $translation = config("bible.translations.{$translationKey}");
 
@@ -39,7 +155,34 @@ class TranslationService
      */
     public function getDefaultTranslationKey(): string
     {
-        return config('bible.default_translation', 'kjv');
+        $readerType = config('bible.reader_type', 'database');
+
+        if ($readerType === 'database') {
+            // Get default from database (first translation or KJV if available)
+            try {
+                $defaultVersion = DB::table('bible_versions')
+                    ->whereRaw('LOWER(abbreviation) = ?', ['kjv'])
+                    ->where('canonical', true)
+                    ->first();
+
+                if ($defaultVersion) {
+                    return strtolower($defaultVersion->abbreviation);
+                }
+
+                // If no KJV, get the first available translation
+                $firstVersion = DB::table('bible_versions')
+                    ->where('canonical', true)
+                    ->orderBy('abbreviation')
+                    ->first();
+
+                return $firstVersion ? strtolower($firstVersion->abbreviation) : 'kjv';
+            } catch (\Exception $e) {
+                // Fall back to config default
+                return config('bible.default_translation', 'kjv');
+            }
+        } else {
+            return config('bible.default_translation', 'kjv');
+        }
     }
 
     /**
@@ -64,7 +207,7 @@ class TranslationService
      */
     public function getOsisFilePath(string $translationKey): ?string
     {
-        $translation = $this->getTranslation($translationKey);
+        $translation = $this->getTranslationFromConfig($translationKey);
 
         if (!$translation) {
             return null;
