@@ -149,7 +149,17 @@ class DatabaseBibleReader implements BibleReaderInterface
      */
     public function getVersesParagraphStyle(string $chapterOsisRef): Collection
     {
+        \Log::info("DatabaseBibleReader: getVersesParagraphStyle called with '{$chapterOsisRef}'");
+
         $verses = $this->getVerses($chapterOsisRef);
+
+        // Debug: Log what was retrieved
+        if (!empty($verses) && isset($verses[0]['text'])) {
+            $firstText = substr(strip_tags($verses[0]['text']), 0, 30);
+            \Log::info("DatabaseBibleReader: First verse retrieved: {$firstText}...");
+        } else {
+            \Log::info("DatabaseBibleReader: No verses retrieved for {$chapterOsisRef}");
+        }
 
         // Try to get actual paragraph data from database first
         $paragraphData = $this->getParagraphDataFromDatabase($chapterOsisRef);

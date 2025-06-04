@@ -21,6 +21,10 @@ class BibleChapter extends Component
     public $chapterTitle = null;
     public $paragraphs = [];
 
+    // Adjacent chapter preloading for book flip effect
+    public $previousChapterVerses = [];
+    public $nextChapterVerses = [];
+
     // UI state
     public $fontSize = 'base'; // sm, base, lg, xl, 2xl
     public $searchQuery = '';
@@ -43,6 +47,10 @@ class BibleChapter extends Component
 
     public function mount($bookOsisId, $chapterNumber)
     {
+        // Initialize collections first
+        $this->previousChapterVerses = collect();
+        $this->nextChapterVerses = collect();
+
         $this->bookOsisId = $bookOsisId;
         $this->chapterNumber = (int) $chapterNumber;
 
@@ -128,6 +136,116 @@ class BibleChapter extends Component
         }
 
         $this->paragraphs = $this->bibleService->getChapterParagraphs($chapterOsisRef);
+
+        // Preload adjacent chapters for book flip effect
+        $this->loadAdjacentChapters($bookOsisId, $chapterNumber);
+    }
+
+    /**
+     * Load previous and next chapter content for book flip preloading
+     */
+    private function loadAdjacentChapters($bookOsisId, $chapterNumber)
+    {
+        \Log::info("=== DEBUG: Loading adjacent chapters for {$bookOsisId} chapter {$chapterNumber} ===");
+
+        // Load previous chapter if it exists
+        if ($chapterNumber > 1) {
+            $prevChapterOsisRef = $bookOsisId . '.' . ($chapterNumber - 1);
+            \Log::info("PREV: Generated reference: {$prevChapterOsisRef}");
+
+            try {
+                // Use the same logic as the main chapter for consistency
+                if (strtolower($bookOsisId) === 'ps' && ($chapterNumber - 1) == 119) {
+                    $individualVerses = $this->bibleService->getVerses($prevChapterOsisRef);
+                    $this->previousChapterVerses = $individualVerses->map(function ($verse) {
+                        return [
+                            'verses' => [$verse],
+                            'type' => 'individual_verse'
+                        ];
+                    });
+                } else {
+                    $this->previousChapterVerses = $this->bibleService->getVersesParagraphStyle($prevChapterOsisRef);
+                }
+
+                // Debug: Log first verse text
+                if (!empty($this->previousChapterVerses) && isset($this->previousChapterVerses[0]['verses'][0]['text'])) {
+                    $firstText = substr(strip_tags($this->previousChapterVerses[0]['verses'][0]['text']), 0, 30);
+                    \Log::info("PREV: First verse loaded: {$firstText}...");
+                } else {
+                    \Log::info("PREV: No verses loaded");
+                }
+
+            } catch (\Exception $e) {
+                \Log::error("PREV: Error loading: " . $e->getMessage());
+                $this->previousChapterVerses = collect();
+            }
+        } else {
+            \Log::info("PREV: No previous chapter (at chapter 1)");
+            $this->previousChapterVerses = collect();
+        }
+
+        // Load next chapter if it exists
+        // Find the max chapter number for this book
+        $maxChapterNumber = $this->chapters->max('chapter_number') ?? 0;
+
+        if ($chapterNumber < $maxChapterNumber) {
+            $nextChapterOsisRef = $bookOsisId . '.' . ($chapterNumber + 1);
+            \Log::info("NEXT: Generated reference: {$nextChapterOsisRef}");
+
+            try {
+                // Use the same logic as the main chapter for consistency
+                if (strtolower($bookOsisId) === 'ps' && ($chapterNumber + 1) == 119) {
+                    $individualVerses = $this->bibleService->getVerses($nextChapterOsisRef);
+                    $this->nextChapterVerses = $individualVerses->map(function ($verse) {
+                        return [
+                            'verses' => [$verse],
+                            'type' => 'individual_verse'
+                        ];
+                    });
+                } else {
+                    $this->nextChapterVerses = $this->bibleService->getVersesParagraphStyle($nextChapterOsisRef);
+                }
+
+                // Debug: Log first verse text
+                if (!empty($this->nextChapterVerses) && isset($this->nextChapterVerses[0]['verses'][0]['text'])) {
+                    $firstText = substr(strip_tags($this->nextChapterVerses[0]['verses'][0]['text']), 0, 30);
+                    \Log::info("NEXT: First verse loaded: {$firstText}...");
+                } else {
+                    \Log::info("NEXT: No verses loaded");
+                }
+
+            } catch (\Exception $e) {
+                \Log::error("NEXT: Error loading: " . $e->getMessage());
+                $this->nextChapterVerses = collect();
+            }
+        } else {
+            // No next chapter exists
+            \Log::info("NEXT: No next chapter (at last chapter)");
+            $this->nextChapterVerses = collect();
+        }
+
+        \Log::info("=== DEBUG: Finished loading adjacent chapters ===");
+
+        // Additional debugging: Show what's actually in each variable
+        \Log::info("=== FINAL DEBUG: Variable contents ===");
+
+        if (!empty($this->previousChapterVerses)) {
+            $prevFirstText = $this->previousChapterVerses[0]['verses'][0]['text'] ?? 'No text';
+            $prevFirstWords = substr(strip_tags($prevFirstText), 0, 50);
+            \Log::info("Final previousChapterVerses first text: {$prevFirstWords}...");
+        } else {
+            \Log::info("Final previousChapterVerses: EMPTY");
+        }
+
+        if (!empty($this->nextChapterVerses)) {
+            $nextFirstText = $this->nextChapterVerses[0]['verses'][0]['text'] ?? 'No text';
+            $nextFirstWords = substr(strip_tags($nextFirstText), 0, 50);
+            \Log::info("Final nextChapterVerses first text: {$nextFirstWords}...");
+        } else {
+            \Log::info("Final nextChapterVerses: EMPTY");
+        }
+
+        \Log::info("=== END FINAL DEBUG ===");
     }
 
     public function switchTranslation($translationKey)
@@ -176,6 +294,9 @@ class BibleChapter extends Component
 
         // Emit an event to notify other components of the translation change
         $this->dispatch('translation-changed', $translationKey);
+
+        // Reload adjacent chapters with new translation
+        $this->loadAdjacentChapters($this->bookOsisId, $this->chapterNumber);
     }
 
     public function setFontSize($size)
