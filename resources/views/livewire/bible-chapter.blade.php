@@ -21,6 +21,26 @@
             transition: transform 0.3s ease;
         }
 
+        .page-prev {
+            transform: rotateY(180deg);
+        }
+
+        .page-next {
+            transform: rotateY(-180deg);
+        }
+
+        /* Debug: Make preview pages slightly visible for testing */
+        .page-prev, .page-next {
+            opacity: 0.1;
+        }
+
+        /* During flip animation, make preview pages fully visible */
+        .page-current.flipping-next ~ .page-next,
+        .page-current.flipping-prev ~ .page-prev {
+            opacity: 1 !important;
+            z-index: 1 !important;
+        }
+
         .page-current.flipping-next {
             animation: flipCurrentToNext 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
             transform-origin: left center;
@@ -250,9 +270,9 @@
     <!-- Main Content - Scrollable -->
     <div class="flex-1 overflow-hidden book-container">
         <!-- Previous Chapter (Preloaded) -->
-        <div class="page page-prev absolute inset-0 h-full overflow-y-auto" style="transform: rotateY(180deg); z-index: 1;">
+        <div class="page page-prev absolute inset-0 h-full overflow-y-auto" style="z-index: 0;">
             <div class="book-spine-shadow"></div>
-            <div class="page-content h-full overflow-y-auto bg-gray-50 dark:bg-gray-900" id="prev-chapter-content" style="transform: rotateY(180deg);">
+            <div class="page-content h-full overflow-y-auto bg-gray-50 dark:bg-gray-900" id="prev-chapter-content">
                 @if($chapterNumber > 1)
                     <!-- Full Previous Chapter Content -->
                     <div class="p-4 sm:p-8 pb-20">
@@ -504,9 +524,9 @@
         </div>
 
         <!-- Next Chapter (Preloaded) -->
-        <div class="page page-next absolute inset-0 h-full overflow-y-auto" style="transform: rotateY(-180deg); z-index: 1;">
+        <div class="page page-next absolute inset-0 h-full overflow-y-auto" style="z-index: 0;">
             <div class="book-spine-shadow"></div>
-            <div class="page-content h-full overflow-y-auto bg-gray-50 dark:bg-gray-900" id="next-chapter-content" style="transform: rotateY(180deg);">
+            <div class="page-content h-full overflow-y-auto bg-gray-50 dark:bg-gray-900" id="next-chapter-content">
                 @if($chapterNumber < ($chapters->max('chapter_number') ?? 0))
                     <!-- Full Next Chapter Content -->
                     <div class="p-4 sm:p-8 pb-20">
@@ -744,30 +764,26 @@
                 return;
             }
 
-            // Show only the appropriate preview page and completely hide the other
-            if (direction === 'prev' && prevPage) {
-                // Show previous page preview, completely hide next page
-                prevPage.style.display = 'block';
-                prevPage.style.zIndex = '10';
-                prevPage.style.transform = 'rotateY(0deg)';
-                prevPage.querySelector('.page-content').style.transform = 'rotateY(0deg)';
-
-                if (nextPage) {
-                    nextPage.style.display = 'none';
-                }
-            } else if (direction === 'next' && nextPage) {
-                // Show next page preview, completely hide previous page
-                nextPage.style.display = 'block';
-                nextPage.style.zIndex = '10';
-                nextPage.style.transform = 'rotateY(0deg)';
-                nextPage.querySelector('.page-content').style.transform = 'rotateY(0deg)';
-
-                if (prevPage) {
-                    prevPage.style.display = 'none';
-                }
+            // Reset all preview pages to low opacity
+            if (prevPage) {
+                prevPage.style.opacity = '0.1';
+                prevPage.style.zIndex = '0';
+            }
+            if (nextPage) {
+                nextPage.style.opacity = '0.1';
+                nextPage.style.zIndex = '0';
             }
 
-            // Start flip animation on current page
+            // Show only the appropriate preview page during animation
+            if (direction === 'prev' && prevPage) {
+                prevPage.style.opacity = '1';
+                prevPage.style.zIndex = '1';
+            } else if (direction === 'next' && nextPage) {
+                nextPage.style.opacity = '1';
+                nextPage.style.zIndex = '1';
+            }
+
+            // Start flip animation on current page only
             currentPage.classList.add(`flipping-${direction}`);
 
             // Navigate after 400ms (when pages meet at 90 degrees)
@@ -776,81 +792,15 @@
             }, 400);
         }
 
-        // Add hover effects for page previews
+        // Page entrance animation
         document.addEventListener('DOMContentLoaded', function() {
             const currentPage = document.querySelector('.page-current');
-            const prevPage = document.querySelector('.page-prev');
-            const nextPage = document.querySelector('.page-next');
-            const prevButton = document.querySelector('button[onclick*="prev"]');
-            const nextButton = document.querySelector('button[onclick*="next"]');
 
             if (currentPage) {
                 setTimeout(() => {
                     currentPage.style.transition = 'opacity 0.4s ease';
                     currentPage.style.opacity = '1';
                 }, 50);
-            }
-
-            // Previous button hover effects
-            if (prevButton && prevPage) {
-                prevButton.addEventListener('mouseenter', () => {
-                    // Show previous page preview
-                    prevPage.style.display = 'block';
-                    prevPage.style.zIndex = '5';
-                    prevPage.style.transform = 'rotateY(20deg)';
-                    prevPage.querySelector('.page-content').style.transform = 'rotateY(-20deg)';
-                    currentPage.style.transform = 'rotateY(-5deg)';
-
-                    // Completely hide next page
-                    if (nextPage) {
-                        nextPage.style.display = 'none';
-                    }
-                });
-
-                prevButton.addEventListener('mouseleave', () => {
-                    // Reset previous page
-                    prevPage.style.display = 'block';
-                    prevPage.style.zIndex = '1';
-                    prevPage.style.transform = 'rotateY(180deg)';
-                    prevPage.querySelector('.page-content').style.transform = 'rotateY(180deg)';
-                    currentPage.style.transform = 'rotateY(0deg)';
-
-                    // Restore next page
-                    if (nextPage) {
-                        nextPage.style.display = 'block';
-                    }
-                });
-            }
-
-            // Next button hover effects
-            if (nextButton && nextPage) {
-                nextButton.addEventListener('mouseenter', () => {
-                    // Show next page preview
-                    nextPage.style.display = 'block';
-                    nextPage.style.zIndex = '5';
-                    nextPage.style.transform = 'rotateY(-20deg)';
-                    nextPage.querySelector('.page-content').style.transform = 'rotateY(20deg)';
-                    currentPage.style.transform = 'rotateY(5deg)';
-
-                    // Completely hide previous page
-                    if (prevPage) {
-                        prevPage.style.display = 'none';
-                    }
-                });
-
-                nextButton.addEventListener('mouseleave', () => {
-                    // Reset next page
-                    nextPage.style.display = 'block';
-                    nextPage.style.zIndex = '1';
-                    nextPage.style.transform = 'rotateY(-180deg)';
-                    nextPage.querySelector('.page-content').style.transform = 'rotateY(180deg)';
-                    currentPage.style.transform = 'rotateY(0deg)';
-
-                    // Restore previous page
-                    if (prevPage) {
-                        prevPage.style.display = 'block';
-                    }
-                });
             }
         });
 
