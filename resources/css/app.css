@@ -182,7 +182,7 @@ mark {
     font-weight: 600;
     line-height: 1;
     vertical-align: super;
-    margin-right: 0.25rem;
+    margin-right: 0;
     /* Prevent verse number from being orphaned */
     display: inline;
     white-space: nowrap;
@@ -190,26 +190,34 @@ mark {
 
 /* Prevent verse numbers from appearing alone at end of lines */
 .verse-content {
-    display: inline;
+    display: block;
     /* Prevent awkward breaking of verse content */
     orphans: 2;
     widows: 2;
     /* Ensure verse flows naturally but keep number with text */
-    hyphens: none;
-    word-break: keep-all;
-    overflow-wrap: anywhere;
+    hyphens: auto;
+    word-break: normal;
+    overflow-wrap: break-word;
 }
 
-/* Specifically for verse number containers */
-.verse-content .verse-number {
-    /* Keep verse number attached to text - prevent line break after number */
-    margin-right: 0;
-}
-
-/* Add very small non-breaking space after verse number */
+/* Add non-breaking space after verse number and prevent breaking immediately after */
 .verse-content .verse-number::after {
-    content: "\00A0"; /* Non-breaking space */
-    font-size: 0.75rem;
+    content: "\00A0\00A0"; /* Two non-breaking spaces for better spacing and attachment */
+}
+
+/* Advanced orphan prevention: Make verse numbers stick to at least a few characters */
+.verse-content .verse-number {
+    /* Keep verse number inline and prevent wrapping */
+    display: inline;
+    white-space: nowrap;
+    /* Use word joiner character to prevent line breaks after number */
+    word-break: keep-all;
+}
+
+/* Ensure verse text flows naturally after the non-breaking attachment */
+.verse-content .verse-number + * {
+    display: inline;
+    word-break: normal;
 }
 
 /* Chapter headers with classic styling */
@@ -481,4 +489,144 @@ mark {
     padding-bottom: env(safe-area-inset-bottom, 0px);
     /* Ensure content doesn't get hidden behind home indicator */
     padding-bottom: max(env(safe-area-inset-bottom, 0px), 20px);
+}
+
+/* Interactive Page Peel Effect */
+.book-container {
+    --peel-progress: 0;
+}
+
+/* Hide preview pages by default */
+.page-prev,
+.page-next {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Right peel (next page) */
+.page-current.peeling.peel-left {
+    transform-origin: left center;
+    transform: rotateY(calc(var(--peel-progress) * -180deg));
+    transition: none;
+}
+
+/* Left peel (previous page) */
+.page-current.peeling.peel-right {
+    transform-origin: right center;
+    transform: rotateY(calc(var(--peel-progress) * 180deg));
+    transition: none;
+}
+
+/* Snap back animation */
+.page-current.peeling-snap-back.peel-left {
+    transform-origin: left center;
+    transform: rotateY(0deg);
+    transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.page-current.peeling-snap-back.peel-right {
+    transform-origin: right center;
+    transform: rotateY(0deg);
+    transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Page peel shadow effect for right peel */
+.page-current.peeling.peel-left::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(0,0,0,0.1) calc(var(--peel-progress) * 50%),
+        rgba(0,0,0,0.3) calc(var(--peel-progress) * 100%)
+    );
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Page peel shadow effect for left peel */
+.page-current.peeling.peel-right::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        270deg,
+        transparent 0%,
+        rgba(0,0,0,0.1) calc(var(--peel-progress) * 50%),
+        rgba(0,0,0,0.3) calc(var(--peel-progress) * 100%)
+    );
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Reveal pages during peel animation */
+/* When peeling left (next page), show the next page */
+.book-container:has(.page-current.peeling.peel-left) .page-next {
+    opacity: calc(var(--peel-progress) * 1);
+    z-index: 1;
+    pointer-events: none; /* Prevent interaction during peel */
+}
+
+/* When peeling right (previous page), show the previous page */
+.book-container:has(.page-current.peeling.peel-right) .page-prev {
+    opacity: calc(var(--peel-progress) * 1);
+    z-index: 1;
+    pointer-events: none; /* Prevent interaction during peel */
+}
+
+/* Fallback for browsers that don't support :has() */
+@supports not selector(:has(*)) {
+    /* Use direct class targeting on container */
+    .book-container.showing-next .page-next {
+        opacity: calc(var(--peel-progress) * 1);
+        z-index: 1;
+        pointer-events: none;
+    }
+
+    .book-container.showing-prev .page-prev {
+        opacity: calc(var(--peel-progress) * 1);
+        z-index: 1;
+        pointer-events: none;
+    }
+}
+
+/* Peel corner indicator for right peel */
+.page-current.peeling.peel-left::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: calc(var(--peel-progress) * 60px);
+    height: calc(var(--peel-progress) * 60px);
+    background: linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(0,0,0,0.1) 100%);
+    clip-path: polygon(100% 0%, 0% 100%, 100% 100%);
+    z-index: 2;
+    transition: none;
+}
+
+/* Peel corner indicator for left peel */
+.page-current.peeling.peel-right::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: calc(var(--peel-progress) * 60px);
+    height: calc(var(--peel-progress) * 60px);
+    background: linear-gradient(45deg, rgba(255,255,255,0.8) 0%, rgba(0,0,0,0.1) 100%);
+    clip-path: polygon(0% 0%, 0% 100%, 100% 100%);
+    z-index: 2;
+    transition: none;
+}
+
+/* Dark mode corner indicators */
+.dark .page-current.peeling.peel-right::before,
+.dark .page-current.peeling.peel-left::before {
+    background: linear-gradient(135deg, rgba(31,41,55,0.8) 0%, rgba(0,0,0,0.2) 100%);
 }

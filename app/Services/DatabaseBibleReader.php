@@ -791,6 +791,10 @@ class DatabaseBibleReader implements BibleReaderInterface
             $cleanText = preg_replace('/<milestone[^>]*type="x-p"[^>]*>/i', '¶', $cleanText);
         }
 
+        // Handle Red Letter text (Jesus' words) - convert to styled spans
+        $cleanText = preg_replace('/<q[^>]*who="Jesus"[^>]*>/i', '<span class="text-red-600 dark:text-red-400 font-medium">', $cleanText);
+        $cleanText = str_replace('</q>', '</span>', $cleanText);
+
         // Remove other OSIS tags but keep content
         $cleanText = preg_replace('/<w[^>]*>(.*?)<\/w>/i', '$1', $cleanText);
         $cleanText = preg_replace('/<transChange[^>]*>(.*?)<\/transChange>/i', '$1', $cleanText);

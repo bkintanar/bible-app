@@ -7,7 +7,10 @@
 
     {{-- MAIN BOOK CONTENT AREA --}}
     <!-- Main Content - Scrollable -->
-    <div class="flex-1 overflow-hidden book-container">
+    <div class="flex-1 overflow-hidden book-container"
+         data-prev-url="{{ $chapterNumber > 1 ? '/' . $bookOsisId . '/' . ($chapterNumber - 1) : '' }}"
+         data-next-url="{{ $chapterNumber < ($chapters->max('chapter_number') ?? 0) ? '/' . $bookOsisId . '/' . ($chapterNumber + 1) : '' }}"
+         style="--peel-progress: 0;">
         <!-- Previous Chapter (Preloaded) -->
         <div class="page page-prev absolute inset-0 h-full overflow-y-auto" style="z-index: 0;">
             <div class="book-spine-shadow"></div>
@@ -35,19 +38,18 @@
                                                             @endif
 
                                                             @if($verse['verse_number'] === 1)
-                                                                <div class="mb-2 text-gray-900 dark:text-gray-100 leading-relaxed {{ $this->getFontSizeClass() }} font-serif" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.7; letter-spacing: 0.01em;">
-                                                                    <span class="text-gray-700 dark:text-gray-300 font-serif" style="float: left; font-size: 4rem; line-height: 3.2rem; margin-right: 0.5rem; margin-top: 0rem; font-weight: bold;">{{ $chapterNumber - 1 }}</span><span class="inline">{!! strip_tags($verse['text'], '<em><strong><sup><sub>') !!}</span>
+                                                                <div class="mb-2 text-gray-900 dark:text-gray-100 leading-relaxed {{ $this->getFontSizeClass() }} font-serif verse-content" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.7; letter-spacing: 0.01em;">
+                                                                    <span class="text-gray-700 dark:text-gray-300 font-serif" style="float: left; font-size: 4rem; line-height: 3.2rem; margin-right: 0.5rem; margin-top: 0rem; font-weight: bold;">{{ $chapterNumber - 1 }}</span><span class="inline">{!! strip_tags($verse['text'], '<em><strong><sup><sub><span>') !!}</span>
                                                                 </div>
                                                             @else
-                                                                <div class="mb-2 text-gray-900 dark:text-gray-100 leading-relaxed {{ $this->getFontSizeClass() }} font-serif" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.7; letter-spacing: 0.01em;">
-                                                                    <span class="text-xs font-medium text-gray-600 dark:text-gray-400 mr-2 align-super font-serif">{{ $verse['verse_number'] }}</span>
-                                                                    {!! strip_tags($verse['text'], '<em><strong><sup><sub>') !!}
+                                                                <div class="mb-2 text-gray-900 dark:text-gray-100 leading-relaxed {{ $this->getFontSizeClass() }} font-serif verse-content" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.7; letter-spacing: 0.01em;">
+                                                                    <span class="verse-number text-xs font-medium text-gray-600 dark:text-gray-400 align-super font-serif">{{ $verse['verse_number'] }}</span>{!! strip_tags($verse['text'], '<em><strong><sup><sub><span>') !!}
                                                                 </div>
                                                             @endif
                                                         @endforeach
                                                     @else
                                                         <!-- Bible-style paragraph formatting -->
-                                                        <div class="mb-6 text-gray-900 dark:text-gray-100 leading-relaxed {{ $this->getFontSizeClass() }} text-justify font-serif {{ $loop->first ? '' : 'first-line:indent-8' }} after:content-[''] after:table after:clear-both" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.8; letter-spacing: 0.01em;">
+                                                        <div class="mb-6 text-gray-900 dark:text-gray-100 leading-relaxed {{ $this->getFontSizeClass() }} text-justify font-serif {{ $loop->first ? '' : 'first-line:indent-8' }} after:content-[''] after:table after:clear-both verse-content" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.8; letter-spacing: 0.01em;">
                                                             @php $titlesDisplayed = false; @endphp
                                                             @foreach($paragraph['verses'] as $verse)
                                                                 @if(!$titlesDisplayed && isset($verse['chapter_titles']) && !empty($verse['chapter_titles']))
@@ -58,19 +60,18 @@
                                                                 @endif
 
                                                                 @if($verse['verse_number'] === 1)
-                                                                    <span class="text-gray-700 dark:text-gray-300 font-serif" style="float: left; font-size: 4rem; line-height: 3.2rem; margin-right: 0.5rem; margin-top: 0rem; font-weight: bold;">{{ $chapterNumber - 1 }}</span><span class="inline">{!! strip_tags($verse['text'], '<em><strong><sup><sub>') !!}</span>
+                                                                    <span class="text-gray-700 dark:text-gray-300 font-serif" style="float: left; font-size: 4rem; line-height: 3.2rem; margin-right: 0.5rem; margin-top: 0rem; font-weight: bold;">{{ $chapterNumber - 1 }}</span><span class="inline">{!! strip_tags($verse['text'], '<em><strong><sup><sub><span>') !!}</span>
                                                                 @else
                                                                     <span class="inline">
-                                                                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 mr-2 align-super font-serif">{{ $verse['verse_number'] }}</span>
-                                                                        {!! strip_tags($verse['text'], '<em><strong><sup><sub>') !!}
+                                                                        <span class="verse-number text-xs font-medium text-gray-500 dark:text-gray-400 align-super font-serif">{{ $verse['verse_number'] }}</span>{!! strip_tags($verse['text'], '<em><strong><sup><sub><span>') !!}
                                                                     </span>
                                                                 @endif
                                                             @endforeach
                                                         </div>
                                                     @endif
                                                 @elseif(isset($paragraph['combined_text']))
-                                                    <div class="mb-6 text-gray-900 dark:text-gray-100 leading-relaxed {{ $this->getFontSizeClass() }} text-justify font-serif {{ $loop->first ? '' : 'first-line:indent-8' }}" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.8; letter-spacing: 0.01em;">
-                                                        {!! strip_tags($paragraph['combined_text'], '<em><strong><sup><sub>') !!}
+                                                    <div class="mb-6 text-gray-900 dark:text-gray-100 leading-relaxed {{ $this->getFontSizeClass() }} text-justify font-serif {{ $loop->first ? '' : 'first-line:indent-8' }} verse-content" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.8; letter-spacing: 0.01em;">
+                                                        {!! strip_tags($paragraph['combined_text'], '<em><strong><sup><sub><span>') !!}
                                                     </div>
                                                 @endif
                                             </div>
@@ -153,9 +154,9 @@
                                                     </a>
                                                     <div class="text-gray-900 dark:text-gray-100 leading-relaxed text-lg font-serif" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.7;">
                                                         @php
-                                                            $text = strip_tags($result['text'], '<em><strong><sup><sub>');
+                                                            $text = strip_tags($result['text'], '<em><strong><sup><sub><span><mark>');
                                                             if (!empty($searchQuery)) {
-                                                                $text = str_ireplace($searchQuery, '<mark class="bg-yellow-300 text-black px-1">' . $searchQuery . '</mark>', $text);
+                                                                $text = str_ireplace($searchQuery, '<mark>' . $searchQuery . '</mark>', $text);
                                                             }
                                                         @endphp
                                                         {!! $text !!}
@@ -206,20 +207,19 @@
 
                                                         @if($verse['verse_number'] === 1)
                                                             <!-- Proper drop cap implementation -->
-                                                            <div class="mb-2 text-gray-900 dark:text-gray-100 leading-relaxed {{ $this->getFontSizeClass() }} font-serif" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.7; letter-spacing: 0.01em;">
-                                                                <span class="text-gray-700 dark:text-gray-300 font-serif" style="float: left; font-size: 4rem; line-height: 3.2rem; margin-right: 0.5rem; margin-top: 0rem; font-weight: bold;">{{ $chapterNumber }}</span><span class="inline" id="verse-{{ $verse['verse_number'] }}">{!! strip_tags($verse['text'], '<em><strong><sup><sub>') !!}</span>
+                                                            <div class="mb-2 text-gray-900 dark:text-gray-100 leading-relaxed {{ $this->getFontSizeClass() }} font-serif verse-content" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.7; letter-spacing: 0.01em;">
+                                                                <span class="text-gray-700 dark:text-gray-300 font-serif" style="float: left; font-size: 4rem; line-height: 3.2rem; margin-right: 0.5rem; margin-top: 0rem; font-weight: bold;">{{ $chapterNumber }}</span><span class="inline" id="verse-{{ $verse['verse_number'] }}">{!! strip_tags($verse['text'], '<em><strong><sup><sub><span>') !!}</span>
                                                             </div>
                                                         @else
-                                                            <div class="mb-2 text-gray-900 dark:text-gray-100 leading-relaxed {{ $this->getFontSizeClass() }} font-serif" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.7; letter-spacing: 0.01em;" id="verse-{{ $verse['verse_number'] }}">
+                                                            <div class="mb-2 text-gray-900 dark:text-gray-100 leading-relaxed {{ $this->getFontSizeClass() }} font-serif verse-content" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.7; letter-spacing: 0.01em;" id="verse-{{ $verse['verse_number'] }}">
                                                                 <!-- Regular verse number for other verses -->
-                                                                <span class="text-xs font-medium text-gray-600 dark:text-gray-400 mr-2 align-super font-serif">{{ $verse['verse_number'] }}</span>
-                                                                {!! strip_tags($verse['text'], '<em><strong><sup><sub>') !!}
+                                                                <span class="verse-number text-xs font-medium text-gray-600 dark:text-gray-400 align-super font-serif">{{ $verse['verse_number'] }}</span>{!! strip_tags($verse['text'], '<em><strong><sup><sub><span>') !!}
                                                             </div>
                                                         @endif
                                                     @endforeach
                                                 @else
                                                     <!-- Bible-style paragraph formatting -->
-                                                    <div class="mb-6 text-gray-900 dark:text-gray-100 leading-relaxed {{ $this->getFontSizeClass() }} text-justify font-serif {{ $loop->first ? '' : 'first-line:indent-8' }} after:content-[''] after:table after:clear-both" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.8; letter-spacing: 0.01em;">
+                                                    <div class="mb-6 text-gray-900 dark:text-gray-100 leading-relaxed {{ $this->getFontSizeClass() }} text-justify font-serif {{ $loop->first ? '' : 'first-line:indent-8' }} after:content-[''] after:table after:clear-both verse-content" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.8; letter-spacing: 0.01em;">
                                                         @php
                                                             $titlesDisplayed = false;
                                                         @endphp
@@ -234,12 +234,11 @@
 
                                                             @if($verse['verse_number'] === 1)
                                                                 <!-- Proper drop cap implementation -->
-                                                                <span class="text-gray-700 dark:text-gray-300 font-serif" style="float: left; font-size: 4rem; line-height: 3.2rem; margin-right: 0.5rem; margin-top: 0rem; font-weight: bold;">{{ $chapterNumber }}</span><span class="inline" id="verse-{{ $verse['verse_number'] }}">{!! strip_tags($verse['text'], '<em><strong><sup><sub>') !!}</span>
+                                                                <span class="text-gray-700 dark:text-gray-300 font-serif" style="float: left; font-size: 4rem; line-height: 3.2rem; margin-right: 0.5rem; margin-top: 0rem; font-weight: bold;">{{ $chapterNumber }}</span><span class="inline" id="verse-{{ $verse['verse_number'] }}">{!! strip_tags($verse['text'], '<em><strong><sup><sub><span>') !!}</span>
                                                             @else
                                                                 <span class="inline" id="verse-{{ $verse['verse_number'] }}">
                                                                     <!-- Regular verse number for other verses -->
-                                                                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400 mr-2 align-super font-serif">{{ $verse['verse_number'] }}</span>
-                                                                    {!! strip_tags($verse['text'], '<em><strong><sup><sub>') !!}
+                                                                    <span class="verse-number text-xs font-medium text-gray-500 dark:text-gray-400 align-super font-serif">{{ $verse['verse_number'] }}</span>{!! strip_tags($verse['text'], '<em><strong><sup><sub><span>') !!}
                                                                 </span>
                                                             @endif
                                                             @if(!$loop->last) @endif
@@ -248,8 +247,8 @@
                                                 @endif
                                             @elseif(isset($paragraph['combined_text']))
                                                 <!-- Combined paragraph text (fallback) -->
-                                                <div class="mb-6 text-gray-900 dark:text-gray-100 leading-relaxed {{ $this->getFontSizeClass() }} text-justify font-serif {{ $loop->first ? '' : 'first-line:indent-8' }}" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.8; letter-spacing: 0.01em;">
-                                                    {!! strip_tags($paragraph['combined_text'], '<em><strong><sup><sub>') !!}
+                                                <div class="mb-6 text-gray-900 dark:text-gray-100 leading-relaxed {{ $this->getFontSizeClass() }} text-justify font-serif {{ $loop->first ? '' : 'first-line:indent-8' }} verse-content" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.8; letter-spacing: 0.01em;">
+                                                    {!! strip_tags($paragraph['combined_text'], '<em><strong><sup><sub><span>') !!}
                                                 </div>
                                             @endif
                                         </div>
@@ -289,19 +288,18 @@
                                                             @endif
 
                                                             @if($verse['verse_number'] === 1)
-                                                                <div class="mb-2 text-gray-900 dark:text-gray-100 leading-relaxed {{ $this->getFontSizeClass() }} font-serif" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.7; letter-spacing: 0.01em;">
-                                                                    <span class="text-gray-700 dark:text-gray-300 font-serif" style="float: left; font-size: 4rem; line-height: 3.2rem; margin-right: 0.5rem; margin-top: 0rem; font-weight: bold;">{{ $chapterNumber + 1 }}</span><span class="inline">{!! strip_tags($verse['text'], '<em><strong><sup><sub>') !!}</span>
+                                                                <div class="mb-2 text-gray-900 dark:text-gray-100 leading-relaxed {{ $this->getFontSizeClass() }} font-serif verse-content" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.7; letter-spacing: 0.01em;">
+                                                                    <span class="text-gray-700 dark:text-gray-300 font-serif" style="float: left; font-size: 4rem; line-height: 3.2rem; margin-right: 0.5rem; margin-top: 0rem; font-weight: bold;">{{ $chapterNumber + 1 }}</span><span class="inline">{!! strip_tags($verse['text'], '<em><strong><sup><sub><span>') !!}</span>
                                                                 </div>
                                                             @else
-                                                                <div class="mb-2 text-gray-900 dark:text-gray-100 leading-relaxed {{ $this->getFontSizeClass() }} font-serif" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.7; letter-spacing: 0.01em;">
-                                                                    <span class="text-xs font-medium text-gray-600 dark:text-gray-400 mr-2 align-super font-serif">{{ $verse['verse_number'] }}</span>
-                                                                    {!! strip_tags($verse['text'], '<em><strong><sup><sub>') !!}
+                                                                <div class="mb-2 text-gray-900 dark:text-gray-100 leading-relaxed {{ $this->getFontSizeClass() }} font-serif verse-content" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.7; letter-spacing: 0.01em;">
+                                                                    <span class="verse-number text-xs font-medium text-gray-600 dark:text-gray-400 align-super font-serif">{{ $verse['verse_number'] }}</span>{!! strip_tags($verse['text'], '<em><strong><sup><sub><span>') !!}
                                                                 </div>
                                                             @endif
                                                         @endforeach
                                                     @else
                                                         <!-- Bible-style paragraph formatting -->
-                                                        <div class="mb-6 text-gray-900 dark:text-gray-100 leading-relaxed {{ $this->getFontSizeClass() }} text-justify font-serif {{ $loop->first ? '' : 'first-line:indent-8' }} after:content-[''] after:table after:clear-both" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.8; letter-spacing: 0.01em;">
+                                                        <div class="mb-6 text-gray-900 dark:text-gray-100 leading-relaxed {{ $this->getFontSizeClass() }} text-justify font-serif {{ $loop->first ? '' : 'first-line:indent-8' }} after:content-[''] after:table after:clear-both verse-content" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.8; letter-spacing: 0.01em;">
                                                             @php $titlesDisplayed = false; @endphp
                                                             @foreach($paragraph['verses'] as $verse)
                                                                 @if(!$titlesDisplayed && isset($verse['chapter_titles']) && !empty($verse['chapter_titles']))
@@ -312,19 +310,18 @@
                                                                 @endif
 
                                                                 @if($verse['verse_number'] === 1)
-                                                                    <span class="text-gray-700 dark:text-gray-300 font-serif" style="float: left; font-size: 4rem; line-height: 3.2rem; margin-right: 0.5rem; margin-top: 0rem; font-weight: bold;">{{ $chapterNumber + 1 }}</span><span class="inline">{!! strip_tags($verse['text'], '<em><strong><sup><sub>') !!}</span>
+                                                                    <span class="text-gray-700 dark:text-gray-300 font-serif" style="float: left; font-size: 4rem; line-height: 3.2rem; margin-right: 0.5rem; margin-top: 0rem; font-weight: bold;">{{ $chapterNumber + 1 }}</span><span class="inline">{!! strip_tags($verse['text'], '<em><strong><sup><sub><span>') !!}</span>
                                                                 @else
                                                                     <span class="inline">
-                                                                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 mr-2 align-super font-serif">{{ $verse['verse_number'] }}</span>
-                                                                        {!! strip_tags($verse['text'], '<em><strong><sup><sub>') !!}
+                                                                        <span class="verse-number text-xs font-medium text-gray-500 dark:text-gray-400 align-super font-serif">{{ $verse['verse_number'] }}</span>{!! strip_tags($verse['text'], '<em><strong><sup><sub><span>') !!}
                                                                     </span>
                                                                 @endif
                                                             @endforeach
                                                         </div>
                                                     @endif
                                                 @elseif(isset($paragraph['combined_text']))
-                                                    <div class="mb-6 text-gray-900 dark:text-gray-100 leading-relaxed {{ $this->getFontSizeClass() }} text-justify font-serif {{ $loop->first ? '' : 'first-line:indent-8' }}" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.8; letter-spacing: 0.01em;">
-                                                        {!! strip_tags($paragraph['combined_text'], '<em><strong><sup><sub>') !!}
+                                                    <div class="mb-6 text-gray-900 dark:text-gray-100 leading-relaxed {{ $this->getFontSizeClass() }} text-justify font-serif {{ $loop->first ? '' : 'first-line:indent-8' }} verse-content" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.8; letter-spacing: 0.01em;">
+                                                        {!! strip_tags($paragraph['combined_text'], '<em><strong><sup><sub><span>') !!}
                                                     </div>
                                                 @endif
                                             </div>
@@ -367,9 +364,10 @@
 
     {{-- FLOATING NAVIGATION BUTTONS --}}
     <!-- Floating Previous Chapter Button (Left Side) -->
+    @if(false)
     @if($chapterNumber > 1)
         <div class="fixed left-0 top-1/2 transform -translate-y-1/2 z-40">
-            <button onclick="flipPage('prev', '/{{ $bookOsisId }}/{{ $chapterNumber - 1 }}')"
+                                        <button onclick="navigateToChapter('/{{ $bookOsisId }}/{{ $chapterNumber - 1 }}')"
                class="bg-blue-600 hover:bg-blue-700 dark:bg-gray-700 dark:hover:bg-gray-600 text-white w-[30px] h-[60px] shadow-lg dark:shadow-gray-900 transition-all duration-200 hover:scale-110 flex items-center justify-center group"
                title="Previous Chapter: {{ $chapterNumber - 1 }}">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -378,11 +376,13 @@
             </button>
         </div>
     @endif
+    @endif
 
     <!-- Floating Next Chapter Button (Right Side) -->
+    @if(false)
     @if($chapterNumber < ($chapters->max('chapter_number') ?? 0))
         <div class="fixed right-0 top-1/2 transform -translate-y-1/2 z-40">
-            <button onclick="flipPage('next', '/{{ $bookOsisId }}/{{ $chapterNumber + 1 }}')"
+                                        <button onclick="navigateToChapter('/{{ $bookOsisId }}/{{ $chapterNumber + 1 }}')"
                class="bg-blue-600 hover:bg-blue-700 dark:bg-gray-700 dark:hover:bg-gray-600 text-white w-[30px] h-[60px] shadow-lg dark:shadow-gray-900 transition-all duration-200 hover:scale-110 flex items-center justify-center group"
                title="Next Chapter: {{ $chapterNumber + 1 }}">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -390,6 +390,7 @@
                 </svg>
             </button>
         </div>
+    @endif
     @endif
 
     {{-- BOOK/CHAPTER SELECTOR POPUP --}}
