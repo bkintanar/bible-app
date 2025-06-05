@@ -38,7 +38,7 @@ class BibleBook extends Component
             return strtolower($book['osis_id']) === strtolower($bookOsisId);
         });
 
-        if (!$this->currentBook) {
+        if (! $this->currentBook) {
             dd([
                 'error' => 'Book not found',
                 'requested_book_osis_id' => $bookOsisId,
@@ -97,16 +97,16 @@ class BibleBook extends Component
 
     public function toggleSearch()
     {
-        $this->showSearch = !$this->showSearch;
-        if (!$this->showSearch) {
+        $this->showSearch = ! $this->showSearch;
+        if (! $this->showSearch) {
             $this->searchQuery = '';
         }
     }
 
     public function search()
     {
-        if (!empty($this->searchQuery)) {
-            return redirect("/search?q=" . urlencode($this->searchQuery));
+        if (! empty($this->searchQuery)) {
+            return redirect('/search?q=' . urlencode($this->searchQuery));
         }
     }
 
@@ -126,7 +126,7 @@ class BibleBook extends Component
                 'bookOsisId' => $this->bookOsisId,
             ],
             'url' => request()->url(),
-            'timestamp' => now()
+            'timestamp' => now(),
         ];
 
         // Store for 30 days

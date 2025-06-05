@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class WordElement extends Model
 {
@@ -47,7 +47,7 @@ class WordElement extends Model
      */
     public function hasStrongsData(): bool
     {
-        return !empty($this->strongs_number);
+        return ! empty($this->strongs_number);
     }
 
     /**
@@ -92,7 +92,7 @@ class WordElement extends Model
             return [
                 'language' => 'Hebrew',
                 'code' => $code,
-                'description' => $this->getHebrewMorphologyDescription($code)
+                'description' => $this->getHebrewMorphologyDescription($code),
             ];
         }
 
@@ -101,14 +101,14 @@ class WordElement extends Model
             return [
                 'language' => 'Greek',
                 'code' => $code,
-                'description' => $this->getGreekMorphologyDescription($code)
+                'description' => $this->getGreekMorphologyDescription($code),
             ];
         }
 
         return [
             'language' => 'Unknown',
             'code' => $code,
-            'description' => 'Unknown morphology'
+            'description' => 'Unknown morphology',
         ];
     }
 

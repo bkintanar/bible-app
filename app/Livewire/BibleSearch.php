@@ -78,7 +78,7 @@ class BibleSearch extends Component
             $this->hasMoreResults = $searchResults['has_more_results'] ?? false;
             $this->searchInfo = [
                 'count' => $searchResults['total_found'] ?? 0,
-                'time_ms' => $searchResults['search_time_ms'] ?? 0
+                'time_ms' => $searchResults['search_time_ms'] ?? 0,
             ];
         } else {
             $this->results = [];

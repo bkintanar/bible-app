@@ -2,12 +2,12 @@
 
 namespace App\Services;
 
-use App\Models\StrongsLexicon;
 use App\Models\WordElement;
+use App\Models\StrongsLexicon;
 use App\Models\WordRelationship;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Database\Eloquent\Collection;
 
 class StrongsService
 {
@@ -55,7 +55,7 @@ class StrongsService
                 'formatted_text' => $verse->formatted_text,
                 'word_text' => $element->word_text,
                 'word_order' => $element->word_order,
-                'reference' => "{$book->name} {$chapter->chapter_number}:{$verse->verse_number}"
+                'reference' => "{$book->name} {$chapter->chapter_number}:{$verse->verse_number}",
             ];
         })->toArray();
     }
@@ -67,7 +67,7 @@ class StrongsService
     {
         $lexicon = $this->getStrongsDetails($strongsNumber);
 
-        if (!$lexicon) {
+        if (! $lexicon) {
             return [];
         }
 
@@ -89,7 +89,7 @@ class StrongsService
             'relationships' => $relationships,
             'verses' => $verses,
             'morphology' => $morphology,
-            'study_notes' => $this->generateStudyNotes($lexicon, $usage, $relationships)
+            'study_notes' => $this->generateStudyNotes($lexicon, $usage, $relationships),
         ];
     }
 
@@ -139,7 +139,7 @@ class StrongsService
                 'total_occurrences' => $totalOccurrences,
                 'book_distribution' => $bookDistribution,
                 'testament_distribution' => $testamentStats,
-                'word_variations' => $wordVariations
+                'word_variations' => $wordVariations,
             ];
         });
 
@@ -174,7 +174,7 @@ class StrongsService
                     })->filter()->values(),
                     'incoming' => $targetRels->get($type, collect())->map(function ($rel) {
                         return $rel->sourceLexicon;
-                    })->filter()->values()
+                    })->filter()->values(),
                 ];
             }
 
@@ -202,7 +202,7 @@ class StrongsService
                 return [
                     'code' => $item->morphology_code,
                     'count' => $item->count,
-                    'info' => $element->morphology_info
+                    'info' => $element->morphology_info,
                 ];
             })->toArray();
         });
@@ -220,12 +220,12 @@ class StrongsService
             $notes[] = [
                 'type' => 'usage',
                 'title' => 'Biblical Usage',
-                'content' => "This word appears {$usage['total_occurrences']} times in the Bible."
+                'content' => "This word appears {$usage['total_occurrences']} times in the Bible.",
             ];
         }
 
         // Testament distribution note
-        if (!empty($usage['testament_distribution'])) {
+        if (! empty($usage['testament_distribution'])) {
             $testamentInfo = collect($usage['testament_distribution'])->map(function ($item) {
                 return "{$item->name}: {$item->count} times";
             })->join(', ');
@@ -233,12 +233,12 @@ class StrongsService
             $notes[] = [
                 'type' => 'distribution',
                 'title' => 'Testament Distribution',
-                'content' => $testamentInfo
+                'content' => $testamentInfo,
             ];
         }
 
         // Most frequent books
-        if (!empty($usage['book_distribution'])) {
+        if (! empty($usage['book_distribution'])) {
             $topBooks = array_slice($usage['book_distribution'], 0, 3);
             $bookInfo = collect($topBooks)->map(function ($book) {
                 return "{$book->name} ({$book->count})";
@@ -247,16 +247,16 @@ class StrongsService
             $notes[] = [
                 'type' => 'frequency',
                 'title' => 'Most Frequent in',
-                'content' => $bookInfo
+                'content' => $bookInfo,
             ];
         }
 
         // Etymology note
-        if (!empty($lexicon->etymology)) {
+        if (! empty($lexicon->etymology)) {
             $notes[] = [
                 'type' => 'etymology',
                 'title' => 'Etymology',
-                'content' => $lexicon->etymology
+                'content' => $lexicon->etymology,
             ];
         }
 
@@ -266,13 +266,17 @@ class StrongsService
 
         if ($synonymCount > 0 || $antonymCount > 0) {
             $relatedInfo = [];
-            if ($synonymCount > 0) $relatedInfo[] = "{$synonymCount} synonyms";
-            if ($antonymCount > 0) $relatedInfo[] = "{$antonymCount} antonyms";
+            if ($synonymCount > 0) {
+                $relatedInfo[] = "{$synonymCount} synonyms";
+            }
+            if ($antonymCount > 0) {
+                $relatedInfo[] = "{$antonymCount} antonyms";
+            }
 
             $notes[] = [
                 'type' => 'relationships',
                 'title' => 'Word Relationships',
-                'content' => 'This word has ' . implode(' and ', $relatedInfo) . ' in the lexicon.'
+                'content' => 'This word has ' . implode(' and ', $relatedInfo) . ' in the lexicon.',
             ];
         }
 
@@ -288,7 +292,7 @@ class StrongsService
             'root' => null,
             'siblings' => [],
             'children' => [],
-            'variants' => []
+            'variants' => [],
         ];
 
         // Find root word
@@ -341,11 +345,13 @@ class StrongsService
 
         foreach ($strongsNumbers as $number) {
             $lexicon = $this->getStrongsDetails($number);
-            if (!$lexicon) continue;
+            if (! $lexicon) {
+                continue;
+            }
 
             // Group by part of speech
             $pos = $lexicon->part_of_speech ?? 'unknown';
-            if (!isset($groups['part_of_speech'][$pos])) {
+            if (! isset($groups['part_of_speech'][$pos])) {
                 $groups['part_of_speech'][$pos] = [];
             }
             $groups['part_of_speech'][$pos][] = $lexicon;
@@ -354,7 +360,7 @@ class StrongsService
             $keywords = explode(' ', strtolower($lexicon->short_definition));
             foreach ($keywords as $keyword) {
                 if (strlen($keyword) > 3) { // Skip short words
-                    if (!isset($groups['semantic'][$keyword])) {
+                    if (! isset($groups['semantic'][$keyword])) {
                         $groups['semantic'][$keyword] = [];
                     }
                     $groups['semantic'][$keyword][] = $lexicon;
@@ -388,17 +394,17 @@ class StrongsService
                             return [
                                 'target' => $rel->target_strongs,
                                 'type' => $rel->relationship_type,
-                                'strength' => $rel->strength
+                                'strength' => $rel->strength,
                             ];
                         }),
                         'incoming' => $lexicon->targetRelationships->map(function ($rel) {
                             return [
                                 'source' => $rel->source_strongs,
                                 'type' => $rel->relationship_type,
-                                'strength' => $rel->strength
+                                'strength' => $rel->strength,
                             ];
-                        })
-                    ]
+                        }),
+                    ],
                 ];
             });
 

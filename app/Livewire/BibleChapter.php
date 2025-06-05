@@ -60,7 +60,7 @@ class BibleChapter extends Component
             return strtolower($book['osis_id']) === strtolower($bookOsisId);
         });
 
-        if (!$this->currentBook) {
+        if (! $this->currentBook) {
             dd([
                 'error' => 'Book not found',
                 'requested_book_osis_id' => $bookOsisId,
@@ -88,7 +88,7 @@ class BibleChapter extends Component
             $this->verses = $individualVerses->map(function ($verse) {
                 return [
                     'verses' => [$verse],
-                    'type' => 'individual_verse'
+                    'type' => 'individual_verse',
                 ];
             });
         } else {
@@ -125,9 +125,9 @@ class BibleChapter extends Component
 
         // Extract chapter title from first paragraph's first verse if available
         $firstParagraph = $this->verses->first();
-        if ($firstParagraph && isset($firstParagraph['verses']) && !empty($firstParagraph['verses'])) {
+        if ($firstParagraph && isset($firstParagraph['verses']) && ! empty($firstParagraph['verses'])) {
             $firstVerse = $firstParagraph['verses'][0];
-            if (isset($firstVerse['chapter_titles']) && !empty($firstVerse['chapter_titles'])) {
+            if (isset($firstVerse['chapter_titles']) && ! empty($firstVerse['chapter_titles'])) {
                 // Extract the title text from the HTML
                 if (preg_match('/<div[^>]*>(.*?)<\/div>/', $firstVerse['chapter_titles'], $matches)) {
                     $this->chapterTitle = ['title_text' => $matches[1]];
@@ -143,6 +143,8 @@ class BibleChapter extends Component
 
     /**
      * Load previous and next chapter content for book flip preloading
+     * @param mixed $bookOsisId
+     * @param mixed $chapterNumber
      */
     private function loadAdjacentChapters($bookOsisId, $chapterNumber)
     {
@@ -160,7 +162,7 @@ class BibleChapter extends Component
                     $this->previousChapterVerses = $individualVerses->map(function ($verse) {
                         return [
                             'verses' => [$verse],
-                            'type' => 'individual_verse'
+                            'type' => 'individual_verse',
                         ];
                     });
                 } else {
@@ -168,19 +170,19 @@ class BibleChapter extends Component
                 }
 
                 // Debug: Log first verse text
-                if (!empty($this->previousChapterVerses) && isset($this->previousChapterVerses[0]['verses'][0]['text'])) {
+                if (! empty($this->previousChapterVerses) && isset($this->previousChapterVerses[0]['verses'][0]['text'])) {
                     $firstText = substr(strip_tags($this->previousChapterVerses[0]['verses'][0]['text']), 0, 30);
                     \Log::info("PREV: First verse loaded: {$firstText}...");
                 } else {
-                    \Log::info("PREV: No verses loaded");
+                    \Log::info('PREV: No verses loaded');
                 }
 
             } catch (\Exception $e) {
-                \Log::error("PREV: Error loading: " . $e->getMessage());
+                \Log::error('PREV: Error loading: ' . $e->getMessage());
                 $this->previousChapterVerses = collect();
             }
         } else {
-            \Log::info("PREV: No previous chapter (at chapter 1)");
+            \Log::info('PREV: No previous chapter (at chapter 1)');
             $this->previousChapterVerses = collect();
         }
 
@@ -199,7 +201,7 @@ class BibleChapter extends Component
                     $this->nextChapterVerses = $individualVerses->map(function ($verse) {
                         return [
                             'verses' => [$verse],
-                            'type' => 'individual_verse'
+                            'type' => 'individual_verse',
                         ];
                     });
                 } else {
@@ -207,45 +209,45 @@ class BibleChapter extends Component
                 }
 
                 // Debug: Log first verse text
-                if (!empty($this->nextChapterVerses) && isset($this->nextChapterVerses[0]['verses'][0]['text'])) {
+                if (! empty($this->nextChapterVerses) && isset($this->nextChapterVerses[0]['verses'][0]['text'])) {
                     $firstText = substr(strip_tags($this->nextChapterVerses[0]['verses'][0]['text']), 0, 30);
                     \Log::info("NEXT: First verse loaded: {$firstText}...");
                 } else {
-                    \Log::info("NEXT: No verses loaded");
+                    \Log::info('NEXT: No verses loaded');
                 }
 
             } catch (\Exception $e) {
-                \Log::error("NEXT: Error loading: " . $e->getMessage());
+                \Log::error('NEXT: Error loading: ' . $e->getMessage());
                 $this->nextChapterVerses = collect();
             }
         } else {
             // No next chapter exists
-            \Log::info("NEXT: No next chapter (at last chapter)");
+            \Log::info('NEXT: No next chapter (at last chapter)');
             $this->nextChapterVerses = collect();
         }
 
-        \Log::info("=== DEBUG: Finished loading adjacent chapters ===");
+        \Log::info('=== DEBUG: Finished loading adjacent chapters ===');
 
         // Additional debugging: Show what's actually in each variable
-        \Log::info("=== FINAL DEBUG: Variable contents ===");
+        \Log::info('=== FINAL DEBUG: Variable contents ===');
 
-        if (!empty($this->previousChapterVerses)) {
+        if (! empty($this->previousChapterVerses)) {
             $prevFirstText = $this->previousChapterVerses[0]['verses'][0]['text'] ?? 'No text';
             $prevFirstWords = substr(strip_tags($prevFirstText), 0, 50);
             \Log::info("Final previousChapterVerses first text: {$prevFirstWords}...");
         } else {
-            \Log::info("Final previousChapterVerses: EMPTY");
+            \Log::info('Final previousChapterVerses: EMPTY');
         }
 
-        if (!empty($this->nextChapterVerses)) {
+        if (! empty($this->nextChapterVerses)) {
             $nextFirstText = $this->nextChapterVerses[0]['verses'][0]['text'] ?? 'No text';
             $nextFirstWords = substr(strip_tags($nextFirstText), 0, 50);
             \Log::info("Final nextChapterVerses first text: {$nextFirstWords}...");
         } else {
-            \Log::info("Final nextChapterVerses: EMPTY");
+            \Log::info('Final nextChapterVerses: EMPTY');
         }
 
-        \Log::info("=== END FINAL DEBUG ===");
+        \Log::info('=== END FINAL DEBUG ===');
     }
 
     public function switchTranslation($translationKey)
@@ -270,7 +272,7 @@ class BibleChapter extends Component
             $this->verses = $individualVerses->map(function ($verse) {
                 return [
                     'verses' => [$verse],
-                    'type' => 'individual_verse'
+                    'type' => 'individual_verse',
                 ];
             });
         } else {
@@ -280,9 +282,9 @@ class BibleChapter extends Component
 
         // Extract chapter title from first paragraph's first verse if available
         $firstParagraph = $this->verses->first();
-        if ($firstParagraph && isset($firstParagraph['verses']) && !empty($firstParagraph['verses'])) {
+        if ($firstParagraph && isset($firstParagraph['verses']) && ! empty($firstParagraph['verses'])) {
             $firstVerse = $firstParagraph['verses'][0];
-            if (isset($firstVerse['chapter_titles']) && !empty($firstVerse['chapter_titles'])) {
+            if (isset($firstVerse['chapter_titles']) && ! empty($firstVerse['chapter_titles'])) {
                 // Extract the title text from the HTML
                 if (preg_match('/<div[^>]*>(.*?)<\/div>/', $firstVerse['chapter_titles'], $matches)) {
                     $this->chapterTitle = ['title_text' => $matches[1]];
@@ -310,8 +312,8 @@ class BibleChapter extends Component
 
     public function toggleSearch()
     {
-        $this->showSearch = !$this->showSearch;
-        if (!$this->showSearch) {
+        $this->showSearch = ! $this->showSearch;
+        if (! $this->showSearch) {
             $this->searchQuery = '';
             $this->searchResults = [];
             $this->searchStats = [];
@@ -322,14 +324,14 @@ class BibleChapter extends Component
 
     public function search()
     {
-        if (!empty($this->searchQuery)) {
+        if (! empty($this->searchQuery)) {
             $this->isSearching = true;
 
             // Store current chapter info for returning
             $this->returnToChapter = [
                 'book_osis_id' => $this->bookOsisId,
                 'chapter_number' => $this->chapterNumber,
-                'book_name' => $this->currentBook['name'] ?? $this->bookOsisId
+                'book_name' => $this->currentBook['name'] ?? $this->bookOsisId,
             ];
 
             // Use the BibleService to search for verses
@@ -339,7 +341,7 @@ class BibleChapter extends Component
             $this->searchStats = [
                 'total_found' => $searchData['total_found'] ?? 0,
                 'search_time_ms' => $searchData['search_time_ms'] ?? 0,
-                'query' => $this->searchQuery
+                'query' => $this->searchQuery,
             ];
 
             $this->isSearching = false;
@@ -425,10 +427,10 @@ class BibleChapter extends Component
             'route' => 'bible.chapter',
             'parameters' => [
                 'bookOsisId' => $this->bookOsisId,
-                'chapterNumber' => $this->chapterNumber
+                'chapterNumber' => $this->chapterNumber,
             ],
             'url' => request()->url(),
-            'timestamp' => now()
+            'timestamp' => now(),
         ];
 
         // Store for 30 days

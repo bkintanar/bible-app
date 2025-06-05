@@ -73,7 +73,7 @@ class SearchComponent extends Component
         $this->hasMoreResults = count($allResults) > $this->limit;
         $this->searchInfo = [
             'count' => count($allResults),
-            'time_ms' => rand(10, 100)
+            'time_ms' => rand(10, 100),
         ];
     }
 
@@ -87,7 +87,7 @@ class SearchComponent extends Component
                 'reference' => "Book {$i}:1",
                 'book_osis_id' => 'book1',
                 'chapter' => 1,
-                'text' => "This is mock search result #$i containing the word <mark>{$this->query}</mark> for testing purposes."
+                'text' => "This is mock search result #$i containing the word <mark>{$this->query}</mark> for testing purposes.",
             ];
         }
         return $mockResults;

@@ -2,13 +2,13 @@
 
 namespace App\Services;
 
-use App\Services\Contracts\BibleReaderInterface;
-use App\Services\Contracts\OsisParserInterface;
-use App\Services\Parsers\MilestoneOsisParser;
-use App\Services\Parsers\ContainedOsisParser;
-use DOMDocument;
 use DOMXPath;
+use DOMDocument;
 use Illuminate\Support\Collection;
+use App\Services\Parsers\ContainedOsisParser;
+use App\Services\Parsers\MilestoneOsisParser;
+use App\Services\Contracts\OsisParserInterface;
+use App\Services\Contracts\BibleReaderInterface;
 
 class OsisReader implements BibleReaderInterface
 {
@@ -81,7 +81,7 @@ class OsisReader implements BibleReaderInterface
                 'name' => $fullTitle,
                 'short_name' => $shortTitle,
                 'testament' => $testament,
-                'book_order' => $books->count() + 1 // Reindex after filtering
+                'book_order' => $books->count() + 1, // Reindex after filtering
             ]);
         }
 
@@ -142,7 +142,7 @@ class OsisReader implements BibleReaderInterface
             'title' => $titleNode ? $titleNode->textContent : 'Unknown',
             'description' => $descriptionNode ? $descriptionNode->textContent : '',
             'publisher' => $publisherNode ? $publisherNode->textContent : '',
-            'language' => $languageNode ? $languageNode->textContent : 'English'
+            'language' => $languageNode ? $languageNode->textContent : 'English',
         ];
     }
 
@@ -155,7 +155,7 @@ class OsisReader implements BibleReaderInterface
             'Gen', 'Exod', 'Lev', 'Num', 'Deut', 'Josh', 'Judg', 'Ruth', '1Sam', '2Sam',
             '1Kgs', '2Kgs', '1Chr', '2Chr', 'Ezra', 'Neh', 'Esth', 'Job', 'Ps', 'Prov',
             'Eccl', 'Song', 'Isa', 'Jer', 'Lam', 'Ezek', 'Dan', 'Hos', 'Joel', 'Amos',
-            'Obad', 'Jonah', 'Mic', 'Nah', 'Hab', 'Zeph', 'Hag', 'Zech', 'Mal'
+            'Obad', 'Jonah', 'Mic', 'Nah', 'Hab', 'Zeph', 'Hag', 'Zech', 'Mal',
         ];
 
         return in_array($osisId, $oldTestamentBooks) ? 'Old Testament' : 'New Testament';
@@ -293,7 +293,7 @@ class OsisReader implements BibleReaderInterface
             // "Acts 2" (chapter only)
             '/^([a-zA-Z\s]+)\s*(\d+)$/i',
             // "acts2" (chapter only)
-            '/^([a-zA-Z]+)(\d+)$/i'
+            '/^([a-zA-Z]+)(\d+)$/i',
         ];
 
         foreach ($patterns as $pattern) {
@@ -313,7 +313,7 @@ class OsisReader implements BibleReaderInterface
                             'chapter' => $chapter,
                             'start_verse' => $startVerse,
                             'end_verse' => $endVerse,
-                            'type' => 'verse_range'
+                            'type' => 'verse_range',
                         ];
                     } elseif ($startVerse) {
                         // Single verse
@@ -321,16 +321,16 @@ class OsisReader implements BibleReaderInterface
                             'book_osis_id' => $osisId,
                             'chapter' => $chapter,
                             'verse' => $startVerse,
-                            'type' => 'verse'
-                        ];
-                    } else {
-                        // Chapter only
-                        return [
-                            'book_osis_id' => $osisId,
-                            'chapter' => $chapter,
-                            'type' => 'chapter'
+                            'type' => 'verse',
                         ];
                     }
+                    // Chapter only
+                    return [
+                        'book_osis_id' => $osisId,
+                        'chapter' => $chapter,
+                        'type' => 'chapter',
+                    ];
+
                 }
             }
         }
@@ -438,7 +438,7 @@ class OsisReader implements BibleReaderInterface
             'book_id' => $bookOsisId,
             'chapter' => $chapter,
             'verse' => $verse,
-            'text' => $verseText
+            'text' => $verseText,
         ];
     }
 }

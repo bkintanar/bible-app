@@ -4,5 +4,8 @@
 			"path": "."
 		}
 	],
-	"settings": {}
+	"settings": {
+		"php-cs-fixer.onsave": true,
+		"php-cs-fixer.executablePath": "/Users/b8/codes/personal/bible-app/vendor/friendsofphp/php-cs-fixer/php-cs-fixer"
+	}
 }

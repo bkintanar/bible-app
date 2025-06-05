@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class WordRelationship extends Model
 {
@@ -37,12 +37,12 @@ class WordRelationship extends Model
     /**
      * Relationship type constants
      */
-    const TYPE_SYNONYM = 'synonym';
-    const TYPE_ANTONYM = 'antonym';
-    const TYPE_DERIVATIVE = 'derivative';
-    const TYPE_ROOT = 'root';
-    const TYPE_VARIANT = 'variant';
-    const TYPE_COGNATE = 'cognate';
+    public const TYPE_SYNONYM = 'synonym';
+    public const TYPE_ANTONYM = 'antonym';
+    public const TYPE_DERIVATIVE = 'derivative';
+    public const TYPE_ROOT = 'root';
+    public const TYPE_VARIANT = 'variant';
+    public const TYPE_COGNATE = 'cognate';
 
     /**
      * Get available relationship types

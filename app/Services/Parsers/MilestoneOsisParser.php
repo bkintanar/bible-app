@@ -2,9 +2,9 @@
 
 namespace App\Services\Parsers;
 
-use App\Services\Contracts\OsisParserInterface;
 use DOMXPath;
 use Illuminate\Support\Collection;
+use App\Services\Contracts\OsisParserInterface;
 
 class MilestoneOsisParser implements OsisParserInterface
 {
@@ -61,7 +61,7 @@ class MilestoneOsisParser implements OsisParserInterface
             $chapters->push([
                 'osis_ref' => $osisRef,
                 'chapter_number' => (int) $chapterNumber,
-                'verse_count' => $verseCount
+                'verse_count' => $verseCount,
             ]);
         }
 
@@ -75,7 +75,7 @@ class MilestoneOsisParser implements OsisParserInterface
         // Find the chapter start marker
         $chapterNode = $this->xpath->query("//osis:chapter[@osisRef='$chapterOsisRef' and @sID]")->item(0);
 
-        if (!$chapterNode) {
+        if (! $chapterNode) {
             return $verses;
         }
 
@@ -120,7 +120,7 @@ class MilestoneOsisParser implements OsisParserInterface
             $verses->push([
                 'osis_id' => $osisId,
                 'verse_number' => (int) $verseNumber,
-                'text' => $verseText
+                'text' => $verseText,
             ]);
         }
 
@@ -134,7 +134,7 @@ class MilestoneOsisParser implements OsisParserInterface
         // Find the chapter start marker
         $chapterNode = $this->xpath->query("//osis:chapter[@osisRef='$chapterOsisRef' and @sID]")->item(0);
 
-        if (!$chapterNode) {
+        if (! $chapterNode) {
             return $paragraphs;
         }
 
@@ -155,14 +155,14 @@ class MilestoneOsisParser implements OsisParserInterface
             // Process paragraph elements
             if ($currentNode->nodeType === XML_ELEMENT_NODE && $currentNode->nodeName === 'p') {
                 $paragraphData = $this->extractParagraphContent($currentNode);
-                if (!empty($paragraphData['verses'])) {
+                if (! empty($paragraphData['verses'])) {
                     $paragraphs->push($paragraphData);
                 }
             }
             // Process poetic line groups (for Psalms, poetry)
             elseif ($currentNode->nodeType === XML_ELEMENT_NODE && $currentNode->nodeName === 'lg') {
                 $lineGroupData = $this->extractLineGroupContent($currentNode);
-                if (!empty($lineGroupData['verses'])) {
+                if (! empty($lineGroupData['verses'])) {
                     $paragraphs->push($lineGroupData);
                 }
             }
@@ -172,7 +172,7 @@ class MilestoneOsisParser implements OsisParserInterface
                 $paragraphs->push([
                     'verses' => [],
                     'combined_text' => '<br class="my-4">',
-                    'type' => 'line_break'
+                    'type' => 'line_break',
                 ]);
             }
 
@@ -186,7 +186,7 @@ class MilestoneOsisParser implements OsisParserInterface
     {
         // Find the verse start element
         $verseStart = $this->xpath->query("//osis:verse[@osisID='$verseOsisId' and @sID]")->item(0);
-        if (!$verseStart) {
+        if (! $verseStart) {
             return '';
         }
 
@@ -195,7 +195,7 @@ class MilestoneOsisParser implements OsisParserInterface
 
         // Find the verse end element
         $verseEnd = $this->xpath->query("//osis:verse[@eID='$eId']")->item(0);
-        if (!$verseEnd) {
+        if (! $verseEnd) {
             return '';
         }
 
@@ -253,7 +253,7 @@ class MilestoneOsisParser implements OsisParserInterface
                 }
 
                 // OPTIMIZATION: Fast pre-screening using the cached end markers
-                if (!$this->fastTextContainsOptimized($verseNode, $verseEndMap, $searchTerm)) {
+                if (! $this->fastTextContainsOptimized($verseNode, $verseEndMap, $searchTerm)) {
                     continue; // Skip expensive processing if no match
                 }
 
@@ -271,7 +271,7 @@ class MilestoneOsisParser implements OsisParserInterface
                         'chapter' => (int) $chapterNum,
                         'verse' => (int) $verseNum,
                         'text' => $verseText,
-                        'context' => $this->highlightSearchTerm($verseText, $searchTerm)
+                        'context' => $this->highlightSearchTerm($verseText, $searchTerm),
                     ]);
 
                     $processedCount++;
@@ -284,6 +284,7 @@ class MilestoneOsisParser implements OsisParserInterface
 
     /**
      * Optimized fast text search for milestone verses using pre-cached end markers
+     * @param mixed $verseStartNode
      */
     private function fastTextContainsOptimized($verseStartNode, array $verseEndMap, string $searchTerm): bool
     {
@@ -292,7 +293,7 @@ class MilestoneOsisParser implements OsisParserInterface
 
         // Use cached verse end node instead of XPath query
         $verseEnd = $verseEndMap[$eId] ?? null;
-        if (!$verseEnd) {
+        if (! $verseEnd) {
             return false;
         }
 
@@ -325,6 +326,7 @@ class MilestoneOsisParser implements OsisParserInterface
 
     /**
      * Extract content from a paragraph element, including all verses within it
+     * @param mixed $paragraphNode
      */
     private function extractParagraphContent($paragraphNode): array
     {
@@ -341,7 +343,7 @@ class MilestoneOsisParser implements OsisParserInterface
                         $verses[] = [
                             'osis_id' => $currentVerse,
                             'verse_number' => $this->extractVerseNumber($currentVerse),
-                            'text' => trim($verseText)
+                            'text' => trim($verseText),
                         ];
                     }
 
@@ -354,7 +356,7 @@ class MilestoneOsisParser implements OsisParserInterface
                         $verses[] = [
                             'osis_id' => $currentVerse,
                             'verse_number' => $this->extractVerseNumber($currentVerse),
-                            'text' => trim($verseText)
+                            'text' => trim($verseText),
                         ];
                         $currentVerse = null;
                         $verseText = '';
@@ -371,22 +373,23 @@ class MilestoneOsisParser implements OsisParserInterface
         }
 
         // Handle case where verse doesn't have eID in this paragraph
-        if ($currentVerse && !empty(trim($verseText))) {
+        if ($currentVerse && ! empty(trim($verseText))) {
             $verses[] = [
                 'osis_id' => $currentVerse,
                 'verse_number' => $this->extractVerseNumber($currentVerse),
-                'text' => trim($verseText)
+                'text' => trim($verseText),
             ];
         }
 
         return [
             'verses' => $verses,
-            'combined_text' => trim($paragraphText)
+            'combined_text' => trim($paragraphText),
         ];
     }
 
     /**
      * Extract content from a line group element (for poetry like Psalms)
+     * @param mixed $lineGroupNode
      */
     private function extractLineGroupContent($lineGroupNode): array
     {
@@ -397,7 +400,7 @@ class MilestoneOsisParser implements OsisParserInterface
         foreach ($lineGroupNode->childNodes as $child) {
             if ($child->nodeType === XML_ELEMENT_NODE && $child->nodeName === 'l') {
                 $lineData = $this->extractParagraphContent($child);
-                if (!empty($lineData['verses'])) {
+                if (! empty($lineData['verses'])) {
                     $verses = array_merge($verses, $lineData['verses']);
                     $combinedText .= $lineData['combined_text'] . ' ';
                 }
@@ -407,12 +410,13 @@ class MilestoneOsisParser implements OsisParserInterface
         return [
             'verses' => $verses,
             'combined_text' => trim($combinedText),
-            'type' => 'poetry'
+            'type' => 'poetry',
         ];
     }
 
     /**
      * Extract text from a node while preserving Red Letter formatting and other OSIS formatting
+     * @param mixed $node
      */
     private function extractTextWithRedLetters($node): string
     {
@@ -425,9 +429,9 @@ class MilestoneOsisParser implements OsisParserInterface
                 $changeType = $node->getAttribute('type');
                 if ($changeType === 'added') {
                     return '<em class="text-gray-600 dark:text-gray-400 font-normal italic">' . $node->textContent . '</em>';
-                } else {
-                    return $node->textContent;
                 }
+                return $node->textContent;
+
             } elseif ($node->nodeName === 'q' && $node->getAttribute('who') === 'Jesus') {
                 // Handle Red Letter text for contained verses
                 return '<span class="text-red-600 font-medium">' . $node->textContent . '</span>';
@@ -438,9 +442,9 @@ class MilestoneOsisParser implements OsisParserInterface
                     return '<div class="text-center text-sm font-medium text-gray-700 dark:text-gray-300 italic mb-3 border-b border-gray-200 dark:border-gray-600 pb-2">' . $node->textContent . '</div>';
                 } elseif ($titleType === 'main') {
                     return '<h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">' . $node->textContent . '</h2>';
-                } else {
-                    return '<div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">' . $node->textContent . '</div>';
                 }
+                return '<div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">' . $node->textContent . '</div>';
+
             }
         }
 

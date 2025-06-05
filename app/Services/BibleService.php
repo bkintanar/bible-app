@@ -2,12 +2,10 @@
 
 namespace App\Services;
 
-use App\Services\Contracts\BibleReaderInterface;
-use App\Services\OsisReader;
-use App\Services\DatabaseBibleReader;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Config;
+use App\Services\Contracts\BibleReaderInterface;
 
 class BibleService
 {
@@ -87,6 +85,28 @@ class BibleService
     }
 
     /**
+     * Check if a book exists
+     */
+    public function bookExists(string $bookOsisId): bool
+    {
+        $books = $this->getBooks();
+        return $books->contains('osis_id', $bookOsisId);
+    }
+
+    /**
+     * Check if a chapter exists for a given book
+     */
+    public function chapterExists(string $bookOsisId, int $chapterNumber): bool
+    {
+        if (! $this->bookExists($bookOsisId)) {
+            return false;
+        }
+
+        $chapters = $this->getChapters($bookOsisId);
+        return $chapters->contains('chapter_number', $chapterNumber);
+    }
+
+    /**
      * Get current reader type (xml or database)
      */
     public function getReaderType(): string
@@ -107,11 +127,17 @@ class BibleService
     /**
      * Delegate methods to current reader
      */
-
     public function getBooks(): Collection
     {
         $reader = $this->getCurrentReader();
         return $reader ? $reader->getBooks() : collect();
+    }
+
+    public function getBook(string $bookOsisId): ?array
+    {
+        $books = $this->getBooks();
+        $book = $books->firstWhere('osis_id', $bookOsisId);
+        return $book ? $book->toArray() : null;
     }
 
     public function getChapters(string $bookOsisId): Collection
@@ -196,7 +222,6 @@ class BibleService
     /**
      * Enhanced database-specific methods (only available when using database reader)
      */
-
     public function getVerseStrongsData(string $verseOsisId): Collection
     {
         $reader = $this->getCurrentReader();
@@ -289,7 +314,7 @@ class BibleService
             'verses',
             'search',
             'verse_references',
-            'bible_info'
+            'bible_info',
         ];
 
         $enhancedCapabilities = [
@@ -298,13 +323,13 @@ class BibleService
             'divine_names',
             'study_notes',
             'full_text_search',
-            'morphological_analysis'
+            'morphological_analysis',
         ];
 
         return [
             'base' => $baseCapabilities,
             'enhanced' => $this->hasEnhancedFeatures() ? $enhancedCapabilities : [],
-            'reader_type' => $this->getReaderType()
+            'reader_type' => $this->getReaderType(),
         ];
     }
 
@@ -320,7 +345,7 @@ class BibleService
 
         // Get the first verse of the chapter to find associated title
         $firstVerse = $this->getVerses($chapterOsisRef)->first();
-        if (!$firstVerse || !isset($firstVerse['id'])) {
+        if (! $firstVerse || ! isset($firstVerse['id'])) {
             return null;
         }
 
@@ -352,7 +377,7 @@ class BibleService
             ->where('chapters.chapter_number', $chapterNumber)
             ->first();
 
-        if (!$chapterInfo) {
+        if (! $chapterInfo) {
             return collect();
         }
 

@@ -2,10 +2,10 @@
 
 namespace App\Services;
 
-use App\Services\Contracts\BibleReaderInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use App\Services\Contracts\BibleReaderInterface;
 
 class DatabaseBibleReader implements BibleReaderInterface
 {
@@ -43,7 +43,7 @@ class DatabaseBibleReader implements BibleReaderInterface
                     'b.name',
                     'b.name as short_name', // Use same name for consistency
                     'bg.name as testament',
-                    'b.sort_order as book_order'
+                    'b.sort_order as book_order',
                 ])
                 ->where('b.canonical', true)
                 ->orderBy('b.sort_order')
@@ -54,7 +54,7 @@ class DatabaseBibleReader implements BibleReaderInterface
                         'name' => $book->name,
                         'short_name' => $book->short_name,
                         'testament' => $book->testament,
-                        'book_order' => $book->book_order
+                        'book_order' => $book->book_order,
                     ];
                 });
         });
@@ -73,7 +73,7 @@ class DatabaseBibleReader implements BibleReaderInterface
                 ->select([
                     'c.osis_id as osis_ref',
                     'c.chapter_number',
-                    DB::raw('COUNT(v.id) as verse_count')
+                    DB::raw('COUNT(v.id) as verse_count'),
                 ])
                 ->whereRaw('UPPER(b.osis_id) = UPPER(?)', [$bookOsisId])
                 ->where('c.version_id', $this->versionId)
@@ -84,7 +84,7 @@ class DatabaseBibleReader implements BibleReaderInterface
                     return [
                         'osis_ref' => $chapter->osis_ref,
                         'chapter_number' => (int) $chapter->chapter_number,
-                        'verse_count' => (int) $chapter->verse_count
+                        'verse_count' => (int) $chapter->verse_count,
                     ];
                 });
         });
@@ -107,7 +107,7 @@ class DatabaseBibleReader implements BibleReaderInterface
             ->select([
                 'v.osis_id',
                 'v.verse_number',
-                'v.formatted_text as text'
+                'v.formatted_text as text',
             ])
             ->where('c.osis_id', $properCaseRef)
             ->where('c.version_id', $this->versionId)
@@ -115,31 +115,31 @@ class DatabaseBibleReader implements BibleReaderInterface
             ->get();
 
         $mappedVerses = $verses->map(function ($verse) {
-                // Get titles for each individual verse
-                $titles = $this->getTitles($verse->osis_id);
-                $titleHtml = '';
+            // Get titles for each individual verse
+            $titles = $this->getTitles($verse->osis_id);
+            $titleHtml = '';
 
-                foreach ($titles as $title) {
-                    if ($title['placement'] === 'before') {
-                        $titleClass = match($title['type']) {
-                            'psalm' => 'psalm-title text-center text-sm font-medium text-gray-700 dark:text-gray-300 italic mb-3 border-b border-gray-200 dark:border-gray-600 pb-2',
-                            'main' => 'main-title text-center text-xl font-bold text-gray-900 dark:text-gray-100 mb-4',
-                            'acrostic' => 'acrostic-title text-center text-lg font-semibold text-blue-700 dark:text-blue-400 mb-2',
-                            'chapter' => 'chapter-title text-center text-lg font-bold text-gray-900 dark:text-gray-100 mb-4',
-                            'sub' => 'sub-title text-center text-base font-semibold text-gray-800 dark:text-gray-200 mb-3',
-                            default => 'title text-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'
-                        };
-                        $titleHtml .= '<div class="' . $titleClass . '">' . $title['text'] . '</div>';
-                    }
+            foreach ($titles as $title) {
+                if ($title['placement'] === 'before') {
+                    $titleClass = match($title['type']) {
+                        'psalm' => 'psalm-title text-center text-sm font-medium text-gray-700 dark:text-gray-300 italic mb-3 border-b border-gray-200 dark:border-gray-600 pb-2',
+                        'main' => 'main-title text-center text-xl font-bold text-gray-900 dark:text-gray-100 mb-4',
+                        'acrostic' => 'acrostic-title text-center text-lg font-semibold text-blue-700 dark:text-blue-400 mb-2',
+                        'chapter' => 'chapter-title text-center text-lg font-bold text-gray-900 dark:text-gray-100 mb-4',
+                        'sub' => 'sub-title text-center text-base font-semibold text-gray-800 dark:text-gray-200 mb-3',
+                        default => 'title text-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'
+                    };
+                    $titleHtml .= '<div class="' . $titleClass . '">' . $title['text'] . '</div>';
                 }
+            }
 
-                return [
-                    'osis_id' => $verse->osis_id,
-                    'verse_number' => (int) $verse->verse_number,
-                    'text' => $this->enhanceVerseText($verse->text, $verse->osis_id, false), // Don't include titles in verse text
-                    'chapter_titles' => $titleHtml
-                ];
-            });
+            return [
+                'osis_id' => $verse->osis_id,
+                'verse_number' => (int) $verse->verse_number,
+                'text' => $this->enhanceVerseText($verse->text, $verse->osis_id, false), // Don't include titles in verse text
+                'chapter_titles' => $titleHtml,
+            ];
+        });
 
         return $mappedVerses;
     }
@@ -154,7 +154,7 @@ class DatabaseBibleReader implements BibleReaderInterface
         $verses = $this->getVerses($chapterOsisRef);
 
         // Debug: Log what was retrieved
-        if (!empty($verses) && isset($verses[0]['text'])) {
+        if (! empty($verses) && isset($verses[0]['text'])) {
             $firstText = substr(strip_tags($verses[0]['text']), 0, 30);
             \Log::info("DatabaseBibleReader: First verse retrieved: {$firstText}...");
         } else {
@@ -192,7 +192,7 @@ class DatabaseBibleReader implements BibleReaderInterface
                 'p.paragraph_type',
                 'start_v.verse_number as start_verse',
                 'end_v.verse_number as end_verse',
-                'p.text_content'
+                'p.text_content',
             ])
             ->where('c.osis_id', $chapterOsisRef)
             ->where('c.version_id', $this->versionId)
@@ -223,7 +223,7 @@ class DatabaseBibleReader implements BibleReaderInterface
                     'combined_text' => $combinedText,
                     'type' => $paragraph->paragraph_type,
                     'start_verse' => $startVerse,
-                    'end_verse' => $endVerse
+                    'end_verse' => $endVerse,
                 ]);
             }
         }
@@ -245,13 +245,13 @@ class DatabaseBibleReader implements BibleReaderInterface
             $hasNewParagraphMarker = $this->hasNewParagraphMarker($verse);
 
             // If we have verses in current paragraph and this verse starts a new one
-            if (!empty($currentParagraph) && $hasNewParagraphMarker) {
+            if (! empty($currentParagraph) && $hasNewParagraphMarker) {
                 // Finish the current paragraph
                 $paragraphs->push([
                     'verses' => $currentParagraph,
                     'combined_text' => trim($currentText),
                     'type' => 'paragraph',
-                    'has_paragraph_marker' => true
+                    'has_paragraph_marker' => true,
                 ]);
 
                 // Start new paragraph
@@ -265,12 +265,12 @@ class DatabaseBibleReader implements BibleReaderInterface
         }
 
         // Add the final paragraph
-        if (!empty($currentParagraph)) {
+        if (! empty($currentParagraph)) {
             $paragraphs->push([
                 'verses' => $currentParagraph,
                 'combined_text' => trim($currentText),
                 'type' => 'paragraph',
-                'has_paragraph_marker' => true
+                'has_paragraph_marker' => true,
             ]);
         }
 
@@ -328,7 +328,7 @@ class DatabaseBibleReader implements BibleReaderInterface
                     'verses' => $currentParagraph,
                     'combined_text' => trim($currentText),
                     'type' => 'paragraph',
-                    'artificial' => true
+                    'artificial' => true,
                 ]);
 
                 $currentParagraph = [];
@@ -338,12 +338,12 @@ class DatabaseBibleReader implements BibleReaderInterface
         }
 
         // Add remaining verses as final paragraph
-        if (!empty($currentParagraph)) {
+        if (! empty($currentParagraph)) {
             $paragraphs->push([
                 'verses' => $currentParagraph,
                 'combined_text' => trim($currentText),
                 'type' => 'paragraph',
-                'artificial' => true
+                'artificial' => true,
             ]);
         }
 
@@ -359,7 +359,7 @@ class DatabaseBibleReader implements BibleReaderInterface
             ->whereRaw('UPPER(osis_id) = UPPER(?)', [$verseOsisId])
             ->first(['formatted_text', 'osis_id']);
 
-        if (!$verse) {
+        if (! $verse) {
             return '';
         }
 
@@ -402,7 +402,7 @@ class DatabaseBibleReader implements BibleReaderInterface
                 'book_name' => $result->book_name,
                 'book_osis_id' => $result->book_osis_id,
                 'chapter' => (int) $result->chapter_number,
-                'reference' => "{$result->book_name} {$result->chapter_number}:{$result->verse_number}"
+                'reference' => "{$result->book_name} {$result->chapter_number}:{$result->verse_number}",
             ];
         });
     }
@@ -435,12 +435,12 @@ class DatabaseBibleReader implements BibleReaderInterface
             ->where('id', $this->versionId)
             ->first();
 
-        if (!$version) {
+        if (! $version) {
             return [
                 'title' => 'Unknown',
                 'description' => '',
                 'publisher' => '',
-                'language' => 'English'
+                'language' => 'English',
             ];
         }
 
@@ -448,7 +448,7 @@ class DatabaseBibleReader implements BibleReaderInterface
             'title' => $version->title,
             'description' => $version->description ?: '',
             'publisher' => $version->publisher ?: '',
-            'language' => $version->language ?: 'English'
+            'language' => $version->language ?: 'English',
         ];
     }
 
@@ -465,7 +465,7 @@ class DatabaseBibleReader implements BibleReaderInterface
             '/^([a-zA-Z\s]+)\s*(\d+):(\d+)$/i',      // "Acts 2:38"
             '/^([a-zA-Z]+)(\d+):(\d+)$/i',           // "acts2:38"
             '/^([a-zA-Z\s]+)\s*(\d+)$/i',            // "Acts 2"
-            '/^([a-zA-Z]+)(\d+)$/i'                  // "acts2"
+            '/^([a-zA-Z]+)(\d+)$/i',                  // "acts2"
         ];
 
         foreach ($patterns as $pattern) {
@@ -483,22 +483,22 @@ class DatabaseBibleReader implements BibleReaderInterface
                             'chapter' => $chapter,
                             'start_verse' => $startVerse,
                             'end_verse' => $endVerse,
-                            'type' => 'verse_range'
+                            'type' => 'verse_range',
                         ];
                     } elseif ($startVerse) {
                         return [
                             'book_osis_id' => $osisId,
                             'chapter' => $chapter,
                             'verse' => $startVerse,
-                            'type' => 'verse'
-                        ];
-                    } else {
-                        return [
-                            'book_osis_id' => $osisId,
-                            'chapter' => $chapter,
-                            'type' => 'chapter'
+                            'type' => 'verse',
                         ];
                     }
+                    return [
+                        'book_osis_id' => $osisId,
+                        'chapter' => $chapter,
+                        'type' => 'chapter',
+                    ];
+
                 }
             }
         }
@@ -523,7 +523,7 @@ class DatabaseBibleReader implements BibleReaderInterface
             'book_id' => $bookOsisId,
             'chapter' => $chapter,
             'verse' => $verse,
-            'text' => $verseText
+            'text' => $verseText,
         ];
     }
 
@@ -543,7 +543,7 @@ class DatabaseBibleReader implements BibleReaderInterface
                 'we.strongs_number',
                 'we.morphology_code',
                 'we.lemma',
-                'we.word_order'
+                'we.word_order',
             ])
             ->where('v.osis_id', $verseOsisId)
             ->whereNotNull('we.strongs_number')
@@ -561,7 +561,7 @@ class DatabaseBibleReader implements BibleReaderInterface
             ->select([
                 'tc.text_content',
                 'tc.change_type',
-                'tc.text_order'
+                'tc.text_order',
             ])
             ->where('v.osis_id', $verseOsisId)
             ->orderBy('tc.text_order')
@@ -577,7 +577,7 @@ class DatabaseBibleReader implements BibleReaderInterface
             ->join('verses as v', 'dn.verse_id', '=', 'v.id')
             ->select([
                 'dn.displayed_text',
-                'dn.original_name'
+                'dn.original_name',
             ])
             ->where('v.osis_id', $verseOsisId)
             ->get();
@@ -592,7 +592,7 @@ class DatabaseBibleReader implements BibleReaderInterface
             ->join('verses as v', 'sn.verse_id', '=', 'v.id')
             ->select([
                 'sn.note_type',
-                'sn.note_text'
+                'sn.note_text',
             ])
             ->where('v.osis_id', $verseOsisId)
             ->get();
@@ -615,7 +615,7 @@ class DatabaseBibleReader implements BibleReaderInterface
                 'b.osis_id as book_osis_id',
                 'c.chapter_number',
                 'we.word_text',
-                'we.strongs_number'
+                'we.strongs_number',
             ])
             ->where('we.strongs_number', $strongsNumber)
             ->orderBy('b.sort_order')
@@ -633,7 +633,7 @@ class DatabaseBibleReader implements BibleReaderInterface
                     'chapter' => (int) $result->chapter_number,
                     'word_text' => $result->word_text,
                     'strongs_number' => $result->strongs_number,
-                    'reference' => "{$result->book_name} {$result->chapter_number}:{$result->verse_number}"
+                    'reference' => "{$result->book_name} {$result->chapter_number}:{$result->verse_number}",
                 ];
             });
     }
@@ -654,12 +654,12 @@ class DatabaseBibleReader implements BibleReaderInterface
                 'v.original_xml',
                 'b.name as book_name',
                 'b.osis_id as book_osis_id',
-                'c.chapter_number'
+                'c.chapter_number',
             ])
             ->where('v.osis_id', $verseOsisId)
             ->first();
 
-        if (!$verse) {
+        if (! $verse) {
             return [];
         }
 
@@ -672,12 +672,12 @@ class DatabaseBibleReader implements BibleReaderInterface
                 'book_name' => $verse->book_name,
                 'book_osis_id' => $verse->book_osis_id,
                 'chapter' => (int) $verse->chapter_number,
-                'reference' => "{$verse->book_name} {$verse->chapter_number}:{$verse->verse_number}"
+                'reference' => "{$verse->book_name} {$verse->chapter_number}:{$verse->verse_number}",
             ],
             'strongs_data' => $this->getVerseStrongsData($verseOsisId),
             'translator_changes' => $this->getTranslatorChanges($verseOsisId),
             'divine_names' => $this->getDivineNames($verseOsisId),
-            'study_notes' => $this->getStudyNotes($verseOsisId)
+            'study_notes' => $this->getStudyNotes($verseOsisId),
         ];
     }
 
@@ -693,7 +693,7 @@ class DatabaseBibleReader implements BibleReaderInterface
                 't.title_text',
                 't.canonical',
                 't.placement',
-                't.title_order'
+                't.title_order',
             ])
             ->whereRaw('UPPER(v.osis_id) = UPPER(?)', [$verseOsisId])
             ->orderBy('t.title_order')
@@ -704,7 +704,7 @@ class DatabaseBibleReader implements BibleReaderInterface
                     'text' => $title->title_text,
                     'canonical' => $title->canonical,
                     'placement' => $title->placement,
-                    'order' => (int) $title->title_order
+                    'order' => (int) $title->title_order,
                 ];
             });
     }
@@ -720,7 +720,7 @@ class DatabaseBibleReader implements BibleReaderInterface
                 'ps.structure_type',
                 'ps.level',
                 'ps.line_text',
-                'ps.line_order'
+                'ps.line_order',
             ])
             ->whereRaw('UPPER(v.osis_id) = UPPER(?)', [$verseOsisId])
             ->orderBy('ps.line_order')
@@ -730,7 +730,7 @@ class DatabaseBibleReader implements BibleReaderInterface
                     'type' => $structure->structure_type,
                     'level' => (int) $structure->level,
                     'text' => $structure->line_text,
-                    'order' => (int) $structure->line_order
+                    'order' => (int) $structure->line_order,
                 ];
             });
     }
@@ -799,7 +799,7 @@ class DatabaseBibleReader implements BibleReaderInterface
         $cleanText = preg_replace('/<verse[^>]*\/?>/i', '', $cleanText);
         $cleanText = preg_replace('/<chapter[^>]*\/?>/i', '', $cleanText);
 
-        if (!$preserveParagraphMarkers) {
+        if (! $preserveParagraphMarkers) {
             $cleanText = preg_replace('/<milestone[^>]*>/i', '', $cleanText);
         }
 

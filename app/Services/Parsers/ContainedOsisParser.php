@@ -2,9 +2,9 @@
 
 namespace App\Services\Parsers;
 
-use App\Services\Contracts\OsisParserInterface;
 use DOMXPath;
 use Illuminate\Support\Collection;
+use App\Services\Contracts\OsisParserInterface;
 
 class ContainedOsisParser implements OsisParserInterface
 {
@@ -34,7 +34,7 @@ class ContainedOsisParser implements OsisParserInterface
             $chapters->push([
                 'osis_ref' => $osisId,
                 'chapter_number' => $chapterNumber,
-                'verse_count' => $verseCount
+                'verse_count' => $verseCount,
             ]);
         }
 
@@ -48,7 +48,7 @@ class ContainedOsisParser implements OsisParserInterface
         // Find the chapter element
         $chapterNode = $this->xpath->query("//osis:chapter[@osisID='$chapterOsisRef']")->item(0);
 
-        if (!$chapterNode) {
+        if (! $chapterNode) {
             return $verses;
         }
 
@@ -64,7 +64,7 @@ class ContainedOsisParser implements OsisParserInterface
             $verses->push([
                 'osis_id' => $osisId,
                 'verse_number' => $verseNumber,
-                'text' => $verseText
+                'text' => $verseText,
             ]);
         }
 
@@ -78,7 +78,7 @@ class ContainedOsisParser implements OsisParserInterface
         // Find the chapter element by osisID
         $chapterNode = $this->xpath->query("//osis:chapter[@osisID='$chapterOsisRef']")->item(0);
 
-        if (!$chapterNode) {
+        if (! $chapterNode) {
             return $paragraphs;
         }
 
@@ -99,7 +99,7 @@ class ContainedOsisParser implements OsisParserInterface
             $verses[] = [
                 'osis_id' => $osisId,
                 'verse_number' => $verseNumber,
-                'text' => $verseText
+                'text' => $verseText,
             ];
 
             // Add verse text to combined text with space
@@ -107,10 +107,10 @@ class ContainedOsisParser implements OsisParserInterface
         }
 
         // Create a single paragraph containing all verses
-        if (!empty($verses)) {
+        if (! empty($verses)) {
             $paragraphs->push([
                 'verses' => $verses,
-                'combined_text' => trim($combinedText)
+                'combined_text' => trim($combinedText),
             ]);
         }
 
@@ -121,7 +121,7 @@ class ContainedOsisParser implements OsisParserInterface
     {
         // For contained verses, we need to find the verse node and extract its content
         $verseNode = $this->xpath->query("//osis:verse[@osisID='$verseOsisId']")->item(0);
-        if (!$verseNode) {
+        if (! $verseNode) {
             return '';
         }
         return $this->getVerseTextFromNode($verseNode);
@@ -179,7 +179,7 @@ class ContainedOsisParser implements OsisParserInterface
                         'chapter' => (int) $chapterNum,
                         'verse' => (int) $verseNum,
                         'text' => $verseText,
-                        'context' => $this->highlightSearchTerm($verseText, $searchTerm)
+                        'context' => $this->highlightSearchTerm($verseText, $searchTerm),
                     ]);
 
                     $processedCount++;
@@ -192,6 +192,7 @@ class ContainedOsisParser implements OsisParserInterface
 
     /**
      * Get text for contained verses (content within verse tags)
+     * @param mixed $verseNode
      */
     private function getVerseTextFromNode($verseNode): string
     {
@@ -200,6 +201,7 @@ class ContainedOsisParser implements OsisParserInterface
 
     /**
      * Extract text from a node while preserving Red Letter formatting and other OSIS formatting
+     * @param mixed $node
      */
     private function extractTextWithRedLetters($node): string
     {
@@ -212,9 +214,9 @@ class ContainedOsisParser implements OsisParserInterface
                 $changeType = $node->getAttribute('type');
                 if ($changeType === 'added') {
                     return '<em class="text-gray-600 dark:text-gray-400 font-normal italic">' . $node->textContent . '</em>';
-                } else {
-                    return $node->textContent;
                 }
+                return $node->textContent;
+
             } elseif ($node->nodeName === 'q' && $node->getAttribute('who') === 'Jesus') {
                 // Handle Red Letter text for contained verses
                 return '<span class="text-red-600 font-medium">' . $node->textContent . '</span>';
@@ -225,9 +227,9 @@ class ContainedOsisParser implements OsisParserInterface
                     return '<div class="text-center text-sm font-medium text-gray-700 dark:text-gray-300 italic mb-3 border-b border-gray-200 dark:border-gray-600 pb-2">' . $node->textContent . '</div>';
                 } elseif ($titleType === 'main') {
                     return '<h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">' . $node->textContent . '</h2>';
-                } else {
-                    return '<div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">' . $node->textContent . '</div>';
                 }
+                return '<div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">' . $node->textContent . '</div>';
+
             }
         }
 

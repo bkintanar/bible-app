@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class StrongsLexicon extends Model
 {
@@ -213,21 +213,21 @@ class StrongsLexicon extends Model
     {
         // Use LIKE queries for SQLite compatibility
         return static::where(function ($q) use ($query) {
-                $q->where('strongs_number', 'LIKE', "%{$query}%")
-                  ->orWhere('transliteration', 'LIKE', "%{$query}%")
-                  ->orWhere('original_word', 'LIKE', "%{$query}%")
-                  ->orWhere('short_definition', 'LIKE', "%{$query}%")
-                  ->orWhere('detailed_definition', 'LIKE', "%{$query}%")
-                  ->orWhere('outline_definition', 'LIKE', "%{$query}%");
-            })
-            ->orderByRaw("
+            $q->where('strongs_number', 'LIKE', "%{$query}%")
+                ->orWhere('transliteration', 'LIKE', "%{$query}%")
+                ->orWhere('original_word', 'LIKE', "%{$query}%")
+                ->orWhere('short_definition', 'LIKE', "%{$query}%")
+                ->orWhere('detailed_definition', 'LIKE', "%{$query}%")
+                ->orWhere('outline_definition', 'LIKE', "%{$query}%");
+        })
+            ->orderByRaw('
                 CASE
                     WHEN strongs_number LIKE ? THEN 1
                     WHEN transliteration LIKE ? THEN 2
                     WHEN short_definition LIKE ? THEN 3
                     ELSE 4
                 END
-            ", ["%{$query}%", "%{$query}%", "%{$query}%"])
+            ', ["%{$query}%", "%{$query}%", "%{$query}%"])
             ->limit($limit)
             ->get();
     }

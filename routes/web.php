@@ -1,32 +1,55 @@
 <?php
 
-use App\Http\Controllers\BibleController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\BookController;
+use App\Http\Controllers\BibleController;
+use App\Http\Controllers\SearchController;
+use App\Http\Controllers\ChapterController;
+use App\Http\Controllers\TranslationController;
+use App\Http\Controllers\UserSessionController;
 
-// Bible routes (main application)
-Route::get('/', [BibleController::class, 'livewireIndex'])->name('bible.index');
-Route::get('/search', [BibleController::class, 'livewireSearch'])->name('bible.search');
+// =======================================
+// MAIN APPLICATION ROUTES
+// =======================================
+
+// Home/Index route
+Route::get('/', [BibleController::class, 'index'])->name('bible.index');
+
+// RESTful Search routes
+Route::resource('searches', SearchController::class)->only(['index', 'store']);
+
+// RESTful Translation routes (singleton resource)
+Route::singleton('translation', TranslationController::class)->only(['show', 'update']);
+
+// RESTful User Session routes (singleton resource)
+Route::singleton('user-session', UserSessionController::class)->only(['show', 'update']);
+Route::delete('user-session', [UserSessionController::class, 'destroy'])->name('user-session.destroy');
 
 // POC route for testing search component
 Route::get('/livewire-search-poc', function () {
     return view('livewire-search-poc');
 })->name('bible.search.poc');
 
-Route::post('/switch-translation', [BibleController::class, 'switchTranslation'])->name('bible.switch-translation');
-Route::post('/clear-last-visited', [BibleController::class, 'clearLastVisited'])->name('bible.clear-last-visited');
+// =======================================
+// RESTFUL RESOURCE ROUTES
+// =======================================
 
-// Bible chapter reading route (more specific - must come first)
-Route::get('/{bookOsisId}/{chapterNumber}', [BibleController::class, 'livewireChapter'])->name('bible.chapter');
+// Books resource routes
+Route::get('/books', [BookController::class, 'index'])->name('books.index');
+Route::get('/books/{bookOsisId}', [BookController::class, 'show'])->name('books.show');
 
-// Bible book viewing route (less specific - comes after)
-Route::get('/{bookOsisId}', [BibleController::class, 'livewireBook'])->name('bible.book');
+// Chapters resource routes (nested under books)
+Route::get('/books/{bookOsisId}/chapters/{chapterNumber}', [ChapterController::class, 'show'])->name('chapters.show');
 
-// API routes for Bible data
-Route::prefix('api')->group(function () {
-    Route::get('/books', [BibleController::class, 'apiBooks'])->name('api.bible.books');
-    Route::get('/capabilities', [BibleController::class, 'apiCapabilities'])->name('api.bible.capabilities');
-    Route::get('/search', [BibleController::class, 'apiSearch'])->name('api.bible.search');
-    Route::get('/{bookOsisId}/chapters', [BibleController::class, 'apiChapters'])->name('api.bible.chapters');
-    Route::get('/{bookOsisId}/{chapterNumber}/verses', [BibleController::class, 'apiVerses'])->name('api.bible.verses');
-    Route::get('/{bookOsisId}/{chapterNumber}/{verseNumber}', [BibleController::class, 'apiVerseDetails'])->name('api.bible.verse.details');
-});
+// =======================================
+// LEGACY ROUTES (for backward compatibility)
+// =======================================
+
+// Short URLs - redirect to RESTful routes
+Route::get('/{bookOsisId}/{chapterNumber}', function ($bookOsisId, $chapterNumber) {
+    return redirect()->route('chapters.show', ['bookOsisId' => $bookOsisId, 'chapterNumber' => $chapterNumber]);
+})->name('bible.chapter');
+
+Route::get('/{bookOsisId}', function ($bookOsisId) {
+    return redirect()->route('books.show', ['bookOsisId' => $bookOsisId]);
+})->name('bible.book');

@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Services\OsisReader;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -18,10 +17,10 @@ class TranslationService
         if ($readerType === 'database') {
             // Get translations from database
             return $this->getAvailableTranslationsFromDatabase();
-        } else {
-            // Get translations from config file (for XML reader)
-            return $this->getAvailableTranslationsFromConfig();
         }
+        // Get translations from config file (for XML reader)
+        return $this->getAvailableTranslationsFromConfig();
+
     }
 
     /**
@@ -99,10 +98,10 @@ class TranslationService
         if ($readerType === 'database') {
             // Get translation from database
             return $this->getTranslationFromDatabase($translationKey);
-        } else {
-            // Get translation from config file
-            return $this->getTranslationFromConfig($translationKey);
         }
+        // Get translation from config file
+        return $this->getTranslationFromConfig($translationKey);
+
     }
 
     /**
@@ -209,7 +208,7 @@ class TranslationService
     {
         $translation = $this->getTranslationFromConfig($translationKey);
 
-        if (!$translation) {
+        if (! $translation) {
             return null;
         }
 
@@ -228,7 +227,7 @@ class TranslationService
     {
         $filePath = $this->getOsisFilePath($translationKey);
 
-        if (!$filePath) {
+        if (! $filePath) {
             return null;
         }
 
