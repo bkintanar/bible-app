@@ -24,6 +24,8 @@ class Book extends Model
 
     protected $casts = [
         'canonical' => 'boolean',
+        'number' => 'integer',
+        'sort_order' => 'integer',
     ];
 
     /**
@@ -39,7 +41,7 @@ class Book extends Model
      */
     public function chapters(): HasMany
     {
-        return $this->hasMany(Chapter::class);
+        return $this->hasMany(Chapter::class)->orderBy('chapter_number');
     }
 
     /**
@@ -48,5 +50,23 @@ class Book extends Model
     public function verses()
     {
         return $this->hasManyThrough(Verse::class, Chapter::class);
+    }
+
+    /**
+     * Scope to get only canonical books
+     * @param mixed $query
+     */
+    public function scopeCanonical($query)
+    {
+        return $query->where('canonical', true);
+    }
+
+    /**
+     * Scope to order by book order
+     * @param mixed $query
+     */
+    public function scopeOrdered($query)
+    {
+        return $query->orderBy('sort_order');
     }
 }

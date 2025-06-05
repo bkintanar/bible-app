@@ -13,7 +13,8 @@ class Chapter extends Model
 
     protected $fillable = [
         'book_id',
-        'number',
+        'version_id',
+        'chapter_number',
         'osis_id',
         'se_id',
         'verse_count',
@@ -22,6 +23,8 @@ class Chapter extends Model
 
     protected $casts = [
         'canonical' => 'boolean',
+        'chapter_number' => 'integer',
+        'verse_count' => 'integer',
     ];
 
     /**
@@ -33,10 +36,26 @@ class Chapter extends Model
     }
 
     /**
+     * Get the bible version this chapter belongs to
+     */
+    public function bibleVersion(): BelongsTo
+    {
+        return $this->belongsTo(BibleVersion::class, 'version_id');
+    }
+
+    /**
      * Get the verses in this chapter
      */
     public function verses(): HasMany
     {
-        return $this->hasMany(Verse::class);
+        return $this->hasMany(Verse::class)->orderBy('verse_number');
+    }
+
+    /**
+     * Get the paragraphs in this chapter
+     */
+    public function paragraphs(): HasMany
+    {
+        return $this->hasMany(Paragraph::class);
     }
 }

@@ -2,6 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\Book;
+use App\Models\Verse;
+use App\Models\Chapter;
+use App\Models\Paragraph;
+use App\Models\BibleVersion;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
@@ -10,24 +15,29 @@ use App\Services\Contracts\BibleReaderInterface;
 class DatabaseBibleReader implements BibleReaderInterface
 {
     private string $versionKey;
-    private ?int $versionId = null;
+    private ?BibleVersion $bibleVersion = null;
 
     public function __construct(string $versionKey = 'kjv')
     {
         $this->versionKey = $versionKey;
-        $this->versionId = $this->getVersionId();
+        $this->bibleVersion = $this->getBibleVersion();
     }
 
     /**
-     * Get version ID from database
+     * Get bible version from database
      */
-    private function getVersionId(): ?int
+    private function getBibleVersion(): ?BibleVersion
     {
-        return Cache::remember("bible_version_{$this->versionKey}", 3600, function () {
-            return DB::table('bible_versions')
-                ->where('abbreviation', strtoupper($this->versionKey))
-                ->value('id');
-        });
+        $cacheKey = "bible_version_model_{$this->versionKey}";
+
+        if (Cache::has($cacheKey)) {
+            return Cache::get($cacheKey);
+        }
+
+        $bibleVersion = BibleVersion::where('abbreviation', strtoupper($this->versionKey))->first();
+        Cache::put($cacheKey, $bibleVersion, 3600);
+
+        return $bibleVersion;
     }
 
     /**
@@ -35,29 +45,29 @@ class DatabaseBibleReader implements BibleReaderInterface
      */
     public function getBooks(): Collection
     {
-        return Cache::remember("books_{$this->versionKey}", 3600, function () {
-            return DB::table('books as b')
-                ->join('book_groups as bg', 'b.book_group_id', '=', 'bg.id')
-                ->select([
-                    'b.osis_id',
-                    'b.name',
-                    'b.name as short_name', // Use same name for consistency
-                    'bg.name as testament',
-                    'b.sort_order as book_order',
-                ])
-                ->where('b.canonical', true)
-                ->orderBy('b.sort_order')
-                ->get()
-                ->map(function ($book) {
-                    return [
-                        'osis_id' => $book->osis_id,
-                        'name' => $book->name,
-                        'short_name' => $book->short_name,
-                        'testament' => $book->testament,
-                        'book_order' => $book->book_order,
-                    ];
-                });
-        });
+        $cacheKey = "books_{$this->versionKey}";
+
+        if (Cache::has($cacheKey)) {
+            return Cache::get($cacheKey);
+        }
+
+        $books = Book::with('bookGroup')
+            ->canonical()
+            ->ordered()
+            ->get()
+            ->map(function ($book) {
+                return [
+                    'osis_id' => $book->osis_id,
+                    'name' => $book->name,
+                    'short_name' => $book->short_name ?? $book->name,
+                    'testament' => $book->bookGroup->name ?? 'Unknown',
+                    'book_order' => $book->sort_order,
+                ];
+            });
+
+        Cache::put($cacheKey, $books, 3600);
+
+        return $books;
     }
 
     /**
@@ -66,28 +76,37 @@ class DatabaseBibleReader implements BibleReaderInterface
     public function getChapters(string $bookOsisId): Collection
     {
         $normalizedBookOsisId = strtoupper($bookOsisId);
-        return Cache::remember("chapters_{$normalizedBookOsisId}_{$this->versionKey}", 3600, function () use ($bookOsisId) {
-            return DB::table('chapters as c')
-                ->join('books as b', 'c.book_id', '=', 'b.id')
-                ->leftJoin('verses as v', 'c.id', '=', 'v.chapter_id')
-                ->select([
-                    'c.osis_id as osis_ref',
-                    'c.chapter_number',
-                    DB::raw('COUNT(v.id) as verse_count'),
-                ])
-                ->whereRaw('UPPER(b.osis_id) = UPPER(?)', [$bookOsisId])
-                ->where('c.version_id', $this->versionId)
-                ->groupBy('c.id', 'c.osis_id', 'c.chapter_number')
-                ->orderBy('c.chapter_number')
-                ->get()
-                ->map(function ($chapter) {
-                    return [
-                        'osis_ref' => $chapter->osis_ref,
-                        'chapter_number' => (int) $chapter->chapter_number,
-                        'verse_count' => (int) $chapter->verse_count,
-                    ];
-                });
-        });
+        $cacheKey = "chapters_{$normalizedBookOsisId}_{$this->versionKey}";
+
+        if (Cache::has($cacheKey)) {
+            return Cache::get($cacheKey);
+        }
+
+        if (! $this->bibleVersion) {
+            $emptyCollection = collect();
+            Cache::put($cacheKey, $emptyCollection, 3600);
+            return $emptyCollection;
+        }
+
+        $chapters = Chapter::with('book')
+            ->whereHas('book', function ($query) use ($bookOsisId) {
+                $query->whereRaw('UPPER(osis_id) = UPPER(?)', [$bookOsisId]);
+            })
+            ->where('version_id', $this->bibleVersion->id)
+            ->withCount('verses')
+            ->orderBy('chapter_number')
+            ->get()
+            ->map(function ($chapter) {
+                return [
+                    'osis_ref' => $chapter->osis_id,
+                    'chapter_number' => $chapter->chapter_number,
+                    'verse_count' => $chapter->verses_count,
+                ];
+            });
+
+        Cache::put($cacheKey, $chapters, 3600);
+
+        return $chapters;
     }
 
     /**
@@ -95,6 +114,10 @@ class DatabaseBibleReader implements BibleReaderInterface
      */
     public function getVerses(string $chapterOsisRef): Collection
     {
+        if (! $this->bibleVersion) {
+            return collect();
+        }
+
         // Convert to proper case for database lookup
         $properCaseRef = ucfirst(strtolower($chapterOsisRef));
         if (strpos($properCaseRef, '.') !== false) {
@@ -102,26 +125,20 @@ class DatabaseBibleReader implements BibleReaderInterface
             $properCaseRef = ucfirst($parts[0]) . '.' . $parts[1];
         }
 
-        $verses = DB::table('verses as v')
-            ->join('chapters as c', 'v.chapter_id', '=', 'c.id')
-            ->select([
-                'v.osis_id',
-                'v.verse_number',
-                'v.formatted_text as text',
-            ])
-            ->where('c.osis_id', $properCaseRef)
-            ->where('c.version_id', $this->versionId)
-            ->orderBy('v.verse_number')
+        $verses = Verse::with('titles')
+            ->whereHas('chapter', function ($query) use ($properCaseRef) {
+                $query->where('osis_id', $properCaseRef)
+                    ->where('version_id', $this->bibleVersion->id);
+            })
+            ->orderBy('verse_number')
             ->get();
 
-        $mappedVerses = $verses->map(function ($verse) {
+        return $verses->map(function ($verse) {
             // Get titles for each individual verse
-            $titles = $this->getTitles($verse->osis_id);
             $titleHtml = '';
-
-            foreach ($titles as $title) {
-                if ($title['placement'] === 'before') {
-                    $titleClass = match($title['type']) {
+            foreach ($verse->titles as $title) {
+                if ($title->placement === 'before') {
+                    $titleClass = match($title->title_type) {
                         'psalm' => 'psalm-title text-center text-sm font-medium text-gray-700 dark:text-gray-300 italic mb-3 border-b border-gray-200 dark:border-gray-600 pb-2',
                         'main' => 'main-title text-center text-xl font-bold text-gray-900 dark:text-gray-100 mb-4',
                         'acrostic' => 'acrostic-title text-center text-lg font-semibold text-blue-700 dark:text-blue-400 mb-2',
@@ -129,19 +146,17 @@ class DatabaseBibleReader implements BibleReaderInterface
                         'sub' => 'sub-title text-center text-base font-semibold text-gray-800 dark:text-gray-200 mb-3',
                         default => 'title text-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'
                     };
-                    $titleHtml .= '<div class="' . $titleClass . '">' . $title['text'] . '</div>';
+                    $titleHtml .= '<div class="' . $titleClass . '">' . $title->title_text . '</div>';
                 }
             }
 
             return [
                 'osis_id' => $verse->osis_id,
-                'verse_number' => (int) $verse->verse_number,
-                'text' => $this->enhanceVerseText($verse->text, $verse->osis_id, false), // Don't include titles in verse text
+                'verse_number' => $verse->verse_number,
+                'text' => $this->enhanceVerseText($verse->formatted_text, $verse->osis_id, false),
                 'chapter_titles' => $titleHtml,
             ];
         });
-
-        return $mappedVerses;
     }
 
     /**
@@ -184,20 +199,25 @@ class DatabaseBibleReader implements BibleReaderInterface
      */
     private function getParagraphDataFromDatabase(string $chapterOsisRef): Collection
     {
-        return DB::table('paragraphs as p')
-            ->join('chapters as c', 'p.chapter_id', '=', 'c.id')
-            ->join('verses as start_v', 'p.start_verse_id', '=', 'start_v.id')
-            ->leftJoin('verses as end_v', 'p.end_verse_id', '=', 'end_v.id')
-            ->select([
-                'p.paragraph_type',
-                'start_v.verse_number as start_verse',
-                'end_v.verse_number as end_verse',
-                'p.text_content',
-            ])
-            ->where('c.osis_id', $chapterOsisRef)
-            ->where('c.version_id', $this->versionId)
-            ->orderBy('start_v.verse_number')
-            ->get();
+        if (! $this->bibleVersion) {
+            return collect();
+        }
+
+        return Paragraph::with(['startVerse', 'endVerse'])
+            ->whereHas('chapter', function ($query) use ($chapterOsisRef) {
+                $query->where('osis_id', $chapterOsisRef)
+                    ->where('version_id', $this->bibleVersion->id);
+            })
+            ->orderBy('start_verse_id')
+            ->get()
+            ->map(function ($paragraph) {
+                return [
+                    'paragraph_type' => $paragraph->paragraph_type,
+                    'start_verse' => $paragraph->startVerse->verse_number,
+                    'end_verse' => $paragraph->endVerse ? $paragraph->endVerse->verse_number : $paragraph->startVerse->verse_number,
+                    'text_content' => $paragraph->text_content,
+                ];
+            });
     }
 
     /**
@@ -208,8 +228,8 @@ class DatabaseBibleReader implements BibleReaderInterface
         $paragraphs = collect();
 
         foreach ($paragraphData as $paragraph) {
-            $startVerse = $paragraph->start_verse;
-            $endVerse = $paragraph->end_verse ?? $startVerse;
+            $startVerse = $paragraph['start_verse'];
+            $endVerse = $paragraph['end_verse'];
 
             $paragraphVerses = $verses->filter(function ($verse) use ($startVerse, $endVerse) {
                 return $verse['verse_number'] >= $startVerse && $verse['verse_number'] <= $endVerse;
@@ -221,7 +241,7 @@ class DatabaseBibleReader implements BibleReaderInterface
                 $paragraphs->push([
                     'verses' => $paragraphVerses->toArray(),
                     'combined_text' => $combinedText,
-                    'type' => $paragraph->paragraph_type,
+                    'type' => $paragraph['paragraph_type'],
                     'start_verse' => $startVerse,
                     'end_verse' => $endVerse,
                 ]);
@@ -431,11 +451,7 @@ class DatabaseBibleReader implements BibleReaderInterface
      */
     public function getBibleInfo(): array
     {
-        $version = DB::table('bible_versions')
-            ->where('id', $this->versionId)
-            ->first();
-
-        if (! $version) {
+        if (! $this->bibleVersion) {
             return [
                 'title' => 'Unknown',
                 'description' => '',
@@ -445,10 +461,10 @@ class DatabaseBibleReader implements BibleReaderInterface
         }
 
         return [
-            'title' => $version->title,
-            'description' => $version->description ?: '',
-            'publisher' => $version->publisher ?: '',
-            'language' => $version->language ?: 'English',
+            'title' => $this->bibleVersion->title,
+            'description' => $this->bibleVersion->description ?: '',
+            'publisher' => $this->bibleVersion->publisher ?: '',
+            'language' => $this->bibleVersion->language ?: 'English',
         ];
     }
 

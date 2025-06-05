@@ -10,6 +10,8 @@ class WordElement extends Model
 {
     use HasFactory;
 
+    protected $table = 'word_elements';
+
     protected $fillable = [
         'verse_id',
         'word_text',
@@ -24,6 +26,7 @@ class WordElement extends Model
 
     protected $casts = [
         'attributes' => 'array',
+        'word_order' => 'integer',
     ];
 
     /**

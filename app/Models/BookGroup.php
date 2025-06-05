@@ -10,22 +10,23 @@ class BookGroup extends Model
 {
     use HasFactory;
 
+    protected $table = 'book_groups';
+
     protected $fillable = [
         'name',
-        'canonical',
-        'sub_type',
+        'description',
         'sort_order',
     ];
 
     protected $casts = [
-        'canonical' => 'boolean',
+        'sort_order' => 'integer',
     ];
 
     /**
-     * Get the books in this group
+     * Get all books in this group
      */
     public function books(): HasMany
     {
-        return $this->hasMany(Book::class);
+        return $this->hasMany(Book::class, 'book_group_id')->orderBy('sort_order');
     }
 }

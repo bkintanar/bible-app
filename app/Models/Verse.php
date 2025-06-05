@@ -21,6 +21,10 @@ class Verse extends Model
         'original_xml',
     ];
 
+    protected $casts = [
+        'verse_number' => 'integer',
+    ];
+
     /**
      * Get the chapter this verse belongs to
      */
@@ -34,7 +38,47 @@ class Verse extends Model
      */
     public function wordElements(): HasMany
     {
-        return $this->hasMany(WordElement::class);
+        return $this->hasMany(WordElement::class)->orderBy('word_order');
+    }
+
+    /**
+     * Get the titles for this verse
+     */
+    public function titles(): HasMany
+    {
+        return $this->hasMany(Title::class)->orderBy('title_order');
+    }
+
+    /**
+     * Get the translator changes for this verse
+     */
+    public function translatorChanges(): HasMany
+    {
+        return $this->hasMany(TranslatorChange::class)->orderBy('text_order');
+    }
+
+    /**
+     * Get the divine names for this verse
+     */
+    public function divineNames(): HasMany
+    {
+        return $this->hasMany(DivineName::class);
+    }
+
+    /**
+     * Get the study notes for this verse
+     */
+    public function studyNotes(): HasMany
+    {
+        return $this->hasMany(StudyNote::class);
+    }
+
+    /**
+     * Get the poetry structure for this verse
+     */
+    public function poetryStructure(): HasMany
+    {
+        return $this->hasMany(PoetryStructure::class)->orderBy('line_order');
     }
 
     /**
@@ -42,15 +86,19 @@ class Verse extends Model
      */
     public function getReferenceAttribute(): string
     {
-        // Extract book, chapter, and verse from OSIS ID
+        // Use relationship to get book name instead of hardcoded mapping
+        $chapter = $this->chapter()->with('book')->first();
+        if ($chapter && $chapter->book) {
+            return "{$chapter->book->name} {$chapter->chapter_number}:{$this->verse_number}";
+        }
+
+        // Fallback to OSIS parsing
         if (preg_match('/^([^.]+)\.(\d+)\.(\d+)$/', $this->osis_id, $matches)) {
             $bookOsis = $matches[1];
             $chapterNum = $matches[2];
             $verseNum = $matches[3];
 
-            // Get book name (simplified mapping)
             $bookName = $this->getBookNameFromOsis($bookOsis);
-
             return "{$bookName} {$chapterNum}:{$verseNum}";
         }
 
@@ -58,7 +106,7 @@ class Verse extends Model
     }
 
     /**
-     * Get book name from OSIS ID
+     * Get book name from OSIS ID (fallback method)
      */
     private function getBookNameFromOsis(string $osis): string
     {
