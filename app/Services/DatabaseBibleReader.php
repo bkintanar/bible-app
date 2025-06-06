@@ -232,7 +232,7 @@ class DatabaseBibleReader implements BibleReaderInterface
     }
 
     /**
-     * Group verses by stored paragraph data
+     * Group verses by stored paragraph data, but respect verse titles by splitting paragraphs when needed
      */
     private function groupVersesByParagraphData(Collection $verses, Collection $paragraphData): Collection
     {
@@ -247,19 +247,86 @@ class DatabaseBibleReader implements BibleReaderInterface
             })->values();
 
             if ($paragraphVerses->isNotEmpty()) {
-                $combinedText = $paragraphVerses->pluck('text')->implode(' ');
+                // Check if any verses within this paragraph have verse titles (except the first verse)
+                $firstVerseNumber = $paragraphVerses->first()['verse_number'];
+                $versesWithTitles = $paragraphVerses->filter(function ($verse) use ($firstVerseNumber) {
+                    return $verse['verse_number'] > $firstVerseNumber
+                           && isset($verse['verse_titles'])
+                           && !empty($verse['verse_titles']);
+                });
 
-                $paragraphs->push([
-                    'verses' => $paragraphVerses->toArray(),
-                    'combined_text' => $combinedText,
-                    'type' => $paragraph['paragraph_type'],
-                    'start_verse' => $startVerse,
-                    'end_verse' => $endVerse,
-                ]);
+                if ($versesWithTitles->isNotEmpty()) {
+                    // Split the paragraph at each verse title
+                    $this->splitParagraphAtVerseTitles($paragraphVerses, $paragraph, $paragraphs);
+                } else {
+                    // No verse titles found, use the original paragraph structure
+                    $combinedText = $paragraphVerses->pluck('text')->implode(' ');
+
+                    $paragraphs->push([
+                        'verses' => $paragraphVerses->toArray(),
+                        'combined_text' => $combinedText,
+                        'type' => $paragraph['paragraph_type'],
+                        'start_verse' => $startVerse,
+                        'end_verse' => $endVerse,
+                        'has_paragraph_marker' => true,
+                    ]);
+                }
             }
         }
 
         return $paragraphs;
+    }
+
+    /**
+     * Split a stored paragraph at verse titles while preserving paragraph metadata
+     */
+    private function splitParagraphAtVerseTitles(Collection $paragraphVerses, array $originalParagraph, Collection &$paragraphs): void
+    {
+        $currentParagraphVerses = collect();
+
+        foreach ($paragraphVerses as $verse) {
+            $hasVerseTitle = isset($verse['verse_titles']) && !empty($verse['verse_titles']);
+            $isFirstVerse = $currentParagraphVerses->isEmpty();
+
+            // If this verse has a title and it's not the first verse of the current sub-paragraph
+            if ($hasVerseTitle && !$isFirstVerse) {
+                // Finish the current sub-paragraph
+                if ($currentParagraphVerses->isNotEmpty()) {
+                    $combinedText = $currentParagraphVerses->pluck('text')->implode(' ');
+
+                    $paragraphs->push([
+                        'verses' => $currentParagraphVerses->toArray(),
+                        'combined_text' => $combinedText,
+                        'type' => $originalParagraph['paragraph_type'],
+                        'start_verse' => $currentParagraphVerses->first()['verse_number'],
+                        'end_verse' => $currentParagraphVerses->last()['verse_number'],
+                        'has_paragraph_marker' => true,
+                        'split_from_original' => true, // Mark as split from original paragraph
+                    ]);
+                }
+
+                // Start new sub-paragraph with the verse that has the title
+                $currentParagraphVerses = collect([$verse]);
+            } else {
+                // Add verse to current sub-paragraph
+                $currentParagraphVerses->push($verse);
+            }
+        }
+
+        // Add the final sub-paragraph
+        if ($currentParagraphVerses->isNotEmpty()) {
+            $combinedText = $currentParagraphVerses->pluck('text')->implode(' ');
+
+            $paragraphs->push([
+                'verses' => $currentParagraphVerses->toArray(),
+                'combined_text' => $combinedText,
+                'type' => $originalParagraph['paragraph_type'],
+                'start_verse' => $currentParagraphVerses->first()['verse_number'],
+                'end_verse' => $currentParagraphVerses->last()['verse_number'],
+                'has_paragraph_marker' => true,
+                'split_from_original' => true, // Mark as split from original paragraph
+            ]);
+        }
     }
 
     /**
