@@ -10,6 +10,7 @@ use App\Models\BibleVersion;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use App\Services\Contracts\BibleReaderInterface;
 
 class DatabaseBibleReader implements BibleReaderInterface
@@ -134,8 +135,10 @@ class DatabaseBibleReader implements BibleReaderInterface
             ->get();
 
         return $verses->map(function ($verse) {
-            // Get titles for each individual verse
-            $titleHtml = '';
+            // Separate chapter titles from verse titles
+            $chapterTitleHtml = '';
+            $verseTitleHtml = '';
+
             foreach ($verse->titles as $title) {
                 if ($title->placement === 'before') {
                     $titleClass = match($title->title_type) {
@@ -144,9 +147,16 @@ class DatabaseBibleReader implements BibleReaderInterface
                         'acrostic' => 'acrostic-title text-center text-lg font-semibold text-blue-700 dark:text-blue-400 mb-2',
                         'chapter' => 'chapter-title text-center text-lg font-bold text-gray-900 dark:text-gray-100 mb-4',
                         'sub' => 'sub-title text-center text-base font-semibold text-gray-800 dark:text-gray-200 mb-3',
+                        'verse' => 'verse-title text-sm font-medium text-blue-600 dark:text-blue-400 italic mb-2',
                         default => 'title text-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'
                     };
-                    $titleHtml .= '<div class="' . $titleClass . '">' . $title->title_text . '</div>';
+
+                    // Separate verse titles from chapter titles
+                    if ($title->title_type === 'verse') {
+                        $verseTitleHtml .= '<div class="' . $titleClass . '">' . $title->title_text . '</div>';
+                    } else {
+                        $chapterTitleHtml .= '<div class="' . $titleClass . '">' . $title->title_text . '</div>';
+                    }
                 }
             }
 
@@ -154,7 +164,8 @@ class DatabaseBibleReader implements BibleReaderInterface
                 'osis_id' => $verse->osis_id,
                 'verse_number' => $verse->verse_number,
                 'text' => $this->enhanceVerseText($verse->formatted_text, $verse->osis_id, false),
-                'chapter_titles' => $titleHtml,
+                'chapter_titles' => $chapterTitleHtml,
+                'verse_titles' => $verseTitleHtml,
             ];
         });
     }
@@ -321,6 +332,11 @@ class DatabaseBibleReader implements BibleReaderInterface
 
         // For verse 1 of any chapter (always start a new paragraph)
         if ($verse['verse_number'] === 1) {
+            return true;
+        }
+
+        // Check if this verse has a verse title (non-first verse with verse title should start new paragraph)
+        if ($verse['verse_number'] > 1 && isset($verse['verse_titles']) && !empty($verse['verse_titles'])) {
             return true;
         }
 
@@ -778,6 +794,7 @@ class DatabaseBibleReader implements BibleReaderInterface
                         'acrostic' => 'acrostic-title text-center text-lg font-semibold text-blue-700 dark:text-blue-400 mb-2',
                         'chapter' => 'chapter-title text-center text-lg font-bold text-gray-900 dark:text-gray-100 mb-4',
                         'sub' => 'sub-title text-center text-base font-semibold text-gray-800 dark:text-gray-200 mb-3',
+                        'verse' => 'verse-title text-sm font-medium text-blue-600 dark:text-blue-400 italic mb-2',
                         default => 'title text-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'
                     };
                     $titleHtml .= '<div class="' . $titleClass . '">' . $title['text'] . '</div>';

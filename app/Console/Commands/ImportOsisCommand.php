@@ -2,12 +2,12 @@
 
 namespace App\Console\Commands;
 
+use DOMXPath;
+use Exception;
+use DOMDocument;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use DOMDocument;
-use DOMXPath;
-use Exception;
 
 class ImportOsisCommand extends Command
 {
@@ -38,7 +38,7 @@ class ImportOsisCommand extends Command
         $file = $this->argument('file');
         $chunkSize = (int) $this->option('chunk');
 
-        if (!file_exists($file)) {
+        if (! file_exists($file)) {
             $this->error("File not found: {$file}");
             return 1;
         }
@@ -71,8 +71,8 @@ class ImportOsisCommand extends Command
             $this->displaySummary();
 
         } catch (Exception $e) {
-            $this->error("❌ Import failed: " . $e->getMessage());
-            Log::error("OSIS Import Error", ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            $this->error('❌ Import failed: ' . $e->getMessage());
+            Log::error('OSIS Import Error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return 1;
         }
 
@@ -81,7 +81,7 @@ class ImportOsisCommand extends Command
 
     private function loadXML($file)
     {
-        $this->info("📖 Loading XML file...");
+        $this->info('📖 Loading XML file...');
 
         $this->doc = new DOMDocument();
         $this->doc->preserveWhiteSpace = false;
@@ -89,26 +89,26 @@ class ImportOsisCommand extends Command
 
         // Load with error handling
         libxml_use_internal_errors(true);
-        if (!$this->doc->load($file)) {
+        if (! $this->doc->load($file)) {
             $errors = libxml_get_errors();
-            throw new Exception("XML parsing failed: " . implode(', ', array_map(fn($e) => $e->message, $errors)));
+            throw new Exception('XML parsing failed: ' . implode(', ', array_map(fn ($e) => $e->message, $errors)));
         }
 
         $this->xpath = new DOMXPath($this->doc);
         $this->xpath->registerNamespace('osis', 'http://www.bibletechnologies.net/2003/OSIS/namespace');
 
-        $this->info("✅ XML loaded successfully");
+        $this->info('✅ XML loaded successfully');
     }
 
     private function createBibleVersion()
     {
-        $this->info("📚 Creating Bible version record...");
+        $this->info('📚 Creating Bible version record...');
 
         // Extract version information from the OSIS file
         $versionInfo = $this->extractVersionInfo();
 
-        if (!$versionInfo) {
-            throw new Exception("Could not extract version information from OSIS file");
+        if (! $versionInfo) {
+            throw new Exception('Could not extract version information from OSIS file');
         }
 
         // Check if version already exists
@@ -118,7 +118,7 @@ class ImportOsisCommand extends Command
 
         if ($existingVersion) {
             $this->warn("⚠️  Bible version '{$versionInfo['osis_work']}' already exists (ID: {$existingVersion->id})");
-            $this->warn("    This import will re-process titles and other elements.");
+            $this->warn('    This import will re-process titles and other elements.');
             $this->versionId = $existingVersion->id;
             return;
         }
@@ -145,7 +145,7 @@ class ImportOsisCommand extends Command
     {
         // Get the osisText element to extract basic info
         $osisText = $this->xpath->query('//osis:osisText')->item(0);
-        if (!$osisText) {
+        if (! $osisText) {
             return null;
         }
 
@@ -178,18 +178,18 @@ class ImportOsisCommand extends Command
             'KJV' => [
                 'title' => 'King James Version',
                 'publisher' => 'Public Domain',
-                'description' => 'King James Version imported from OSIS XML'
+                'description' => 'King James Version imported from OSIS XML',
             ],
             'ASV' => [
                 'title' => 'American Standard Version',
                 'publisher' => 'Public Domain',
-                'description' => 'American Standard Version imported from OSIS XML'
+                'description' => 'American Standard Version imported from OSIS XML',
             ],
             'MAO' => [
                 'title' => 'Maori Bible',
                 'publisher' => 'Public Domain',
-                'description' => 'Maori Bible imported from OSIS XML'
-            ]
+                'description' => 'Maori Bible imported from OSIS XML',
+            ],
         ];
 
         if (isset($versionMappings[$osisIDWork])) {
@@ -211,7 +211,7 @@ class ImportOsisCommand extends Command
 
     private function importBooks()
     {
-        $this->info("📚 Loading existing books...");
+        $this->info('📚 Loading existing books...');
 
         // Load existing books from database instead of creating new ones
         // Books are shared across all Bible versions
@@ -235,40 +235,46 @@ class ImportOsisCommand extends Command
         // Check for any missing books in our database
         $missingBooks = [];
         foreach ($osisBooks as $osisBook) {
-            if (!isset($this->books[$osisBook])) {
+            if (! isset($this->books[$osisBook])) {
                 $missingBooks[] = $osisBook;
             }
         }
 
-        if (!empty($missingBooks)) {
-            $this->warn("⚠️  Some books from OSIS are not in database: " . implode(', ', $missingBooks));
-            $this->warn("    You may need to add these books to the database first.");
+        if (! empty($missingBooks)) {
+            $this->warn('⚠️  Some books from OSIS are not in database: ' . implode(', ', $missingBooks));
+            $this->warn('    You may need to add these books to the database first.');
         }
 
         $foundBooks = array_intersect($osisBooks, array_keys($this->books));
-        $this->info("✅ Books available for import: " . count($foundBooks) . " (Total in OSIS: " . count($osisBooks) . ")");
+        $this->info('✅ Books available for import: ' . count($foundBooks) . ' (Total in OSIS: ' . count($osisBooks) . ')');
     }
 
     private function importChapters()
     {
-        $this->info("📖 Importing chapters...");
+        $this->info('📖 Importing chapters...');
 
         // Get all chapters with namespace
         $chapterElements = $this->xpath->query('//osis:chapter[@osisID]');
 
         foreach ($chapterElements as $chapterElement) {
             $osisId = $chapterElement->getAttribute('osisID');
-            if (!$osisId) continue;
+            if (! $osisId) {
+                continue;
+            }
 
             // Parse book and chapter (e.g., "Gen.1" -> "Gen", 1)
             $parts = explode('.', $osisId);
-            if (count($parts) < 2) continue;
+            if (count($parts) < 2) {
+                continue;
+            }
 
             $bookOsis = $parts[0];
             $chapterNumber = (int) $parts[1];
 
             $bookId = $this->books[$bookOsis] ?? null;
-            if (!$bookId) continue;
+            if (! $bookId) {
+                continue;
+            }
 
             // Check if this chapter already exists for this version
             $existingChapter = DB::table('chapters')
@@ -301,11 +307,13 @@ class ImportOsisCommand extends Command
             $this->processChapterTitles($chapterElement, $chapterId);
         }
 
-        $this->info("✅ Chapters imported: " . count($this->chapters));
+        $this->info('✅ Chapters imported: ' . count($this->chapters));
     }
 
     /**
      * Process titles that appear at the chapter level (like chapter headings)
+     * @param mixed $chapterElement
+     * @param mixed $chapterId
      */
     private function processChapterTitles($chapterElement, $chapterId)
     {
@@ -335,6 +343,9 @@ class ImportOsisCommand extends Command
 
     /**
      * Import a title specifically associated with a chapter
+     * @param mixed $element
+     * @param mixed $chapterId
+     * @param mixed $order
      */
     private function importChapterTitle($element, $chapterId, $order)
     {
@@ -370,7 +381,7 @@ class ImportOsisCommand extends Command
 
     private function importVerses($chunkSize)
     {
-        $this->info("📝 Importing verses and content...");
+        $this->info('📝 Importing verses and content...');
 
         // Get all verse start markers with namespace
         $verses = $this->xpath->query('//osis:verse[@osisID][@sID]');
@@ -399,11 +410,15 @@ class ImportOsisCommand extends Command
     {
         $osisId = $verseElement->getAttribute('osisID');
         $sId = $verseElement->getAttribute('sID');
-        if (!$osisId || !$sId) return;
+        if (! $osisId || ! $sId) {
+            return;
+        }
 
         // Parse verse reference (e.g., "Gen.1.1")
         $parts = explode('.', $osisId);
-        if (count($parts) < 3) return;
+        if (count($parts) < 3) {
+            return;
+        }
 
         $bookOsis = $parts[0];
         $chapterNum = (int) $parts[1];
@@ -412,12 +427,14 @@ class ImportOsisCommand extends Command
         // Find chapter
         $chapterRef = $bookOsis . '.' . $chapterNum;
         $chapterId = $this->chapters[$chapterRef] ?? null;
-        if (!$chapterId) return;
+        if (! $chapterId) {
+            return;
+        }
 
         // Handle paragraph tracking when switching chapters
         if ($this->currentChapterId !== $chapterId) {
             // Save previous chapter's final paragraph if exists
-            if ($this->currentChapterId && $this->currentParagraphStart !== null && !empty($this->currentParagraphVerses)) {
+            if ($this->currentChapterId && $this->currentParagraphStart !== null && ! empty($this->currentParagraphVerses)) {
                 $this->saveParagraph($this->currentChapterId, $this->currentParagraphStart, $this->currentParagraphVerses);
             }
 
@@ -480,15 +497,13 @@ class ImportOsisCommand extends Command
             $this->processParagraphMarkers($content['xml'], $verseNum);
         } else {
             // Add verse to current paragraph tracking only if it doesn't start a new paragraph
-            if ($this->currentParagraphStart !== null && !in_array($verseNum, $this->currentParagraphVerses)) {
+            if ($this->currentParagraphStart !== null && ! in_array($verseNum, $this->currentParagraphVerses)) {
                 $this->currentParagraphVerses[] = $verseNum;
             }
         }
 
-        // Check for titles that come before this verse (especially for verse 1)
-        if ($verseNum === 1) {
-            $this->extractChapterTitles($verseElement, $verseId);
-        }
+        // Check for titles that come before this verse
+        $this->extractVerseTitles($verseElement, $verseId);
 
         // Extract poetry structure that contains this verse
         $this->extractPoetryStructure($verseElement, $verseId);
@@ -579,25 +594,36 @@ class ImportOsisCommand extends Command
         }
     }
 
-    private function extractChapterTitles($verseElement, $verseId)
+    private function extractVerseTitles($verseElement, $verseId)
     {
-        // Look backwards from the verse to find any title elements in the same chapter
+        // Look backwards from the verse to find any title elements
         $current = $verseElement->previousSibling;
         $order = 1;
+        $foundTitles = [];
 
         while ($current) {
             if ($current->nodeType === XML_ELEMENT_NODE) {
                 $nodeName = $current->localName ?: $current->nodeName;
 
                 if ($nodeName === 'title') {
-                    $this->importTitle($current, $verseId, $order);
-                    $order++;
+                    // Collect titles but don't process yet (we want to process in forward order)
+                    $foundTitles[] = $current;
+                } elseif ($nodeName === 'verse') {
+                    // Stop when we reach another verse (titles should be immediately before this verse)
+                    break;
                 } elseif ($nodeName === 'chapter') {
                     // Stop when we reach the chapter start
                     break;
                 }
             }
             $current = $current->previousSibling;
+        }
+
+        // Process titles in forward order (reverse the array since we collected backwards)
+        $foundTitles = array_reverse($foundTitles);
+        foreach ($foundTitles as $titleElement) {
+            $this->importTitle($titleElement, $verseId, $order);
+            $order++;
         }
     }
 
@@ -642,7 +668,7 @@ class ImportOsisCommand extends Command
         return [
             'text' => trim($plainText),
             'formatted' => trim($formattedText),
-            'xml' => trim($content)
+            'xml' => trim($content),
         ];
     }
 
@@ -734,7 +760,7 @@ class ImportOsisCommand extends Command
     {
         // Create a document fragment for processing
         $fragment = $this->doc->createDocumentFragment();
-        if (!empty($xmlContent)) {
+        if (! empty($xmlContent)) {
             @$fragment->appendXML('<root>' . $xmlContent . '</root>');
 
             if ($fragment->firstChild) {
@@ -891,8 +917,8 @@ class ImportOsisCommand extends Command
         $canonical = $element->getAttribute('canonical') === 'true';
 
         // Validate title type and map to expected values
-        $validTitleTypes = ['main', 'chapter', 'psalm', 'acrostic', 'sub'];
-        if (!in_array($titleType, $validTitleTypes)) {
+        $validTitleTypes = ['main', 'chapter', 'psalm', 'acrostic', 'sub', 'verse'];
+        if (! in_array($titleType, $validTitleTypes)) {
             // Log unknown title type and default to 'main'
             $this->warn("Unknown title type '{$titleType}' found, defaulting to 'main'");
             $titleType = 'main';
@@ -1070,15 +1096,15 @@ class ImportOsisCommand extends Command
 
     private function updateFTSTables()
     {
-        $this->info("🔍 Updating FTS search tables...");
+        $this->info('🔍 Updating FTS search tables...');
 
         try {
             DB::statement("INSERT INTO verses_fts(verses_fts) VALUES('rebuild')");
         } catch (Exception $e) {
-            $this->warn("FTS rebuild failed: " . $e->getMessage());
+            $this->warn('FTS rebuild failed: ' . $e->getMessage());
         }
 
-        $this->info("✅ FTS tables updated");
+        $this->info('✅ FTS tables updated');
     }
 
     private function getBookGroupId($osisId)
@@ -1087,9 +1113,9 @@ class ImportOsisCommand extends Command
 
         if (in_array($osisId, $otBooks)) {
             return DB::table('book_groups')->where('name', 'Old Testament')->value('id');
-        } else {
-            return DB::table('book_groups')->where('name', 'New Testament')->value('id');
         }
+        return DB::table('book_groups')->where('name', 'New Testament')->value('id');
+
     }
 
     private function getBookNumber($osisId)
@@ -1108,7 +1134,7 @@ class ImportOsisCommand extends Command
             'Col' => 51, '1Thess' => 52, '2Thess' => 53, '1Tim' => 54, '2Tim' => 55,
             'Titus' => 56, 'Phlm' => 57, 'Heb' => 58, 'Jas' => 59, '1Pet' => 60,
             '2Pet' => 61, '1John' => 62, '2John' => 63, '3John' => 64, 'Jude' => 65,
-            'Rev' => 66
+            'Rev' => 66,
         ];
 
         return $bookNumbers[$osisId] ?? 999;
@@ -1130,7 +1156,7 @@ class ImportOsisCommand extends Command
             'Col' => 'Colossians', '1Thess' => '1 Thessalonians', '2Thess' => '2 Thessalonians', '1Tim' => '1 Timothy', '2Tim' => '2 Timothy',
             'Titus' => 'Titus', 'Phlm' => 'Philemon', 'Heb' => 'Hebrews', 'Jas' => 'James', '1Pet' => '1 Peter',
             '2Pet' => '2 Peter', '1John' => '1 John', '2John' => '2 John', '3John' => '3 John', 'Jude' => 'Jude',
-            'Rev' => 'Revelation'
+            'Rev' => 'Revelation',
         ];
 
         return $bookNames[$osisId] ?? $osisId;
@@ -1139,19 +1165,19 @@ class ImportOsisCommand extends Command
     private function displaySummary()
     {
         $this->newLine();
-        $this->info("🎉 Import completed successfully!");
+        $this->info('🎉 Import completed successfully!');
         $this->newLine();
 
-        $this->line("📊 <info>Import Summary:</info>");
-        $this->line("   📚 Books: " . count($this->books));
-        $this->line("   📖 Chapters: " . count($this->chapters));
-        $this->line("   📝 Verses: " . $this->verseCount);
-        $this->line("   📄 Paragraphs: " . $this->paragraphCount);
-        $this->line("   🔤 Word Elements: " . $this->wordElementCount);
-        $this->line("   ✒️  Translator Changes: " . $this->translatorChangeCount);
-        $this->line("   👑 Divine Names: " . $this->divineNameCount);
-        $this->line("   🔴 Red Letter Text: " . $this->redLetterCount);
-        $this->line("   📚 Titles: " . $this->titleCount);
+        $this->line('📊 <info>Import Summary:</info>');
+        $this->line('   📚 Books: ' . count($this->books));
+        $this->line('   📖 Chapters: ' . count($this->chapters));
+        $this->line('   📝 Verses: ' . $this->verseCount);
+        $this->line('   📄 Paragraphs: ' . $this->paragraphCount);
+        $this->line('   🔤 Word Elements: ' . $this->wordElementCount);
+        $this->line('   ✒️  Translator Changes: ' . $this->translatorChangeCount);
+        $this->line('   👑 Divine Names: ' . $this->divineNameCount);
+        $this->line('   🔴 Red Letter Text: ' . $this->redLetterCount);
+        $this->line('   📚 Titles: ' . $this->titleCount);
 
         // Show title type breakdown
         $titleBreakdown = DB::table('titles')
@@ -1161,16 +1187,16 @@ class ImportOsisCommand extends Command
             ->get();
 
         if ($titleBreakdown->count() > 0) {
-            $this->line("       Title breakdown:");
+            $this->line('       Title breakdown:');
             foreach ($titleBreakdown as $titleType) {
                 $this->line("       - {$titleType->title_type}: {$titleType->count}");
             }
         }
 
-        $this->line("   📝 Poetry Lines: " . $this->poetryLineCount);
+        $this->line('   📝 Poetry Lines: ' . $this->poetryLineCount);
 
         $this->newLine();
-        $this->line("✅ Database is ready for biblical scholarship!");
+        $this->line('✅ Database is ready for biblical scholarship!');
     }
 
     /**
@@ -1178,17 +1204,21 @@ class ImportOsisCommand extends Command
      */
     private function processAllBookTitles()
     {
-        $this->info("📑 Processing book titles...");
+        $this->info('📑 Processing book titles...');
 
         // Get all book divisions with namespace
         $bookDivs = $this->xpath->query('//osis:div[@type="book"]');
 
         foreach ($bookDivs as $bookDiv) {
             $osisId = $bookDiv->getAttribute('osisID');
-            if (!$osisId) continue;
+            if (! $osisId) {
+                continue;
+            }
 
             $bookId = $this->books[$osisId] ?? null;
-            if (!$bookId) continue;
+            if (! $bookId) {
+                continue;
+            }
 
             // Process any main titles that appear in this book div
             $this->processBookTitles($bookDiv, $bookId);
@@ -1197,6 +1227,8 @@ class ImportOsisCommand extends Command
 
     /**
      * Process main book titles that appear at the book level
+     * @param mixed $bookDiv
+     * @param mixed $bookId
      */
     private function processBookTitles($bookDiv, $bookId)
     {
@@ -1219,6 +1251,8 @@ class ImportOsisCommand extends Command
 
     /**
      * Import a title specifically associated with a book
+     * @param mixed $element
+     * @param mixed $bookId
      */
     private function importBookTitle($element, $bookId)
     {
@@ -1262,19 +1296,21 @@ class ImportOsisCommand extends Command
 
     /**
      * Process paragraph markers found in verse content
+     * @param mixed $xmlContent
+     * @param mixed $verseNum
      */
     private function processParagraphMarkers($xmlContent, $verseNum)
     {
         // Check for OSIS paragraph markers
         if (preg_match('/<milestone[^>]*type="x-p"[^>]*marker="¶"[^>]*>/', $xmlContent)) {
             // Found a paragraph marker - save current paragraph and start new one
-            if ($this->currentParagraphStart !== null && !empty($this->currentParagraphVerses)) {
+            if ($this->currentParagraphStart !== null && ! empty($this->currentParagraphVerses)) {
                 // End the current paragraph at the verse BEFORE this new paragraph marker
-                $previousParagraphVerses = array_filter($this->currentParagraphVerses, function($v) use ($verseNum) {
+                $previousParagraphVerses = array_filter($this->currentParagraphVerses, function ($v) use ($verseNum) {
                     return $v < $verseNum;
                 });
 
-                if (!empty($previousParagraphVerses)) {
+                if (! empty($previousParagraphVerses)) {
                     $this->saveParagraph($this->currentChapterId, $this->currentParagraphStart, $previousParagraphVerses);
                 }
             }
@@ -1287,6 +1323,9 @@ class ImportOsisCommand extends Command
 
     /**
      * Save a paragraph to the database
+     * @param mixed $chapterId
+     * @param mixed $startVerse
+     * @param mixed $verses
      */
     private function saveParagraph($chapterId, $startVerse, $verses)
     {
@@ -1322,7 +1361,7 @@ class ImportOsisCommand extends Command
                 ->where('end_verse_id', $endVerseId)
                 ->first();
 
-            if (!$existingParagraph) {
+            if (! $existingParagraph) {
                 DB::table('paragraphs')->insert([
                     'chapter_id' => $chapterId,
                     'start_verse_id' => $startVerseId,
@@ -1330,7 +1369,7 @@ class ImportOsisCommand extends Command
                     'paragraph_type' => 'normal',
                     'text_content' => $textContent,
                     'created_at' => now(),
-                    'updated_at' => now()
+                    'updated_at' => now(),
                 ]);
 
                 $this->paragraphCount++;
@@ -1344,7 +1383,7 @@ class ImportOsisCommand extends Command
     private function finalizeParagraphs()
     {
         // Save any remaining paragraphs
-        if ($this->currentParagraphStart !== null && !empty($this->currentParagraphVerses)) {
+        if ($this->currentParagraphStart !== null && ! empty($this->currentParagraphVerses)) {
             $this->saveParagraph($this->currentChapterId, $this->currentParagraphStart, $this->currentParagraphVerses);
         }
     }

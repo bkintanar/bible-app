@@ -5,6 +5,9 @@ namespace App\Livewire;
 use Livewire\Component;
 use App\Services\BibleService;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use App\Http\Controllers\ChapterController;
+use App\Jobs\CacheAdjacentChaptersJob;
 
 class BibleChapter extends Component
 {
@@ -76,25 +79,15 @@ class BibleChapter extends Component
         // Store this page as the last visited
         $this->storeLastVisitedPage();
 
-        // Get chapters and verses - use individual verses for Psalm 119 to show acrostic titles properly
+        // Get chapters and verses - check cache first
         $this->chapters = $this->bibleService->getChapters($bookOsisId);
-        $chapterOsisRef = $bookOsisId . '.' . $chapterNumber;
 
-        // For Psalm 119, use individual verse format to properly display acrostic titles
-        // For other chapters, use paragraph format for better reading
-        if (strtolower($bookOsisId) === 'ps' && $chapterNumber == 119) {
-            // Get individual verses for Psalm 119 to show acrostic titles
-            $individualVerses = $this->bibleService->getVerses($chapterOsisRef);
-            $this->verses = $individualVerses->map(function ($verse) {
-                return [
-                    'verses' => [$verse],
-                    'type' => 'individual_verse',
-                ];
-            });
-        } else {
-            // Get verses grouped by paragraphs for better reading experience
-            $this->verses = $this->bibleService->getVersesParagraphStyle($chapterOsisRef);
-        }
+        // Try to load current chapter from cache first
+        $this->verses = $this->loadChapterVerses($bookOsisId, $chapterNumber);
+        \Log::info("📖 Loaded main chapter {$bookOsisId} {$chapterNumber} with " . $this->verses->count() . ' paragraphs');
+
+        // DEBUG: Log verse titles for Genesis 1 in mount
+
 
         if ($this->verses->isEmpty()) {
             dd([
@@ -135,6 +128,8 @@ class BibleChapter extends Component
             }
         }
 
+        // Load paragraphs for the current chapter
+        $chapterOsisRef = $this->bookOsisId . '.' . $this->chapterNumber;
         $this->paragraphs = $this->bibleService->getChapterParagraphs($chapterOsisRef);
 
         // Preload adjacent chapters for book flip effect
@@ -142,112 +137,128 @@ class BibleChapter extends Component
     }
 
     /**
-     * Load previous and next chapter content for book flip preloading
+     * Load adjacent chapters for book flip preloading
+     * Uses cached data when available, dispatches background job for missing cache
      * @param mixed $bookOsisId
      * @param mixed $chapterNumber
      */
     private function loadAdjacentChapters($bookOsisId, $chapterNumber)
     {
-        \Log::info("=== DEBUG: Loading adjacent chapters for {$bookOsisId} chapter {$chapterNumber} ===");
+        \Log::info("📋 Loading adjacent chapters for {$bookOsisId} chapter {$chapterNumber}");
 
-        // Load previous chapter if it exists
+        // Try to load cached adjacent chapters
+        $loadedFromCache = $this->loadCachedAdjacentChapters($bookOsisId, $chapterNumber);
+
+        // If not fully cached, dispatch background job to cache them
+        if (! $loadedFromCache) {
+            \Log::info("🔄 Dispatching background job to cache adjacent chapters for {$bookOsisId} {$chapterNumber}");
+            CacheAdjacentChaptersJob::dispatch($bookOsisId, $chapterNumber);
+        }
+
+        \Log::info("✅ Adjacent chapters loading completed for {$bookOsisId} {$chapterNumber}");
+    }
+
+    /**
+     * Try to load adjacent chapters from cache
+     * @param string $bookOsisId
+     * @param int $chapterNumber
+     * @return bool True if both adjacent chapters were loaded from cache
+     */
+    private function loadCachedAdjacentChapters($bookOsisId, $chapterNumber): bool
+    {
+        $bothCached = true;
+
+        // Try to load previous chapter from cache
         if ($chapterNumber > 1) {
-            $prevChapterOsisRef = $bookOsisId . '.' . ($chapterNumber - 1);
-            \Log::info("PREV: Generated reference: {$prevChapterOsisRef}");
-
-            try {
-                // Use the same logic as the main chapter for consistency
-                if (strtolower($bookOsisId) === 'ps' && ($chapterNumber - 1) == 119) {
-                    $individualVerses = $this->bibleService->getVerses($prevChapterOsisRef);
-                    $this->previousChapterVerses = $individualVerses->map(function ($verse) {
-                        return [
-                            'verses' => [$verse],
-                            'type' => 'individual_verse',
-                        ];
-                    });
-                } else {
-                    $this->previousChapterVerses = $this->bibleService->getVersesParagraphStyle($prevChapterOsisRef);
-                }
-
-                // Debug: Log first verse text
-                if (! empty($this->previousChapterVerses) && isset($this->previousChapterVerses[0]['verses'][0]['text'])) {
-                    $firstText = substr(strip_tags($this->previousChapterVerses[0]['verses'][0]['text']), 0, 30);
-                    \Log::info("PREV: First verse loaded: {$firstText}...");
-                } else {
-                    \Log::info('PREV: No verses loaded');
-                }
-
-            } catch (\Exception $e) {
-                \Log::error('PREV: Error loading: ' . $e->getMessage());
+            $cached = ChapterController::getCachedChapterVerses($bookOsisId, $chapterNumber - 1);
+            if ($cached && isset($cached['verses'])) {
+                $this->previousChapterVerses = $cached['verses'];
+                \Log::info('📋 Loaded previous chapter ' . ($chapterNumber - 1) . ' from cache');
+            } else {
                 $this->previousChapterVerses = collect();
+                $bothCached = false;
+                \Log::info('🌐 Previous chapter ' . ($chapterNumber - 1) . ' not cached, will load in background');
             }
         } else {
-            \Log::info('PREV: No previous chapter (at chapter 1)');
             $this->previousChapterVerses = collect();
+            \Log::info('📋 No previous chapter (at chapter 1)');
         }
 
-        // Load next chapter if it exists
-        // Find the max chapter number for this book
+        // Try to load next chapter from cache
         $maxChapterNumber = $this->chapters->max('chapter_number') ?? 0;
-
         if ($chapterNumber < $maxChapterNumber) {
-            $nextChapterOsisRef = $bookOsisId . '.' . ($chapterNumber + 1);
-            \Log::info("NEXT: Generated reference: {$nextChapterOsisRef}");
-
-            try {
-                // Use the same logic as the main chapter for consistency
-                if (strtolower($bookOsisId) === 'ps' && ($chapterNumber + 1) == 119) {
-                    $individualVerses = $this->bibleService->getVerses($nextChapterOsisRef);
-                    $this->nextChapterVerses = $individualVerses->map(function ($verse) {
-                        return [
-                            'verses' => [$verse],
-                            'type' => 'individual_verse',
-                        ];
-                    });
-                } else {
-                    $this->nextChapterVerses = $this->bibleService->getVersesParagraphStyle($nextChapterOsisRef);
-                }
-
-                // Debug: Log first verse text
-                if (! empty($this->nextChapterVerses) && isset($this->nextChapterVerses[0]['verses'][0]['text'])) {
-                    $firstText = substr(strip_tags($this->nextChapterVerses[0]['verses'][0]['text']), 0, 30);
-                    \Log::info("NEXT: First verse loaded: {$firstText}...");
-                } else {
-                    \Log::info('NEXT: No verses loaded');
-                }
-
-            } catch (\Exception $e) {
-                \Log::error('NEXT: Error loading: ' . $e->getMessage());
+            $cached = ChapterController::getCachedChapterVerses($bookOsisId, $chapterNumber + 1);
+            if ($cached && isset($cached['verses'])) {
+                $this->nextChapterVerses = $cached['verses'];
+                \Log::info('📋 Loaded next chapter ' . ($chapterNumber + 1) . ' from cache');
+            } else {
                 $this->nextChapterVerses = collect();
+                $bothCached = false;
+                \Log::info('🌐 Next chapter ' . ($chapterNumber + 1) . ' not cached, will load in background');
             }
         } else {
-            // No next chapter exists
-            \Log::info('NEXT: No next chapter (at last chapter)');
             $this->nextChapterVerses = collect();
+            \Log::info('📋 No next chapter (at last chapter)');
         }
 
-        \Log::info('=== DEBUG: Finished loading adjacent chapters ===');
+        return $bothCached;
+    }
 
-        // Additional debugging: Show what's actually in each variable
-        \Log::info('=== FINAL DEBUG: Variable contents ===');
+    /**
+     * Load chapter verses, checking cache first, then falling back to database
+     * @param mixed $bookOsisId
+     * @param mixed $chapterNumber
+     */
+    private function loadChapterVerses($bookOsisId, $chapterNumber)
+    {
+        // Try to get from cache first
+        $cached = ChapterController::getCachedChapterVerses($bookOsisId, $chapterNumber);
 
-        if (! empty($this->previousChapterVerses)) {
-            $prevFirstText = $this->previousChapterVerses[0]['verses'][0]['text'] ?? 'No text';
-            $prevFirstWords = substr(strip_tags($prevFirstText), 0, 50);
-            \Log::info("Final previousChapterVerses first text: {$prevFirstWords}...");
+        if ($cached && isset($cached['verses'])) {
+            \Log::info("📋 Using cached verses for {$bookOsisId} {$chapterNumber}");
+            return $cached['verses'];
+        }
+
+        // Cache miss - load from database
+        \Log::info("🌐 Loading verses from database for {$bookOsisId} {$chapterNumber}");
+
+        $chapterOsisRef = $bookOsisId . '.' . $chapterNumber;
+
+        try {
+            // Use the same logic as the main chapter for consistency
+            if (strtolower($bookOsisId) === 'ps' && $chapterNumber == 119) {
+                $individualVerses = $this->bibleService->getVerses($chapterOsisRef);
+                return $individualVerses->map(function ($verse) {
+                    return [
+                        'verses' => [$verse],
+                        'type' => 'individual_verse',
+                    ];
+                });
+            } else {
+                $verses = $this->bibleService->getVersesParagraphStyle($chapterOsisRef);
+
+                return $verses;
+            }
+        } catch (\Exception $e) {
+            \Log::error("❌ Error loading verses for {$bookOsisId} {$chapterNumber}: " . $e->getMessage());
+            return collect();
+        }
+    }
+
+    /**
+     * Log the result of chapter loading for debugging
+     * @param mixed $direction
+     * @param mixed $chapterNumber
+     * @param mixed $verses
+     */
+    private function logChapterLoadResult($direction, $chapterNumber, $verses)
+    {
+        if (! empty($verses) && isset($verses[0]['verses'][0]['text'])) {
+            $firstText = substr(strip_tags($verses[0]['verses'][0]['text']), 0, 30);
+            \Log::info("{$direction}: Loaded chapter {$chapterNumber} - First verse: {$firstText}...");
         } else {
-            \Log::info('Final previousChapterVerses: EMPTY');
+            \Log::info("{$direction}: No verses loaded for chapter {$chapterNumber}");
         }
-
-        if (! empty($this->nextChapterVerses)) {
-            $nextFirstText = $this->nextChapterVerses[0]['verses'][0]['text'] ?? 'No text';
-            $nextFirstWords = substr(strip_tags($nextFirstText), 0, 50);
-            \Log::info("Final nextChapterVerses first text: {$nextFirstWords}...");
-        } else {
-            \Log::info('Final nextChapterVerses: EMPTY');
-        }
-
-        \Log::info('=== END FINAL DEBUG ===');
     }
 
     public function switchTranslation($translationKey)

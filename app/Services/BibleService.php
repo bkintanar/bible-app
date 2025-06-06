@@ -386,4 +386,17 @@ class BibleService
             ->orderBy('start_verse_id')
             ->get();
     }
+
+    /**
+     * Get XML file path for a given book
+     */
+    public function getXmlPath(string $bookOsisId): string
+    {
+        $currentTranslation = $this->getCurrentTranslation();
+        $translationKey = $currentTranslation['key'] ?? 'asv';
+
+        // For now, we'll use the full OSIS XML files in assets directory
+        // In a real implementation, you might want to split these by book
+        return base_path("assets/{$translationKey}.osis.xml");
+    }
 }
