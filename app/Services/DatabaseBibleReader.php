@@ -147,7 +147,7 @@ class DatabaseBibleReader implements BibleReaderInterface
                         'acrostic' => 'acrostic-title text-center text-lg font-semibold text-blue-700 dark:text-blue-400 mb-2',
                         'chapter' => 'chapter-title text-center text-lg font-bold text-gray-900 dark:text-gray-100 mb-4',
                         'sub' => 'sub-title text-center text-base font-semibold text-gray-800 dark:text-gray-200 mb-3',
-                        'verse' => 'verse-title text-sm font-medium text-blue-600 dark:text-blue-400 italic mb-2',
+                        'verse' => 'verse-title text-transform: uppercase ml-8 text-xs font-medium text-blue-600 dark:text-blue-400',
                         default => 'title text-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'
                     };
 
@@ -861,7 +861,7 @@ class DatabaseBibleReader implements BibleReaderInterface
                         'acrostic' => 'acrostic-title text-center text-lg font-semibold text-blue-700 dark:text-blue-400 mb-2',
                         'chapter' => 'chapter-title text-center text-lg font-bold text-gray-900 dark:text-gray-100 mb-4',
                         'sub' => 'sub-title text-center text-base font-semibold text-gray-800 dark:text-gray-200 mb-3',
-                        'verse' => 'verse-title text-sm font-medium text-blue-600 dark:text-blue-400 italic mb-2',
+                        'verse' => 'verse-title text-transform: uppercase ml-8 text-xs font-medium text-blue-600 dark:text-blue-400',
                         default => 'title text-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'
                     };
                     $titleHtml .= '<div class="' . $titleClass . '">' . $title['text'] . '</div>';

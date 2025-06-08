@@ -15,8 +15,8 @@
             @foreach($paragraph['verses'] as $verse)
                 <!-- Display titles only once per paragraph -->
                 @if(!$titlesDisplayed && isset($verse['chapter_titles']) && !empty($verse['chapter_titles']))
-                    <div class="mb-4 block w-full">
-                        <div class="acrostic-title text-center text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3 font-serif border-b border-gray-200 dark:border-gray-600 pb-2">{!! strip_tags($verse['chapter_titles'], '<em><strong><sup><sub><foreign>') !!}</div>
+                    <div class="block w-full">
+                        <div class="acrostic-title text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3 font-serif border-b border-gray-200 dark:border-gray-600 pb-2">{!! strip_tags($verse['chapter_titles'], '<em><strong><sup><sub><foreign>') !!}</div>
                     </div>
                     @php $titlesDisplayed = true; @endphp
                 @endif
@@ -25,7 +25,7 @@
                     <!-- Display verse title if it exists for verse 1 -->
                     @if(isset($verse['verse_titles']) && !empty($verse['verse_titles']))
                         <div class="mb-4 block w-full clear-both">
-                            <div class="verse-title text-center text-md font-semibold text-blue-700 dark:text-blue-400 mb-3 font-serif italic">{!! strip_tags($verse['verse_titles'], '<div><em><strong><sup><sub><foreign>') !!}</div>
+                            <div class="verse-title text-xs font-semibold text-blue-700 dark:text-blue-400 font-serif">{!! strip_tags($verse['verse_titles'], '<div><em><strong><sup><sub><foreign>') !!}</div>
                         </div>
                     @endif
 
@@ -36,8 +36,8 @@
                 @else
                     <!-- Display verse title if it exists for other verses -->
                     @if(isset($verse['verse_titles']) && !empty($verse['verse_titles']))
-                        <div class="mt-6 mb-4 block w-full">
-                            <div class="verse-title text-center text-md font-semibold text-blue-700 dark:text-blue-400 mb-3 font-serif italic">{!! strip_tags($verse['verse_titles'], '<div><em><strong><sup><sub><foreign>') !!}</div>
+                        <div class="mt-6 block w-full">
+                            <div class="verse-title text-xs font-semibold text-blue-700 dark:text-blue-400 font-serif">{!! strip_tags($verse['verse_titles'], '<div><em><strong><sup><sub><foreign>') !!}</div>
                         </div>
                     @endif
 
@@ -63,8 +63,8 @@
                     @if($verse['verse_number'] === 1)
                         <!-- Display verse title if it exists for verse 1 -->
                         @if(isset($verse['verse_titles']) && !empty($verse['verse_titles']))
-                            <div class="mb-4 block w-full -indent-8 clear-both">
-                                <div class="verse-title text-center text-md font-semibold text-blue-700 dark:text-blue-400 mb-3 font-serif italic">{!! strip_tags($verse['verse_titles'], '<div><em><strong><sup><sub><foreign>') !!}</div>
+                            <div class="block w-full -indent-8 clear-both">
+                                <div class="verse-title text-xs font-semibold text-blue-700 dark:text-blue-400 font-serif">{!! strip_tags($verse['verse_titles'], '<div><em><strong><sup><sub><foreign>') !!}</div>
                             </div>
                         @endif
 
@@ -73,8 +73,8 @@
                     @else
                         <!-- Display verse title if it exists for other verses -->
                         @if(isset($verse['verse_titles']) && !empty($verse['verse_titles']))
-                            <div class="mt-6 mb-4 block w-full -indent-8">
-                                <div class="verse-title text-center text-md font-semibold text-blue-700 dark:text-blue-400 mb-3 font-serif italic">{!! strip_tags($verse['verse_titles'], '<div><em><strong><sup><sub><foreign>') !!}</div>
+                            <div class="mt-6 block w-full -indent-8">
+                                <div class="verse-title text-xs font-semibold text-blue-700 dark:text-blue-400 font-serif">{!! strip_tags($verse['verse_titles'], '<div><em><strong><sup><sub><foreign>') !!}</div>
                             </div>
                         @endif
 
