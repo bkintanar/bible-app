@@ -435,7 +435,7 @@ class BibleChapter extends Component
         $cacheKey = "last_visited_page_{$sessionId}";
 
         $pageData = [
-            'route' => 'bible.chapter',
+            'route' => 'chapters.show',
             'parameters' => [
                 'bookOsisId' => $this->bookOsisId,
                 'chapterNumber' => $this->chapterNumber,

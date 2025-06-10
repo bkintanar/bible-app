@@ -287,4 +287,54 @@
         // Page navigation handled by browser, no animation needed
         // Peel animations are only for gesture-based navigation
     });
+
+                // Keyboard navigation - Left and Right arrow keys
+    function handleKeyboardNavigation(e) {
+        // Only handle left/right arrow keys
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
+            return;
+        }
+
+        // Skip if in form elements
+        if (e.target.tagName === 'INPUT' ||
+            e.target.tagName === 'TEXTAREA' ||
+            e.target.contentEditable === 'true') {
+            return;
+        }
+
+        // Skip if modifier keys are pressed
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+            return;
+        }
+
+        // Skip if book selector modal is open (check if element exists and is visible)
+        const bookSelectorModal = document.querySelector('.fixed.inset-0.z-50');
+        if (bookSelectorModal) {
+            return;
+        }
+
+        // Skip if search input is visible (search mode is active)
+        const searchInput = document.querySelector('input[wire\\:model="searchQuery"]');
+        if (searchInput && searchInput.offsetParent !== null) {
+            return;
+        }
+
+        // Only proceed if we have the book container (we're on chapter view)
+        const bookContainer = document.querySelector('.book-container');
+        if (!bookContainer) {
+            return;
+        }
+
+        // All checks passed, handle navigation
+        e.preventDefault();
+        const urls = getNavigationUrls();
+
+        if (e.key === 'ArrowLeft' && urls.prevUrl) {
+            navigateToChapter(urls.prevUrl);
+        } else if (e.key === 'ArrowRight' && urls.nextUrl) {
+            navigateToChapter(urls.nextUrl);
+        }
+    }
+
+    document.addEventListener('keydown', handleKeyboardNavigation);
 </script>
