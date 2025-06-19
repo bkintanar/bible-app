@@ -202,8 +202,9 @@ class ContainedOsisParser implements OsisParserInterface
     /**
      * Extract text from a node while preserving Red Letter formatting and other OSIS formatting
      * @param mixed $node
+     * @param bool $inJesusQuote Whether we're currently inside a Jesus quote context
      */
-    private function extractTextWithRedLetters($node): string
+    private function extractTextWithRedLetters($node, bool $inJesusQuote = false): string
     {
         $text = '';
 
@@ -211,18 +212,33 @@ class ContainedOsisParser implements OsisParserInterface
         if ($node->nodeType === XML_ELEMENT_NODE) {
             if ($node->nodeName === 'transChange') {
                 // Handle translator additions - traditionally italicized
-                $changeType = $node->getAttribute('type');
+                $changeType = $node instanceof \DOMElement ? $node->getAttribute('type') : '';
                 if ($changeType === 'added') {
-                    return '<em class="text-gray-600 dark:text-gray-400 font-normal italic">' . $node->textContent . '</em>';
+                    if ($inJesusQuote) {
+                        // Red italics for translator additions within Jesus's speech
+                        return '<em class="text-red-500 dark:text-red-300 font-normal italic opacity-80">' . $node->textContent . '</em>';
+                    } else {
+                        // Gray italics for translator additions outside Jesus's speech
+                        return '<em class="text-gray-600 dark:text-gray-400 font-normal italic">' . $node->textContent . '</em>';
+                    }
                 }
                 return $node->textContent;
 
-            } elseif ($node->nodeName === 'q' && $node->getAttribute('who') === 'Jesus') {
+            } elseif ($node->nodeName === 'q' && $node instanceof \DOMElement && $node->getAttribute('who') === 'Jesus') {
                 // Handle Red Letter text for contained verses
-                return '<span class="text-red-600 font-medium">' . $node->textContent . '</span>';
+                // Process the content with Jesus quote context enabled
+                $content = '';
+                foreach ($node->childNodes as $child) {
+                    if ($child->nodeType === XML_TEXT_NODE) {
+                        $content .= $child->textContent;
+                    } elseif ($child->nodeType === XML_ELEMENT_NODE) {
+                        $content .= $this->extractTextWithRedLetters($child, true);
+                    }
+                }
+                return '<span class="text-red-600 dark:text-red-400 font-medium">' . $content . '</span>';
             } elseif ($node->nodeName === 'title') {
                 // Handle titles (psalm titles, etc.)
-                $titleType = $node->getAttribute('type');
+                $titleType = $node instanceof \DOMElement ? $node->getAttribute('type') : '';
                 if ($titleType === 'psalm') {
                     return '<div class="text-center text-sm font-medium text-gray-700 dark:text-gray-300 italic mb-3 border-b border-gray-200 dark:border-gray-600 pb-2">' . $node->textContent . '</div>';
                 } elseif ($titleType === 'main') {
@@ -238,21 +254,37 @@ class ContainedOsisParser implements OsisParserInterface
             if ($child->nodeType === XML_TEXT_NODE) {
                 $text .= $child->textContent;
             } elseif ($child->nodeType === XML_ELEMENT_NODE) {
-                if ($child->nodeName === 'q' && $child->getAttribute('who') === 'Jesus') {
+                if ($child->nodeName === 'q' && $child instanceof \DOMElement && $child->getAttribute('who') === 'Jesus') {
                     // Red Letter Bible - Jesus' words in red
                     if ($child->hasAttribute('sID')) {
-                        $text .= '<span class="text-red-600 font-medium">';
+                        $text .= '<span class="text-red-600 dark:text-red-400 font-medium">';
+                        $inJesusQuote = true;
                     } elseif ($child->hasAttribute('eID')) {
                         $text .= '</span>';
+                        $inJesusQuote = false;
                     } else {
-                        // For contained verses, wrap the content directly
-                        $text .= '<span class="text-red-600 font-medium">' . $child->textContent . '</span>';
+                        // For contained verses, process content with Jesus context
+                        $content = '';
+                        foreach ($child->childNodes as $grandChild) {
+                            if ($grandChild->nodeType === XML_TEXT_NODE) {
+                                $content .= $grandChild->textContent;
+                            } elseif ($grandChild->nodeType === XML_ELEMENT_NODE) {
+                                $content .= $this->extractTextWithRedLetters($grandChild, true);
+                            }
+                        }
+                        $text .= '<span class="text-red-600 dark:text-red-400 font-medium">' . $content . '</span>';
                     }
                 } elseif ($child->nodeName === 'transChange') {
                     // Handle translator additions - traditionally italicized
-                    $changeType = $child->getAttribute('type');
+                    $changeType = $child instanceof \DOMElement ? $child->getAttribute('type') : '';
                     if ($changeType === 'added') {
-                        $text .= '<em class="text-gray-600 dark:text-gray-400 font-normal italic">' . $child->textContent . '</em>';
+                        if ($inJesusQuote) {
+                            // Red italics for translator additions within Jesus's speech
+                            $text .= '<em class="text-red-500 dark:text-red-300 font-normal italic opacity-80">' . $child->textContent . '</em>';
+                        } else {
+                            // Gray italics for translator additions outside Jesus's speech
+                            $text .= '<em class="text-gray-600 dark:text-gray-400 font-normal italic">' . $child->textContent . '</em>';
+                        }
                     } else {
                         $text .= $child->textContent;
                     }
@@ -268,12 +300,12 @@ class ContainedOsisParser implements OsisParserInterface
                     }
                 } elseif ($child->nodeName === 'lg' || $child->nodeName === 'l') {
                     // Handle line groups and lines for poetry - preserve structure but extract text
-                    $text .= $this->extractTextWithRedLetters($child);
+                    $text .= $this->extractTextWithRedLetters($child, $inJesusQuote);
                 } elseif ($child->nodeName === 'lb') {
                     // Handle line breaks
                     $text .= '<br class="my-2">';
                 } else {
-                    $text .= $this->extractTextWithRedLetters($child);
+                    $text .= $this->extractTextWithRedLetters($child, $inJesusQuote);
                 }
             }
         }

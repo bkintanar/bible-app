@@ -31,7 +31,7 @@
 
                     <!-- Proper drop cap implementation -->
                     <div class="mb-2 text-gray-900 dark:text-gray-100 leading-relaxed {{ $getFontSizeClass() }} font-serif verse-content" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.7; letter-spacing: 0.01em;">
-                        <span class="text-gray-700 dark:text-gray-300 font-serif" style="float: left; font-size: 4rem; line-height: 3.2rem; margin-right: 0.5rem; margin-top: 0rem; font-weight: bold;">{{ $chapterNumber }}</span><span class="inline" id="verse-{{ $verse['verse_number'] }}">{!! strip_tags($verse['text'], '<em><strong><sup><sub><span>') !!}</span>
+                        <span class="text-gray-700 dark:text-gray-300 font-serif" style="float: left; font-size: 4rem; line-height: 3.2rem; margin-right: 0.5rem; margin-top: 0rem; font-weight: bold;">{{ $chapterNumber }}</span><span class="inline" id="verse-{{ $verse['verse_number'] }}">{!! $this->parseEnhancedVerseText($verse) !!}</span>
                     </div>
                 @else
                     <!-- Display verse title if it exists for other verses -->
@@ -43,7 +43,7 @@
 
                     <div class="mb-2 text-gray-900 dark:text-gray-100 leading-relaxed {{ $getFontSizeClass() }} font-serif verse-content" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.7; letter-spacing: 0.01em;" id="verse-{{ $verse['verse_number'] }}">
                         <!-- Regular verse number for other verses -->
-                        <span class="verse-number text-xs font-medium text-gray-600 dark:text-gray-400 align-super font-serif">{{ $verse['verse_number'] }}</span>{!! strip_tags($verse['text'], '<em><strong><sup><sub><span>') !!}
+                        <span class="verse-number text-xs font-medium text-gray-600 dark:text-gray-400 align-super font-serif">{{ $verse['verse_number'] }}</span>{!! $this->parseEnhancedVerseText($verse) !!}
                     </div>
                 @endif
             @endforeach
@@ -69,7 +69,7 @@
                         @endif
 
                         <!-- Proper drop cap implementation -->
-                        <span class="text-gray-700 dark:text-gray-300 font-serif" style="float: left; font-size: 4rem; line-height: 3.2rem; margin-right: 0.5rem; margin-top: 0rem; font-weight: bold;">{{ $chapterNumber }}</span><span class="inline" id="verse-{{ $verse['verse_number'] }}">{!! strip_tags($verse['text'], '<em><strong><sup><sub><span>') !!}</span>
+                        <span class="text-gray-700 dark:text-gray-300 font-serif" style="float: left; font-size: 4rem; line-height: 3.2rem; margin-right: 0.5rem; margin-top: 0rem; font-weight: bold;">{{ $chapterNumber }}</span><span class="inline" id="verse-{{ $verse['verse_number'] }}">{!! $this->parseEnhancedVerseText($verse) !!}</span>
                     @else
                         <!-- Display verse title if it exists for other verses -->
                         @if(isset($verse['verse_titles']) && !empty($verse['verse_titles']))
@@ -80,7 +80,7 @@
 
                         <span class="inline" id="verse-{{ $verse['verse_number'] }}">
                             <!-- Regular verse number for other verses -->
-                            <span class="verse-number text-xs font-medium text-gray-500 dark:text-gray-400 align-super font-serif">{{ $verse['verse_number'] }}</span>{!! strip_tags($verse['text'], '<em><strong><sup><sub><span>') !!}
+                            <span class="verse-number text-xs font-medium text-gray-500 dark:text-gray-400 align-super font-serif">{{ $verse['verse_number'] }}</span>{!! $this->parseEnhancedVerseText($verse) !!}
                         </span>
                     @endif
                 @endforeach

@@ -93,6 +93,15 @@
                         </svg>
                     </button>
 
+                    <!-- Strong's Numbers Toggle -->
+                    <button wire:click="toggleStrongsNumbers"
+                            class="p-2 rounded-lg transition-colors {{ $showStrongsNumbers ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700' }}"
+                            title="Toggle Strong's Numbers">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
+                        </svg>
+                    </button>
+
                     <!-- Dark Mode Toggle -->
                     <button onclick="toggleDarkMode()"
                             class="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">

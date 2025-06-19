@@ -161,9 +161,11 @@ class DatabaseBibleReader implements BibleReaderInterface
             }
 
             return [
+                'id' => $verse->id,
                 'osis_id' => $verse->osis_id,
                 'verse_number' => $verse->verse_number,
                 'text' => $this->enhanceVerseText($verse->formatted_text, $verse->osis_id, false),
+                'original_xml' => $verse->original_xml,
                 'chapter_titles' => $chapterTitleHtml,
                 'verse_titles' => $verseTitleHtml,
             ];

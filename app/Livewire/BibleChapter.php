@@ -40,6 +40,7 @@ class BibleChapter extends Component
     public $searchStats = [];
     public $showSearchResults = false;
     public $returnToChapter = []; // Store chapter info to return to
+    public $showStrongsNumbers = false; // Enable/disable Strong's numbers display
 
     protected $bibleService;
 
@@ -88,6 +89,8 @@ class BibleChapter extends Component
 
         // DEBUG: Log verse titles for Genesis 1 in mount
 
+        // Create chapter OSIS reference for error messages
+        $chapterOsisRef = $this->bookOsisId . '.' . $this->chapterNumber;
 
         if ($this->verses->isEmpty()) {
             dd([
@@ -116,6 +119,9 @@ class BibleChapter extends Component
         // Load font size from session or default
         $this->fontSize = session('font_size', 'base');
 
+        // Load Strong's numbers setting from session
+        $this->showStrongsNumbers = session('show_strongs_numbers', true);
+
         // Extract chapter title from first paragraph's first verse if available
         $firstParagraph = $this->verses->first();
         if ($firstParagraph && isset($firstParagraph['verses']) && ! empty($firstParagraph['verses'])) {
@@ -129,7 +135,6 @@ class BibleChapter extends Component
         }
 
         // Load paragraphs for the current chapter
-        $chapterOsisRef = $this->bookOsisId . '.' . $this->chapterNumber;
         $this->paragraphs = $this->bibleService->getChapterParagraphs($chapterOsisRef);
 
         // Preload adjacent chapters for book flip effect
@@ -321,6 +326,12 @@ class BibleChapter extends Component
         }
     }
 
+    public function toggleStrongsNumbers()
+    {
+        $this->showStrongsNumbers = !$this->showStrongsNumbers;
+        session(['show_strongs_numbers' => $this->showStrongsNumbers]);
+    }
+
     public function toggleSearch()
     {
         $this->showSearch = ! $this->showSearch;
@@ -467,16 +478,247 @@ class BibleChapter extends Component
         ];
     }
 
-    public function getFontSizeClass()
+    public function getFontSizeClass(): string
     {
-        return match($this->fontSize) {
-            'sm' => 'text-sm',
-            'base' => 'text-base',
-            'lg' => 'text-lg',
-            'xl' => 'text-xl',
-            '2xl' => 'text-2xl',
-            default => 'text-base'
-        };
+        $sizeMap = [
+            'sm' => 'text-lg',
+            'base' => 'text-xl',
+            'lg' => 'text-2xl',
+            'xl' => 'text-3xl',
+            '2xl' => 'text-4xl',
+        ];
+
+        return $sizeMap[$this->fontSize] ?? 'text-xl';
+    }
+
+    /**
+     * Parse the original XML markup and convert it to enhanced HTML with Strong's styling
+     */
+        public function parseEnhancedVerseText($verse): string
+    {
+        $osisId = $verse['osis_id'] ?? 'unknown';
+        $verseNum = $verse['verse_number'] ?? 'unknown';
+
+                                // Let the XML processing handle red letters - don't override with manual mappings
+
+        // If Strong's numbers are disabled, use regular text but still handle red letters
+        if (!$this->showStrongsNumbers) {
+            $basicText = strip_tags($verse['text'], '<em><strong><sup><sub><span>');
+            \Log::info("📖 Strong's disabled, using basic text path for {$osisId}");
+            // Still need to handle red letters even when Strong's are disabled
+            return $this->applyRedLetterFormatting($basicText, $verse);
+        }
+
+        // Fallback to regular text if no original_xml
+        if (!isset($verse['original_xml']) || empty($verse['original_xml'])) {
+            $basicText = strip_tags($verse['text'], '<em><strong><sup><sub><span>');
+            \Log::info("📖 No original_xml, using basic text path for {$osisId}");
+            return $this->applyRedLetterFormatting($basicText, $verse);
+        }
+
+        $xml = $verse['original_xml'];
+        \Log::info("📖 Processing XML path for {$osisId}, XML length: " . strlen($xml));
+
+        // First, handle red letter text (Jesus's words) before processing other elements
+        $xml = $this->processRedLetterText($xml);
+        \Log::info("📖 After processRedLetterText for {$osisId}");
+
+        // Remove note tags and other non-essential elements
+        $xml = preg_replace('/<note[^>]*>.*?<\/note>/i', '', $xml); // Remove study notes
+        $xml = preg_replace('/<milestone[^>]*\/?>/i', '', $xml); // Remove milestone markers
+
+        // Parse the XML and convert <w> tags to enhanced spans
+        $enhanced = preg_replace_callback(
+            '/<w([^>]*)>(.*?)<\/w>/',
+            function ($matches) {
+                $attributes = $matches[1];
+                $text = $matches[2];
+
+                $classes = ['strong-word'];
+                $title = '';
+                $dataAttrs = '';
+
+                // Extract Strong's numbers
+                if (preg_match('/lemma="([^"]*)"/', $attributes, $lemmaMatch)) {
+                    $lemmas = $lemmaMatch[1];
+                    if (strpos($lemmas, 'strong:') !== false) {
+                        preg_match_all('/strong:([HG]\d+)/', $lemmas, $strongMatches);
+                        if (!empty($strongMatches[1])) {
+                            $strongNumbers = $strongMatches[1];
+                            $classes[] = 'has-strongs';
+                            $title = 'Strong\'s: ' . implode(', ', $strongNumbers);
+                            $dataAttrs = 'data-strongs="' . implode(',', $strongNumbers) . '"';
+
+                            // Add different styling for Hebrew vs Greek
+                            if (strpos($strongNumbers[0], 'H') === 0) {
+                                $classes[] = 'hebrew-word';
+                            } else {
+                                $classes[] = 'greek-word';
+                            }
+                        }
+                    }
+                }
+
+                // Extract morphology
+                if (preg_match('/morph="([^"]*)"/', $attributes, $morphMatch)) {
+                    $morph = $morphMatch[1];
+                    if (strpos($morph, 'strongMorph:') !== false) {
+                        $classes[] = 'has-morph';
+                        $morphCode = str_replace('strongMorph:', '', $morph);
+                        $dataAttrs .= ' data-morph="' . $morphCode . '"';
+                        $title .= $title ? ' | Morph: ' . $morphCode : 'Morph: ' . $morphCode;
+                    }
+                }
+
+                $classStr = implode(' ', $classes);
+                $titleAttr = $title ? 'title="' . htmlspecialchars($title) . '"' : '';
+
+                return "<span class=\"{$classStr}\" {$titleAttr} {$dataAttrs}>{$text}</span>";
+            },
+            $xml
+        );
+
+        // Fix spacing issues: add spaces between words that don't have punctuation between them
+        $enhanced = preg_replace('/><span class="strong-word/', '> <span class="strong-word', $enhanced);
+
+        // Clean up extra spaces and fix spacing around punctuation
+        $enhanced = preg_replace('/\s+/', ' ', $enhanced); // Multiple spaces to single space
+        $enhanced = preg_replace('/\s+([,.;:!?])/', '$1', $enhanced); // Remove space before punctuation
+        $enhanced = trim($enhanced);
+
+        return $enhanced;
+    }
+
+    /**
+     * Process red letter text (Jesus's words) in the XML markup
+     * Handles both contained and milestone-style markup with proper nesting
+     */
+    private function processRedLetterText($xml): string
+    {
+        \Log::info("🔴 Processing red letters for XML: " . substr($xml, 0, 100) . '...');
+
+        // First, handle simple contained markup: <q who="Jesus">content</q>
+        $xml = preg_replace('/<q[^>]*who="Jesus"[^>]*>(.*?)<\/q>/is', '<span class="text-red-600 dark:text-red-400 font-medium">$1</span>', $xml);
+
+        // Handle milestone-style red letter markup more carefully
+        // Look for Jesus speech markers and track their state
+        $redLetterOpen = false;
+        $result = '';
+        $pos = 0;
+
+        while ($pos < strlen($xml)) {
+            // Look for <q who="Jesus" markers
+            if (preg_match('/<q[^>]*who="Jesus"[^>]*>/i', $xml, $matches, PREG_OFFSET_CAPTURE, $pos)) {
+                $match = $matches[0];
+                $matchStart = $match[1];
+
+                // Add content before the match
+                $result .= substr($xml, $pos, $matchStart - $pos);
+
+                // Check if this is opening or closing a red letter section
+                if (strpos($match[0], 'marker=""') !== false || strpos($match[0], 'sID=') !== false) {
+                    // Opening marker
+                    if (!$redLetterOpen) {
+                        $result .= '<span class="text-red-600 dark:text-red-400 font-medium">';
+                        $redLetterOpen = true;
+                        \Log::info("🔴 Opening red letter span");
+                    }
+                } else if (strpos($match[0], 'eID=') !== false) {
+                    // Closing marker
+                    if ($redLetterOpen) {
+                        $result .= '</span>';
+                        $redLetterOpen = false;
+                        \Log::info("🔴 Closing red letter span");
+                    }
+                }
+
+                $pos = $matchStart + strlen($match[0]);
+            } else {
+                // No more Jesus markers, add remaining content
+                $result .= substr($xml, $pos);
+                break;
+            }
+        }
+
+        // Clean up any remaining </q> tags that weren't properly handled
+        $result = preg_replace('/<\/q>/i', $redLetterOpen ? '</span>' : '', $result);
+
+        // If we ended with an open red letter span, close it
+        if ($redLetterOpen) {
+            $result .= '</span>';
+            \Log::info("🔴 Force closing red letter span at end");
+        }
+
+        \Log::info("🔴 Final processed XML: " . substr($result, 0, 100) . '...');
+        return $result;
+    }
+
+        /**
+     * Apply red letter formatting using the red_letter_text table data
+     */
+    private function applyRedLetterFormatting($text, $verse): string
+    {
+        $osisId = $verse['osis_id'] ?? 'unknown';
+        \Log::info("🔤 applyRedLetterFormatting called for {$osisId}");
+
+        // This method now relies primarily on the database red_letter_text entries
+        // Run: php artisan bible:fix-red-letters to populate missing red letter entries
+
+        // Check if we have original XML with red letter markup first
+        if (isset($verse['original_xml']) && !empty($verse['original_xml'])) {
+            $xml = $verse['original_xml'];
+            \Log::info("🔤 Found original_xml for {$osisId}, checking for red letter markup");
+
+            // Check if XML contains Jesus speech markers
+            if (preg_match('/<q[^>]*who="Jesus"[^>]*>/i', $xml)) {
+                \Log::info("🔤 Found Jesus markup in XML for {$osisId}, processing with XML parser");
+                // Let the main XML processing handle this
+                return $text;
+            }
+        }
+
+        // If we have red letter data for this verse in the database, apply it
+        $verseId = $verse['id'] ?? null;
+        if ($verseId) {
+            \Log::info("🔤 Checking red_letter_text table for verse ID {$verseId}");
+            $redLetterEntries = \DB::table('red_letter_text')
+                ->where('verse_id', $verseId)
+                ->orderBy('text_order')
+                ->get();
+
+            \Log::info("🔤 Found " . $redLetterEntries->count() . " red letter entries for {$osisId}");
+
+            if ($redLetterEntries->count() > 0) {
+                // For verses with red letter entries, wrap the entire verse in red letter styling
+                // This handles cases where the verse text has HTML markup that doesn't match exactly
+                \Log::info("🔤 Applying red letter styling to entire verse {$osisId}");
+                $text = '<span class="text-red-600 dark:text-red-400 font-medium">' . $text . '</span>';
+
+                // Convert any gray translator changes to red italics for consistency
+                $text = $this->applyRedLetterTranslatorChanges($text);
+            }
+        } else {
+            \Log::info("🔤 No verse ID available for {$osisId}, skipping database red letters");
+        }
+
+        return $text;
+    }
+
+
+
+    /**
+     * Convert gray translator changes to red italics for red letter verses
+     */
+    private function applyRedLetterTranslatorChanges($text): string
+    {
+        // Replace gray translator change styling with red italics for Jesus's words
+        $text = str_replace(
+            'class="text-gray-600 dark:text-gray-400 font-normal italic"',
+            'class="text-red-500 dark:text-red-300 font-normal italic opacity-80"',
+            $text
+        );
+
+        return $text;
     }
 
     public function render()
