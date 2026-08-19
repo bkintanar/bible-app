@@ -28,7 +28,8 @@ class BookController extends Controller
             $books = $this->bibleService->getBooks();
 
             return $this->successResponse($books->toArray(), 'Books retrieved successfully');
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('API failure', ['route' => request()->path(), 'exception' => $e]);
             return $this->errorResponse('Failed to retrieve books', 500);
         }
     }
@@ -54,7 +55,8 @@ class BookController extends Controller
             ];
 
             return $this->successResponse($data, 'Book retrieved successfully');
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('API failure', ['route' => request()->path(), 'exception' => $e]);
             return $this->errorResponse('Failed to retrieve book', 500);
         }
     }
@@ -73,7 +75,8 @@ class BookController extends Controller
             $chapters = $this->bibleService->getChapters($bookOsisId);
 
             return $this->successResponse($chapters->toArray(), 'Chapters retrieved successfully');
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('API failure', ['route' => request()->path(), 'exception' => $e]);
             return $this->errorResponse('Failed to retrieve chapters', 500);
         }
     }

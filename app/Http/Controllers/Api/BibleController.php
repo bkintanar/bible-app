@@ -28,7 +28,8 @@ class BibleController extends Controller
             $capabilities = $this->bibleService->getCapabilities();
 
             return $this->successResponse($capabilities, 'Capabilities retrieved successfully');
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('API failure', ['route' => request()->path(), 'exception' => $e]);
             return $this->errorResponse('Failed to retrieve capabilities', 500);
         }
     }

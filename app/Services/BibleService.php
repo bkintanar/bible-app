@@ -137,7 +137,7 @@ class BibleService
     {
         $books = $this->getBooks();
         $book = $books->firstWhere('osis_id', $bookOsisId);
-        return $book ? $book->toArray() : null;
+        return $book ?: null;
     }
 
     public function getChapters(string $bookOsisId): Collection

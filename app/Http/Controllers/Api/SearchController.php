@@ -58,7 +58,7 @@ class SearchController extends Controller
                 return [
                     'book_osis_id' => $result['book_osis_id'] ?? '',
                     'chapter' => $result['chapter'] ?? 1,
-                    'verse' => $result['verse'] ?? 1,
+                    'verse' => $result['verse_number'] ?? null,
                     'reference' => $result['reference'] ?? '',
                     'text' => $result['text'] ?? '',
                 ];
@@ -75,7 +75,8 @@ class SearchController extends Controller
             ];
 
             return $this->successResponse($data, 'Search completed successfully');
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('API failure', ['route' => request()->path(), 'exception' => $e]);
             return $this->serverErrorResponse('Search failed');
         }
     }
@@ -98,7 +99,8 @@ class SearchController extends Controller
                 'query' => $query,
                 'suggestions' => $suggestions,
             ], 'Suggestions retrieved successfully');
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('API failure', ['route' => request()->path(), 'exception' => $e]);
             return $this->serverErrorResponse('Failed to retrieve suggestions');
         }
     }
@@ -115,7 +117,8 @@ class SearchController extends Controller
             return $this->successResponse([
                 'history' => [],
             ], 'Search history retrieved successfully');
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('API failure', ['route' => request()->path(), 'exception' => $e]);
             return $this->serverErrorResponse('Failed to retrieve search history');
         }
     }

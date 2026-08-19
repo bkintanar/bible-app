@@ -517,18 +517,15 @@ class DatabaseBibleReader implements BibleReaderInterface
      */
     private function escapeFtsSearchTerm(string $searchTerm): string
     {
-        $searchTerm = trim($searchTerm);
-
-        // If the search term contains special characters or looks like it might cause issues,
-        // wrap it in double quotes for exact phrase matching
-        if (preg_match('/[0-9:.-]/', $searchTerm) || str_contains($searchTerm, ' ')) {
-            // Escape any double quotes in the search term
-            $searchTerm = str_replace('"', '""', $searchTerm);
-            // Wrap in quotes for exact phrase matching
-            return '"' . $searchTerm . '"';
-        }
-
-        return $searchTerm;
+        // FTS5 parses the bound value as a query expression, not a literal. A bareword may
+        // contain only letters, digits, underscore and non-ASCII characters; anything else
+        // must be a double-quoted string, with embedded quotes doubled.
+        // See https://www.sqlite.org/fts5.html#full_text_query_syntax
+        //
+        // Quoting only *some* terms let bare operators (AND, OR, NOT, NEAR, parens, *)
+        // reach FTS5 raw, which turned a search for the word "or" into a 500 and let a
+        // caller run prefix scans the app never offered. Always quote.
+        return '"' . str_replace('"', '""', trim($searchTerm)) . '"';
     }
 
     /**

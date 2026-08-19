@@ -41,7 +41,8 @@ class ChapterController extends Controller
             ];
 
             return $this->successResponse($data, 'Verses retrieved successfully');
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('API failure', ['route' => request()->path(), 'exception' => $e]);
             return $this->errorResponse('Failed to retrieve verses', 500);
         }
     }
@@ -67,7 +68,8 @@ class ChapterController extends Controller
             }
 
             return $this->successResponse($verseDetails, 'Verse retrieved successfully');
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('API failure', ['route' => request()->path(), 'exception' => $e]);
             return $this->errorResponse('Failed to retrieve verse', 500);
         }
     }
