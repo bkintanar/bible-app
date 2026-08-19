@@ -556,8 +556,34 @@ class BibleChapter extends Component
             $xml
         );
 
+        // Convert KJV translator-supplied words (rendered in italics by convention) and
+        // divine names (small caps LORD, distinguishing YHWH from Adonai).
+        //
+        // parseEnhancedVerseText is the DEFAULT render path - showStrongsNumbers resolves to
+        // true via session('show_strongs_numbers', true) - but it previously handled only
+        // <note>, <milestone>, <w> and <q>. <transChange> (14,233 verses) and <divineName>
+        // (5,828 verses) fell through untouched and reached the browser as raw OSIS tags.
+        // Browsers render unknown inline elements as their text content, so Ps 23:1 read
+        // "The Lordis my shepherd" - no small caps, no italics, and no space.
+        //
+        // Classes match ImportOsisCommand::formatTranslatorChanges/formatDivineNames so the
+        // Strong's-on and Strong's-off paths render identically.
+        $enhanced = preg_replace(
+            '/<transChange[^>]*type="added"[^>]*>(.*?)<\/transChange>/is',
+            '<em class="text-gray-600 dark:text-gray-400 font-normal italic">$1</em>',
+            $enhanced
+        );
+        $enhanced = preg_replace(
+            '/<divineName[^>]*>(.*?)<\/divineName>/is',
+            '<span style="font-variant: small-caps; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; font-size: 0.95em;">$1</span>',
+            $enhanced
+        );
+
         // Fix spacing issues: add spaces between words that don't have punctuation between them
         $enhanced = preg_replace('/><span class="strong-word/', '> <span class="strong-word', $enhanced);
+        // Same for translator-added words, which sit between <w> elements with no whitespace
+        // in the source (<w>These</w><transChange>are</transChange> -> "Theseare").
+        $enhanced = preg_replace('/><em class="text-gray-600/', '> <em class="text-gray-600', $enhanced);
 
         // Clean up extra spaces and fix spacing around punctuation
         $enhanced = preg_replace('/\s+/', ' ', $enhanced); // Multiple spaces to single space
