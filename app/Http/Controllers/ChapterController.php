@@ -53,7 +53,7 @@ class ChapterController extends Controller
                 'cached_at' => now(),
             ], now()->addHours(24)); // Cache for 24 hours
 
-            \Log::info("📚 Cached chapter data: {$bookOsisId} {$chapterNumber}");
+            \Log::debug("📚 Cached chapter data: {$bookOsisId} {$chapterNumber}");
         }
     }
 
@@ -76,7 +76,7 @@ class ChapterController extends Controller
             $this->cacheChapterVerses($bookOsisId, $chapterNumber + 1);
         }
 
-        \Log::info("🔄 Preloaded adjacent chapters for {$bookOsisId} {$chapterNumber}");
+        \Log::debug("🔄 Preloaded adjacent chapters for {$bookOsisId} {$chapterNumber}");
     }
 
     /**
@@ -113,7 +113,7 @@ class ChapterController extends Controller
                     'cached_at' => now(),
                 ], now()->addHours(24)); // Cache for 24 hours
 
-                \Log::info("📖 Cached verses for {$bookOsisId} {$chapterNumber}");
+                \Log::debug("📖 Cached verses for {$bookOsisId} {$chapterNumber}");
 
             } catch (\Exception $e) {
                 \Log::error("❌ Failed to cache verses for {$bookOsisId} {$chapterNumber}: " . $e->getMessage());
@@ -140,11 +140,11 @@ class ChapterController extends Controller
             $pattern = "chapter_*_{$bookOsisId}_*";
             // Note: Laravel doesn't have pattern-based cache clearing by default
             // This would need a more sophisticated cache tagging system
-            \Log::info("🗑️ Requested cache clear for book: {$bookOsisId}");
+            \Log::debug("🗑️ Requested cache clear for book: {$bookOsisId}");
         } else {
             // Clear all chapter cache
             Cache::flush();
-            \Log::info('🗑️ Cleared all chapter cache');
+            \Log::debug('🗑️ Cleared all chapter cache');
         }
     }
 
@@ -172,7 +172,7 @@ class ChapterController extends Controller
         $cachedChapters = 0;
         $errors = [];
 
-        \Log::info("🔥 Starting cache warmup for {$bookOsisId} ({$totalChapters} chapters)");
+        \Log::debug("🔥 Starting cache warmup for {$bookOsisId} ({$totalChapters} chapters)");
 
         foreach ($chapters as $chapter) {
             try {
@@ -195,7 +195,7 @@ class ChapterController extends Controller
             'success_rate' => round(($cachedChapters / $totalChapters) * 100, 1),
         ];
 
-        \Log::info("🔥 Cache warmup completed for {$bookOsisId}: {$cachedChapters}/{$totalChapters} chapters in {$duration}ms");
+        \Log::debug("🔥 Cache warmup completed for {$bookOsisId}: {$cachedChapters}/{$totalChapters} chapters in {$duration}ms");
 
         return $result;
     }

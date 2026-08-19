@@ -76,7 +76,7 @@ class BibleChapter extends Component
 
         // Try to load current chapter from cache first
         $this->verses = $this->loadChapterVerses($bookOsisId, $chapterNumber);
-        \Log::info("📖 Loaded main chapter {$bookOsisId} {$chapterNumber} with " . $this->verses->count() . ' paragraphs');
+        \Log::debug("📖 Loaded main chapter {$bookOsisId} {$chapterNumber} with " . $this->verses->count() . ' paragraphs');
 
         // DEBUG: Log verse titles for Genesis 1 in mount
 
@@ -127,18 +127,18 @@ class BibleChapter extends Component
      */
     private function loadAdjacentChapters($bookOsisId, $chapterNumber)
     {
-        \Log::info("📋 Loading adjacent chapters for {$bookOsisId} chapter {$chapterNumber}");
+        \Log::debug("📋 Loading adjacent chapters for {$bookOsisId} chapter {$chapterNumber}");
 
         // Try to load cached adjacent chapters
         $loadedFromCache = $this->loadCachedAdjacentChapters($bookOsisId, $chapterNumber);
 
         // If not fully cached, dispatch background job to cache them
         if (! $loadedFromCache) {
-            \Log::info("🔄 Dispatching background job to cache adjacent chapters for {$bookOsisId} {$chapterNumber}");
+            \Log::debug("🔄 Dispatching background job to cache adjacent chapters for {$bookOsisId} {$chapterNumber}");
             CacheAdjacentChaptersJob::dispatch($bookOsisId, $chapterNumber);
         }
 
-        \Log::info("✅ Adjacent chapters loading completed for {$bookOsisId} {$chapterNumber}");
+        \Log::debug("📋 Adjacent-chapter load attempted for {$bookOsisId} {$chapterNumber} (cache hit or job queued)");
     }
 
     /**
@@ -156,15 +156,15 @@ class BibleChapter extends Component
             $cached = ChapterController::getCachedChapterVerses($bookOsisId, $chapterNumber - 1);
             if ($cached && isset($cached['verses'])) {
                 $this->previousChapterVerses = $cached['verses'];
-                \Log::info('📋 Loaded previous chapter ' . ($chapterNumber - 1) . ' from cache');
+                \Log::debug('📋 Loaded previous chapter ' . ($chapterNumber - 1) . ' from cache');
             } else {
                 $this->previousChapterVerses = collect();
                 $bothCached = false;
-                \Log::info('🌐 Previous chapter ' . ($chapterNumber - 1) . ' not cached, will load in background');
+                \Log::debug('🌐 Previous chapter ' . ($chapterNumber - 1) . ' not cached, will load in background');
             }
         } else {
             $this->previousChapterVerses = collect();
-            \Log::info('📋 No previous chapter (at chapter 1)');
+            \Log::debug('📋 No previous chapter (at chapter 1)');
         }
 
         // Try to load next chapter from cache
@@ -173,15 +173,15 @@ class BibleChapter extends Component
             $cached = ChapterController::getCachedChapterVerses($bookOsisId, $chapterNumber + 1);
             if ($cached && isset($cached['verses'])) {
                 $this->nextChapterVerses = $cached['verses'];
-                \Log::info('📋 Loaded next chapter ' . ($chapterNumber + 1) . ' from cache');
+                \Log::debug('📋 Loaded next chapter ' . ($chapterNumber + 1) . ' from cache');
             } else {
                 $this->nextChapterVerses = collect();
                 $bothCached = false;
-                \Log::info('🌐 Next chapter ' . ($chapterNumber + 1) . ' not cached, will load in background');
+                \Log::debug('🌐 Next chapter ' . ($chapterNumber + 1) . ' not cached, will load in background');
             }
         } else {
             $this->nextChapterVerses = collect();
-            \Log::info('📋 No next chapter (at last chapter)');
+            \Log::debug('📋 No next chapter (at last chapter)');
         }
 
         return $bothCached;
@@ -198,12 +198,12 @@ class BibleChapter extends Component
         $cached = ChapterController::getCachedChapterVerses($bookOsisId, $chapterNumber);
 
         if ($cached && isset($cached['verses'])) {
-            \Log::info("📋 Using cached verses for {$bookOsisId} {$chapterNumber}");
+            \Log::debug("📋 Using cached verses for {$bookOsisId} {$chapterNumber}");
             return $cached['verses'];
         }
 
         // Cache miss - load from database
-        \Log::info("🌐 Loading verses from database for {$bookOsisId} {$chapterNumber}");
+        \Log::debug("🌐 Loading verses from database for {$bookOsisId} {$chapterNumber}");
 
         $chapterOsisRef = $bookOsisId . '.' . $chapterNumber;
 
@@ -238,9 +238,9 @@ class BibleChapter extends Component
     {
         if (! empty($verses) && isset($verses[0]['verses'][0]['text'])) {
             $firstText = substr(strip_tags($verses[0]['verses'][0]['text']), 0, 30);
-            \Log::info("{$direction}: Loaded chapter {$chapterNumber} - First verse: {$firstText}...");
+            \Log::debug("{$direction}: Loaded chapter {$chapterNumber} - First verse: {$firstText}...");
         } else {
-            \Log::info("{$direction}: No verses loaded for chapter {$chapterNumber}");
+            \Log::debug("{$direction}: No verses loaded for chapter {$chapterNumber}");
         }
     }
 
@@ -482,7 +482,7 @@ class BibleChapter extends Component
         // If Strong's numbers are disabled, use regular text but still handle red letters
         if (!$this->showStrongsNumbers) {
             $basicText = strip_tags($verse['text'], '<em><strong><sup><sub><span>');
-            \Log::info("📖 Strong's disabled, using basic text path for {$osisId}");
+            \Log::debug("📖 Strong's disabled, using basic text path for {$osisId}");
             // Still need to handle red letters even when Strong's are disabled
             return $this->applyRedLetterFormatting($basicText, $verse);
         }
@@ -490,16 +490,13 @@ class BibleChapter extends Component
         // Fallback to regular text if no original_xml
         if (!isset($verse['original_xml']) || empty($verse['original_xml'])) {
             $basicText = strip_tags($verse['text'], '<em><strong><sup><sub><span>');
-            \Log::info("📖 No original_xml, using basic text path for {$osisId}");
             return $this->applyRedLetterFormatting($basicText, $verse);
         }
 
         $xml = $verse['original_xml'];
-        \Log::info("📖 Processing XML path for {$osisId}, XML length: " . strlen($xml));
 
         // First, handle red letter text (Jesus's words) before processing other elements
         $xml = $this->processRedLetterText($xml);
-        \Log::info("📖 After processRedLetterText for {$osisId}");
 
         // Remove note tags and other non-essential elements
         $xml = preg_replace('/<note[^>]*>.*?<\/note>/i', '', $xml); // Remove study notes
@@ -599,7 +596,6 @@ class BibleChapter extends Component
      */
     private function processRedLetterText($xml): string
     {
-        \Log::info("🔴 Processing red letters for XML: " . substr($xml, 0, 100) . '...');
 
         // First, handle simple contained markup: <q who="Jesus">content</q>
         $xml = preg_replace('/<q[^>]*who="Jesus"[^>]*>(.*?)<\/q>/is', '<span class="text-red-600 dark:text-red-400 font-medium">$1</span>', $xml);
@@ -625,14 +621,12 @@ class BibleChapter extends Component
                     if (!$redLetterOpen) {
                         $result .= '<span class="text-red-600 dark:text-red-400 font-medium">';
                         $redLetterOpen = true;
-                        \Log::info("🔴 Opening red letter span");
                     }
                 } else if (strpos($match[0], 'eID=') !== false) {
                     // Closing marker
                     if ($redLetterOpen) {
                         $result .= '</span>';
                         $redLetterOpen = false;
-                        \Log::info("🔴 Closing red letter span");
                     }
                 }
 
@@ -650,10 +644,8 @@ class BibleChapter extends Component
         // If we ended with an open red letter span, close it
         if ($redLetterOpen) {
             $result .= '</span>';
-            \Log::info("🔴 Force closing red letter span at end");
         }
 
-        \Log::info("🔴 Final processed XML: " . substr($result, 0, 100) . '...');
         return $result;
     }
 
@@ -663,7 +655,6 @@ class BibleChapter extends Component
     private function applyRedLetterFormatting($text, $verse): string
     {
         $osisId = $verse['osis_id'] ?? 'unknown';
-        \Log::info("🔤 applyRedLetterFormatting called for {$osisId}");
 
         // This method now relies primarily on the database red_letter_text entries
         // Run: php artisan bible:fix-red-letters to populate missing red letter entries
@@ -671,11 +662,9 @@ class BibleChapter extends Component
         // Check if we have original XML with red letter markup first
         if (isset($verse['original_xml']) && !empty($verse['original_xml'])) {
             $xml = $verse['original_xml'];
-            \Log::info("🔤 Found original_xml for {$osisId}, checking for red letter markup");
 
             // Check if XML contains Jesus speech markers
             if (preg_match('/<q[^>]*who="Jesus"[^>]*>/i', $xml)) {
-                \Log::info("🔤 Found Jesus markup in XML for {$osisId}, processing with XML parser");
                 // Let the main XML processing handle this
                 return $text;
             }
@@ -684,25 +673,21 @@ class BibleChapter extends Component
         // If we have red letter data for this verse in the database, apply it
         $verseId = $verse['id'] ?? null;
         if ($verseId) {
-            \Log::info("🔤 Checking red_letter_text table for verse ID {$verseId}");
             $redLetterEntries = \DB::table('red_letter_text')
                 ->where('verse_id', $verseId)
                 ->orderBy('text_order')
                 ->get();
 
-            \Log::info("🔤 Found " . $redLetterEntries->count() . " red letter entries for {$osisId}");
 
             if ($redLetterEntries->count() > 0) {
                 // For verses with red letter entries, wrap the entire verse in red letter styling
                 // This handles cases where the verse text has HTML markup that doesn't match exactly
-                \Log::info("🔤 Applying red letter styling to entire verse {$osisId}");
                 $text = '<span class="text-red-600 dark:text-red-400 font-medium">' . $text . '</span>';
 
                 // Convert any gray translator changes to red italics for consistency
                 $text = $this->applyRedLetterTranslatorChanges($text);
             }
         } else {
-            \Log::info("🔤 No verse ID available for {$osisId}, skipping database red letters");
         }
 
         return $text;

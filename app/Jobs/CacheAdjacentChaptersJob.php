@@ -32,7 +32,7 @@ class CacheAdjacentChaptersJob implements ShouldQueue
      */
     public function handle(BibleService $bibleService): void
     {
-        \Log::info("🔄 Background job: Caching adjacent chapters for {$this->bookOsisId} {$this->chapterNumber}");
+        \Log::debug("🔄 Background job: Caching adjacent chapters for {$this->bookOsisId} {$this->chapterNumber}");
 
         try {
             // Get chapters to determine bounds
@@ -42,16 +42,16 @@ class CacheAdjacentChaptersJob implements ShouldQueue
             // Cache previous chapter if it exists
             if ($this->chapterNumber > 1) {
                 $this->cacheChapterVerses($bibleService, $this->bookOsisId, $this->chapterNumber - 1);
-                \Log::info("📖 Cached previous chapter: {$this->bookOsisId} " . ($this->chapterNumber - 1));
+                \Log::debug("📖 Cached previous chapter: {$this->bookOsisId} " . ($this->chapterNumber - 1));
             }
 
             // Cache next chapter if it exists
             if ($this->chapterNumber < $maxChapterNumber) {
                 $this->cacheChapterVerses($bibleService, $this->bookOsisId, $this->chapterNumber + 1);
-                \Log::info("📖 Cached next chapter: {$this->bookOsisId} " . ($this->chapterNumber + 1));
+                \Log::debug("📖 Cached next chapter: {$this->bookOsisId} " . ($this->chapterNumber + 1));
             }
 
-            \Log::info("✅ Background job completed: Adjacent chapters cached for {$this->bookOsisId} {$this->chapterNumber}");
+            \Log::debug("✅ Background job completed: Adjacent chapters cached for {$this->bookOsisId} {$this->chapterNumber}");
 
         } catch (\Exception $e) {
             \Log::error("❌ Background job failed for {$this->bookOsisId} {$this->chapterNumber}: " . $e->getMessage());
@@ -68,7 +68,7 @@ class CacheAdjacentChaptersJob implements ShouldQueue
 
         // Skip if already cached
         if (\Cache::has($cacheKey)) {
-            \Log::info("📋 Chapter already cached: {$bookOsisId} {$chapterNumber}");
+            \Log::debug("📋 Chapter already cached: {$bookOsisId} {$chapterNumber}");
             return;
         }
 
@@ -98,7 +98,7 @@ class CacheAdjacentChaptersJob implements ShouldQueue
                 'cached_at' => now(),
             ], now()->addHours(24));
 
-            \Log::info("📖 Successfully cached verses for {$bookOsisId} {$chapterNumber} (" . $verses->count() . ' paragraphs)');
+            \Log::debug("📖 Successfully cached verses for {$bookOsisId} {$chapterNumber} (" . $verses->count() . ' paragraphs)');
 
         } catch (\Exception $e) {
             \Log::error("❌ Failed to cache verses for {$bookOsisId} {$chapterNumber}: " . $e->getMessage());
