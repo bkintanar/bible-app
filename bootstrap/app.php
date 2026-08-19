@@ -12,7 +12,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        //
+        // Runs before routing on EVERY request, so it also covers routes registered by
+        // packages outside the app's own route files (which is how nativephp/mobile's
+        // unauthenticated POST /_native/api/events endpoint reaches the web build).
+        $middleware->prepend(\App\Http\Middleware\BlockNativeRoutesOnWeb::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
