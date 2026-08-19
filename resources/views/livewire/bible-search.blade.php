@@ -112,7 +112,7 @@
                                             </a>
                                         </div>
                                         <div class="bible-text text-gray-900 dark:text-gray-100">
-                                            {!! $result['text'] !!}
+                                            {!! str_replace(['&lt;mark&gt;', '&lt;/mark&gt;'], ['<mark>', '</mark>'], e($result['text'])) !!}
                                         </div>
                                     </div>
                                 </div>

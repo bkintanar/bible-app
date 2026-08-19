@@ -206,33 +206,31 @@
 
     {{-- FLOATING NAVIGATION BUTTONS --}}
     <!-- Floating Previous Chapter Button (Left Side) -->
-    @if(false)
     @if($chapterNumber > 1)
         <div class="fixed left-0 top-1/2 transform -translate-y-1/2 z-40">
                                         <button onclick="navigateToChapter('/{{ $bookOsisId }}/{{ $chapterNumber - 1 }}')"
-               class="bg-blue-600 hover:bg-blue-700 dark:bg-gray-700 dark:hover:bg-gray-600 text-white w-[30px] h-[60px] shadow-lg dark:shadow-gray-900 transition-all duration-200 hover:scale-110 flex items-center justify-center group"
-               title="Previous Chapter: {{ $chapterNumber - 1 }}">
+               class="bg-blue-600 hover:bg-blue-700 dark:bg-gray-700 dark:hover:bg-gray-600 text-white w-[44px] h-[60px] shadow-lg dark:shadow-gray-900 transition-all duration-200 hover:scale-110 flex items-center justify-center group"
+               title="Previous Chapter: {{ $chapterNumber - 1 }}"
+               aria-label="Previous chapter">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                 </svg>
             </button>
         </div>
     @endif
-    @endif
 
     <!-- Floating Next Chapter Button (Right Side) -->
-    @if(false)
     @if($chapterNumber < ($chapters->max('chapter_number') ?? 0))
         <div class="fixed right-0 top-1/2 transform -translate-y-1/2 z-40">
                                         <button onclick="navigateToChapter('/{{ $bookOsisId }}/{{ $chapterNumber + 1 }}')"
-               class="bg-blue-600 hover:bg-blue-700 dark:bg-gray-700 dark:hover:bg-gray-600 text-white w-[30px] h-[60px] shadow-lg dark:shadow-gray-900 transition-all duration-200 hover:scale-110 flex items-center justify-center group"
-               title="Next Chapter: {{ $chapterNumber + 1 }}">
+               class="bg-blue-600 hover:bg-blue-700 dark:bg-gray-700 dark:hover:bg-gray-600 text-white w-[44px] h-[60px] shadow-lg dark:shadow-gray-900 transition-all duration-200 hover:scale-110 flex items-center justify-center group"
+               title="Next Chapter: {{ $chapterNumber + 1 }}"
+               aria-label="Next chapter">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                 </svg>
             </button>
         </div>
-    @endif
     @endif
 
     {{-- BOOK/CHAPTER SELECTOR POPUP --}}

@@ -55,7 +55,7 @@
                     <!-- Display titles only once per paragraph (from first verse) -->
                     @if(!$titlesDisplayed && isset($verse['chapter_titles']) && !empty($verse['chapter_titles']))
                         <div class="mb-4 block w-full -indent-8">
-                            {!! $verse['chapter_titles'] !!}
+                            {!! strip_tags($verse['chapter_titles'], '<div><em><strong><sup><sub><foreign>') !!}
                         </div>
                         @php $titlesDisplayed = true; @endphp
                     @endif
