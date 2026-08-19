@@ -22,7 +22,7 @@ class ChapterController extends Controller
     {
         // Validate the book and chapter exist
         if (! $this->bibleService->chapterExists($bookOsisId, $chapterNumber)) {
-            dd(config('database.connections.sqlite'));
+            abort(404, "Chapter not found: {$bookOsisId} {$chapterNumber}");
         }
 
         UserSessionController::storeLastVisitedPage('chapters.show', [

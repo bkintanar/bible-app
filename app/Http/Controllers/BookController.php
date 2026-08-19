@@ -31,7 +31,7 @@ class BookController extends Controller
     {
         // Validate the book exists
         if (! $this->bibleService->bookExists($bookOsisId)) {
-            dd(config('database.connections.sqlite'));
+            abort(404, "Book not found: {$bookOsisId}");
         }
 
         UserSessionController::storeLastVisitedPage('books.show', [

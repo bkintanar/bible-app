@@ -50,7 +50,7 @@ Route::get('/books', [BookController::class, 'index'])->name('books.index');
 Route::get('/books/{bookOsisId}', [BookController::class, 'show'])->name('books.show');
 
 // Chapters resource routes (nested under books)
-Route::get('/books/{bookOsisId}/chapters/{chapterNumber}', [ChapterController::class, 'show'])->name('chapters.show');
+Route::get('/books/{bookOsisId}/chapters/{chapterNumber}', [ChapterController::class, 'show'])->whereNumber('chapterNumber')->name('chapters.show');
 
 // =======================================
 // TESTING ROUTES (must be before dynamic routes)

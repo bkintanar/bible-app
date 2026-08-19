@@ -24,5 +24,5 @@ Route::get('/books/{bookOsisId}', [BookController::class, 'show'])->name('api.bo
 Route::get('/books/{bookOsisId}/chapters', [BookController::class, 'chapters'])->name('api.books.chapters');
 
 // Chapters API (nested under books)
-Route::get('/books/{bookOsisId}/chapters/{chapterNumber}/verses', [ChapterController::class, 'verses'])->name('api.chapters.verses');
-Route::get('/books/{bookOsisId}/chapters/{chapterNumber}/verses/{verseNumber}', [ChapterController::class, 'verse'])->name('api.chapters.verse');
+Route::get('/books/{bookOsisId}/chapters/{chapterNumber}/verses', [ChapterController::class, 'verses'])->whereNumber('chapterNumber')->name('api.chapters.verses');
+Route::get('/books/{bookOsisId}/chapters/{chapterNumber}/verses/{verseNumber}', [ChapterController::class, 'verse'])->whereNumber(['chapterNumber', 'verseNumber'])->name('api.chapters.verse');

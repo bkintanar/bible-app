@@ -39,15 +39,7 @@ class BibleBook extends Component
         });
 
         if (! $this->currentBook) {
-            dd([
-                'error' => 'Book not found',
-                'requested_book_osis_id' => $bookOsisId,
-                'available_books' => $this->books->pluck('osis_id', 'name')->toArray(),
-                'database_query_attempted' => "Looking for book with osis_id matching: {$bookOsisId}",
-                'service_method' => 'BibleService::getBooks()',
-                'books_count' => $this->books->count(),
-                'db_path' => database_path('bible_app.sqlite'),
-            ]);
+            abort(404, "Book not found: {$bookOsisId}");
         }
 
         // Store this page as the last visited
@@ -57,16 +49,7 @@ class BibleBook extends Component
         $this->chapters = $this->bibleService->getChapters($bookOsisId);
 
         if ($this->chapters->isEmpty()) {
-            dd([
-                'error' => 'No chapters found for this book',
-                'book_osis_id' => $bookOsisId,
-                'book_name' => $this->currentBook['name'] ?? 'Unknown',
-                'database_query_attempted' => "Looking for chapters in book: {$bookOsisId}",
-                'service_method' => 'BibleService::getChapters()',
-                'chapters_result' => $this->chapters,
-                'current_translation' => $this->bibleService->getCurrentTranslation(),
-                'db_path' => database_path('bible_app.sqlite'),
-            ]);
+            abort(404, "No chapters found for book: {$bookOsisId}");
         }
 
         $this->testamentBooks = $this->getTestamentBooks($this->books);
