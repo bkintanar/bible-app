@@ -37,9 +37,15 @@ return [
             'database' => env('DB_DATABASE', database_path('bible_app.sqlite')),
             'prefix' => '',
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
-            'busy_timeout' => null,
-            'journal_mode' => null,
-            'synchronous' => null,
+            // Laravel's SQLiteConnector guards each pragma with isset(), so null means the
+            // pragma is never issued and the file keeps its on-disk default (journal_mode
+            // = delete). With PHP-FPM children, a queue worker, the database cache store and
+            // the database queue all writing one file, a writer took an EXCLUSIVE lock on the
+            // whole 147MB database and every reader blocked behind it - measured reader tail
+            // latency of 629ms. WAL lets readers proceed alongside a single writer (0.21ms).
+            'busy_timeout' => env('DB_BUSY_TIMEOUT', 10000),
+            'journal_mode' => env('DB_JOURNAL_MODE', 'WAL'),
+            'synchronous' => env('DB_SYNCHRONOUS', 'NORMAL'),
         ],
 
         'mysql' => [
