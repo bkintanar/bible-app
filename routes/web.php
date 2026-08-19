@@ -45,7 +45,6 @@ Route::get('/books/{bookOsisId}/chapters/{chapterNumber}', [ChapterController::c
 // TESTING ROUTES (must be before dynamic routes)
 // =======================================
 
-
 // =======================================
 // LEGACY ROUTES (for backward compatibility)
 // =======================================
