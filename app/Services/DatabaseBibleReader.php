@@ -126,11 +126,14 @@ class DatabaseBibleReader implements BibleReaderInterface
             $properCaseRef = ucfirst($parts[0]) . '.' . $parts[1];
         }
 
+        $chapterId = $this->resolveChapterId($properCaseRef);
+
+        if ($chapterId === null) {
+            return collect();
+        }
+
         $verses = Verse::with('titles')
-            ->whereHas('chapter', function ($query) use ($properCaseRef) {
-                $query->where('osis_id', $properCaseRef)
-                    ->where('version_id', $this->bibleVersion->id);
-            })
+            ->where('chapter_id', $chapterId)
             ->orderBy('verse_number')
             ->get();
 
@@ -216,11 +219,14 @@ class DatabaseBibleReader implements BibleReaderInterface
             return collect();
         }
 
+        $chapterId = $this->resolveChapterId($chapterOsisRef);
+
+        if ($chapterId === null) {
+            return collect();
+        }
+
         return Paragraph::with(['startVerse', 'endVerse'])
-            ->whereHas('chapter', function ($query) use ($chapterOsisRef) {
-                $query->where('osis_id', $chapterOsisRef)
-                    ->where('version_id', $this->bibleVersion->id);
-            })
+            ->where('chapter_id', $chapterId)
             ->orderBy('start_verse_id')
             ->get()
             ->map(function ($paragraph) {
@@ -509,6 +515,39 @@ class DatabaseBibleReader implements BibleReaderInterface
                 'chapter' => (int) $result->chapter_number,
                 'reference' => "{$result->book_name} {$result->chapter_number}:{$result->verse_number}",
             ];
+        });
+    }
+
+    /**
+     * Resolve a chapter OSIS ref (e.g. "Gen.1") to its primary key for the current version.
+     *
+     * Callers previously used whereHas('chapter', ...), which SQLite compiles to a correlated
+     * EXISTS it cannot invert - producing a full scan of the 31k-row verses table on every
+     * chapter view (~22ms) despite verses_chapter_id_verse_number_index already existing.
+     * Resolving the id first lets the index be used (~0.03ms).
+     *
+     * Normalising here also fixes a latent mismatch: getVerses() case-corrected its ref while
+     * getParagraphDataFromDatabase() did not, so a lowercase ref returned verses but no
+     * paragraph data and silently fell through to arbitrary artificial paragraphing.
+     */
+    private function resolveChapterId(string $chapterOsisRef): ?int
+    {
+        if (! $this->bibleVersion) {
+            return null;
+        }
+
+        $normalised = ucfirst(strtolower(trim($chapterOsisRef)));
+        if (str_contains($normalised, '.')) {
+            $parts = explode('.', $normalised);
+            $normalised = ucfirst($parts[0]) . '.' . $parts[1];
+        }
+
+        $cacheKey = "chapter_id_{$this->versionKey}_{$normalised}";
+
+        return Cache::remember($cacheKey, 3600, function () use ($normalised) {
+            return Chapter::where('osis_id', $normalised)
+                ->where('version_id', $this->bibleVersion->id)
+                ->value('id');
         });
     }
 
