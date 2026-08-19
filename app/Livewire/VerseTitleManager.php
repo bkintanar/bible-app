@@ -188,9 +188,10 @@ class VerseTitleManager extends Component
                 return;
             }
 
-            // Create backup
-            $backupPath = $xmlPath . '.backup.' . time();
-            copy($xmlPath, $backupPath);
+            // No file-copy backup: assets/*.osis.xml is the source of truth and is
+            // versioned in git. The previous copy-per-save wrote a full ~27MB snapshot on
+            // every save from an unauthenticated page - an unbounded disk-fill vector that
+            // had already accumulated 20 untracked files (~500MB).
 
             // Save the modified XML
             if (file_put_contents($xmlPath, $newXmlContent) !== false) {
@@ -231,9 +232,7 @@ class VerseTitleManager extends Component
             $newXmlContent = preg_replace($titlePattern, '', $xmlContent);
 
             if ($newXmlContent !== $xmlContent) {
-                // Create backup
-                $backupPath = $xmlPath . '.backup.' . time();
-                copy($xmlPath, $backupPath);
+                // No file-copy backup - see saveTitle(). Source of truth is versioned in git.
 
                 // Save the modified XML
                 if (file_put_contents($xmlPath, $newXmlContent) !== false) {
