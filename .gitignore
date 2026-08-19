@@ -34,3 +34,6 @@ clover.xml
 
 # NativePHP
 nativephp
+
+# OSIS source snapshots written by the old VerseTitleManager backup path
+assets/*.osis.xml.backup.*
