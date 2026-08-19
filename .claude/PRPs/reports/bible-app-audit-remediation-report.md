@@ -3,7 +3,7 @@
 **Plan**: `.claude/PRPs/plans/bible-app-audit-remediation.plan.md`
 **Branch**: `feature/audit-remediation-phase-0`
 **Date**: 2026-08-19
-**Status**: **PARTIAL — 13 of 70 tasks complete.** Deliberately stopped; see *Why This Stopped*.
+**Status**: **PARTIAL — 19 of 70 tasks complete** (13 in pass 1, 6 more in pass 2). Deliberately stopped; see *Why This Stopped*.
 
 ---
 
@@ -162,3 +162,45 @@ signal is the unchanged baseline.
    they need a re-projection and the importer is not yet idempotent.
 
 **Plan intentionally NOT archived** — 57 of 70 tasks remain.
+
+---
+
+## Pass 2 — additional tasks completed
+
+Requested via `/prp-ralph`. A Ralph loop was **not** started: its exit condition ("all validations
+pass") is unreachable for this plan — "tests all green" requires Phase 4 plus a seeded fixture that
+does not exist, the Livewire CVE needs an interactive composer run, and Phase 1B.1 gates the
+scripture work. Unattended iteration over tasks that delete ~2,240 LOC and re-project a 147MB
+database also contradicts the plan's own ordering constraints. The safe, self-verifiable remainder
+was executed directly instead.
+
+| # | Task | Result |
+|---|---|---|
+| S1 mitigation | Block `/_native/*` on the web build | Object-injection gadget call: `{"success":true}` → **404** |
+| 3.6 | Kill the log flood | One Ps 119 request: **110,919 → 0 bytes**; three chapters: ~197,000 → 0 |
+| 3.8 | Remove `app.js` from 3 views | Double-Alpine gone; all 3 pages now load exactly one Alpine, zero `app.js` |
+| 3.9 | `@variant` → `@custom-variant` + OS dark preference | Compiled CSS keeps 69 `.dark` selectors; first-visit dark now honoured at runtime |
+| 2.8 | Escape search result HTML | 3 payloads: **0 raw reflections**, all escaped, `<mark>` intact |
+| 2.7 | Re-enable prev/next chapter buttons | Were `@if(false)`; boundary logic verified Gen 1/25/50; +`aria-label`, 30→44px |
+
+**Regressions: zero.** Suite held at 113 failed / 9 risky / 133 passed / 469 assertions across all
+13 commits.
+
+### Two measurement errors I made and corrected
+
+1. **A false regression.** I reported valid pages 404-ing after the `dd()` change. They were fine —
+   the vhost's `server_name` had been changed to `bible.b8.co.nz` mid-session, so my
+   `Host: bible.local` requests fell through to nginx's default block.
+2. **A false content change.** I reported small-caps spans dropping 49 → 14 on Ps 23. Nothing
+   changed: I had switched from `grep -o | wc -l` (occurrences) to `grep -c` (matching lines). Both
+   metrics still hold on the same page. I also tested and *rejected* a plausible-sounding
+   cache-state explanation before finding the real one.
+
+### Still blocked
+
+- **Livewire CVE-2025-54068 (CVSS 9.2) unpatched** — needs `composer require livewire/livewire:^3.6.4 -W`
+  run interactively by the user. My shell cannot answer composer's auth prompt for the private
+  NativePHP repo. *(Earlier framing of this as "composer cannot run at all" was wrong.)*
+- **O-5 closed by user decision** — anonymous write access to `/admin/verse-titles` is accepted.
+- **nginx O1** (`/build/` strips both security headers) — vhost left untouched, under concurrent edit.
+- **Phase 1B.1** gates all remaining scripture work.
