@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verse Title Manager - Bible App</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    {{-- Livewire 3 bundles Alpine; loading resources/js/app.js here started a SECOND
+         Alpine instance on the same document, and shipped an unused axios global. --}}
+    @vite(['resources/css/app.css'])
     @livewireStyles
 </head>
 <body class="h-full bg-gray-100">

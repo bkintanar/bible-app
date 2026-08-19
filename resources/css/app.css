@@ -5,8 +5,12 @@
 @source '../**/*.blade.php';
 @source '../**/*.js';
 
-@variant dark (prefers-color-scheme: dark);
-@variant dark (.dark &);
+/* Tailwind 4 is CSS-first: @variant APPLIES a variant inside a rule, while defining one
+   requires @custom-variant. The previous two @variant lines defined nothing, and the second
+   shadowed the first, so the compiled stylesheet contained ZERO prefers-color-scheme rules -
+   a first-time visitor on a dark-themed OS got a light page. The :where() form also matches
+   the .dark element itself (plain `.dark &` does not) and keeps specificity at zero. */
+@custom-variant dark (&:where(.dark, .dark *));
 
 /* iOS Safe Area and Mobile Web App Styles */
 @supports (padding: env(safe-area-inset-top)) {

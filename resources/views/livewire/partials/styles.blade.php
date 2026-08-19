@@ -2,7 +2,13 @@
 <script>
     // Initialize dark mode IMMEDIATELY to prevent flash
     (function() {
-        if (localStorage.getItem('darkMode') === 'true') {
+        // Explicit user choice wins; otherwise fall back to the OS preference.
+        // Tailwind 4's dark variant here is class-based (@custom-variant in app.css), so
+        // prefers-color-scheme cannot be expressed in CSS - it has to be resolved here.
+        // Previously a first-time visitor on a dark-themed OS always got a light page.
+        var stored = localStorage.getItem('darkMode');
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (stored === 'true' || (stored === null && prefersDark)) {
             document.documentElement.classList.add('dark');
         }
     })();
