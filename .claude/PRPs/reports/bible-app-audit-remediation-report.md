@@ -11,7 +11,7 @@
 
 Executed the safe, high-value, reversible core of the remediation plan: the headline scripture
 rendering bug, the three API correctness defects, the 779× query-shape fix, WAL, containment items,
-and my own deployment gaps. Eight commits, 18 files, +203/−187.
+and my own deployment gaps. Across two passes: 14 commits, 33 files, +1592/−251.
 
 **The plan is a multi-week programme with six unanswered decisions and several irreversible steps.
 It was never executable end-to-end in one pass, and attempting that would have been reckless.**
@@ -25,8 +25,8 @@ Three categories of remaining work were **not** attempted, each for a stated rea
 
 | Category | Examples | Why not |
 |---|---|---|
-| **Blocked on user decisions** | Task 0.4 (remove `nativephp/mobile`?), Task 0.3 (Livewire CVE upgrade), Task 6.3 (delete the 1,351-LOC XML reader?) | O-1…O-6 are unanswered. O-1 is also a **hard technical blocker**: `composer` cannot reach the private repo (HTTP 401, no `auth.json`), so **no composer operation can run at all** — including the CVE-2025-54068 upgrade |
-| **Blocked on missing prerequisites** | Task 0.5 (auth on `/admin/*`) | `middleware('auth')` is unsatisfiable — there is no `User` model and no `users` table. Adding it would 500 every request to that route. Needs O-5 |
+| **Blocked on user decisions** | Task 0.4 (remove `nativephp/mobile`?), Task 0.3 (Livewire CVE upgrade), Task 6.3 (delete the 1,351-LOC XML reader?) | O-1…O-6 were unanswered at the time. **CORRECTED in pass 2:** I described composer as unable to run at all. That was wrong — the real error is *"You must be using the interactive console to authenticate"*. Composer authenticates to the private NativePHP repo by **prompting**; my shell is non-interactive and cannot answer. The user confirmed they can run composer fine, so this is a limitation of my tooling, not the project |
+| **Closed by user decision** | Task 0.5 (auth on `/admin/*`) | `middleware('auth')` is unsatisfiable — no `User` model, no `users` table. **O-5 was subsequently closed by the user**, who accepts anonymous write access here. Not to be re-raised |
 | **Multi-day / irreversible** | Phase 1B (projection engine), Phase 4 (test suite), Phase 6 (delete ~2,240 LOC) | Phase 1B alone is ~1 week and gates re-projection; Phase 6 deletions are irreversible and depend on decisions above |
 
 ---
