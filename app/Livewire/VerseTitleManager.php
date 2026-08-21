@@ -210,6 +210,13 @@ class VerseTitleManager extends Component
         $lockPath = $path.'.lock';
         $lock = @fopen($lockPath, 'c');
 
+        // The lock is shared between whoever writes: artisan (often root) and PHP-FPM
+        // (www-data). Whoever creates it first would otherwise own it with a umask that
+        // locks the other out - which is exactly how a root-created lock blocked www-data.
+        if ($lock !== false) {
+            @chmod($lockPath, 0664);
+        }
+
         if ($lock === false) {
             Log::error('Cannot open OSIS lock file', ['lock' => $lockPath]);
 
@@ -256,8 +263,23 @@ class VerseTitleManager extends Component
             // Temp file must be a sibling so rename() stays within the filesystem.
             $tmp = $path.'.tmp.'.getmypid();
 
+            // Capture the original's mode and ownership BEFORE replacing it. An atomic
+            // rename() gives the new file the CREATING PROCESS's uid/gid and umask, not the
+            // original's - so a write by root silently reset a root:www-data 664 source back
+            // to root:root 644 and locked www-data out again. A replace-in-place must preserve
+            // what it replaces.
+            $original = @stat($path);
+
             if (@file_put_contents($tmp, $new) === false) {
                 return 'write_failed';
+            }
+
+            if ($original !== false) {
+                @chmod($tmp, $original['mode'] & 0777);
+
+                // chown/chgrp only succeed as root; harmless no-ops otherwise.
+                @chgrp($tmp, $original['gid']);
+                @chown($tmp, $original['uid']);
             }
 
             if (! $this->fileParsesAsXml($tmp)) {
