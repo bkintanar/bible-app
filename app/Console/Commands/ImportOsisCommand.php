@@ -352,6 +352,10 @@ class ImportOsisCommand extends Command
      */
     private function importChapterTitle($element, $chapterId, $order)
     {
+        // Chapter titles carry verse_id = null, so purgeVerseProjection() cannot reach them.
+        // Clear this chapter's chapter-scoped titles once per import before rewriting them.
+        $this->purgeChapterProjectionOnce($chapterId);
+
         // Extract inner content and format to HTML (preserve formatting)
         $innerContent = '';
         foreach ($element->childNodes as $child) {
@@ -407,6 +411,77 @@ class ImportOsisCommand extends Command
 
         $bar->finish();
         $this->newLine();
+    }
+
+    /**
+     * Verse-scoped tables whose rows are derived from the OSIS source.
+     *
+     * Structure tables (bible_versions, books, chapters, verses, paragraphs) already handle
+     * re-runs - they reuse, skip or update. These do not: they have no unique index and no
+     * existence check, so every import run appended a fresh copy.
+     */
+    private const VERSE_PROJECTION_TABLES = [
+        'word_elements',
+        'translator_changes',
+        'red_letter_text',
+        'divine_names',
+        'study_notes',
+        'poetry_structure',
+        'titles',
+    ];
+
+    /**
+     * Chapter-scoped derived tables (book/chapter titles are keyed on chapter_id, not verse_id).
+     */
+    private const CHAPTER_PROJECTION_TABLES = [
+        'titles',
+    ];
+
+    /** Chapter ids already purged during this run, so repeated titles in one chapter accumulate normally. */
+    private array $purgedChapters = [];
+
+    /**
+     * Purge a chapter's chapter-scoped titles exactly once per import run.
+     *
+     * Guarded because a chapter legitimately has several chapter-scoped titles; purging on
+     * every insert would leave only the last one.
+     */
+    private function purgeChapterProjectionOnce(int $chapterId): void
+    {
+        if (isset($this->purgedChapters[$chapterId])) {
+            return;
+        }
+        $this->purgedChapters[$chapterId] = true;
+        $this->purgeChapterProjection($chapterId);
+    }
+
+    /**
+     * Drop the derived rows for one verse so they can be rebuilt from the source.
+     */
+    private function purgeVerseProjection(int $verseId): void
+    {
+        foreach (self::VERSE_PROJECTION_TABLES as $table) {
+            DB::table($table)->where('verse_id', $verseId)->delete();
+        }
+
+        // A per-verse <title type="chapter"> is stored with verse_id = null and chapter_id set
+        // (see importVerseTitle), so the verse_id delete above cannot reach it. Purge the
+        // owning chapter's chapter-scoped titles instead - once per chapter per run, so the
+        // contributions of sibling verses in the same chapter are not deleted in turn.
+        $chapterId = DB::table('verses')->where('id', $verseId)->value('chapter_id');
+        if ($chapterId) {
+            $this->purgeChapterProjectionOnce((int) $chapterId);
+        }
+    }
+
+    /**
+     * Drop the derived rows attached directly to a chapter (not to one of its verses).
+     */
+    private function purgeChapterProjection(int $chapterId): void
+    {
+        foreach (self::CHAPTER_PROJECTION_TABLES as $table) {
+            DB::table($table)->where('chapter_id', $chapterId)->whereNull('verse_id')->delete();
+        }
     }
 
     private function processVerse($verseElement)
@@ -504,6 +579,12 @@ class ImportOsisCommand extends Command
                 $this->currentParagraphVerses[] = $verseNum;
             }
         }
+
+        // The database is a PROJECTION of the OSIS source, so re-projecting a verse must
+        // replace its derived rows rather than add to them. These tables have no unique
+        // index, so without this an import run duplicates every element: a second run took
+        // word_elements 355,143 -> 710,286 and titles 1,530 -> 3,060 (measured).
+        $this->purgeVerseProjection($verseId);
 
         // Check for titles that come before this verse
         $this->extractVerseTitles($verseElement, $verseId);
@@ -1446,6 +1527,12 @@ class ImportOsisCommand extends Command
             ->first();
 
         $chapterId = $firstChapter ? $firstChapter->id : null;
+
+        // Book titles also carry verse_id = null; purge this chapter's chapter-scoped titles
+        // once so a re-run replaces them instead of appending.
+        if ($chapterId) {
+            $this->purgeChapterProjectionOnce($chapterId);
+        }
 
         // Store title in database
         $titleData = [
