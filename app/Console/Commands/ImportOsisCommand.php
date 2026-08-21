@@ -11,7 +11,12 @@ use Illuminate\Support\Facades\Log;
 
 class ImportOsisCommand extends Command
 {
-    protected $signature = 'osis:import {file=assets/kjv.osis.xml} {--chunk=100 : Number of verses to process per chunk}';
+    protected $signature = 'osis:import
+        {file=assets/kjv.osis.xml}
+        {--chunk=100 : Number of verses to process per chunk}
+        {--book= : Only project this book, by OSIS id (e.g. Gen)}
+        {--chapter= : Only project this chapter, as book.chapter (e.g. Gen.28)}
+        {--verse= : Only project this verse, as book.chapter.verse (e.g. Gen.28.1)}';
     protected $description = 'Import OSIS XML file into the comprehensive Bible database';
 
     private $versionId;
@@ -43,8 +48,18 @@ class ImportOsisCommand extends Command
             return 1;
         }
 
+        $this->scope = $this->resolveScope();
+
+        if ($this->scope === false) {
+            return 1;
+        }
+
         $this->info("🚀 Starting OSIS XML import from: {$file}");
         $this->info("📊 Chunk size: {$chunkSize} verses");
+
+        if ($this->scope !== null) {
+            $this->info("🎯 Scope: {$this->scope} (targeted re-projection)");
+        }
 
         try {
             // Load and validate XML
@@ -62,14 +77,14 @@ class ImportOsisCommand extends Command
 
             $this->importVerses($chunkSize);
 
-            // Finalize any remaining paragraphs
-            $this->finalizeParagraphs();
+            // Finalize any remaining paragraphs (chapter-wide; see scopeCoversWholeChapters)
+            if ($this->scopeCoversWholeChapters()) {
+                $this->finalizeParagraphs();
+            }
 
             // Update FTS tables
             $this->updateFTSTables();
 
-            // Add comprehensive red letter entries
-            $this->addComprehensiveRedLetters();
 
             $this->displaySummary();
 
@@ -414,6 +429,84 @@ class ImportOsisCommand extends Command
     }
 
     /**
+     * OSIS-id prefix limiting this run, or null for a full projection.
+     *
+     * The database is a projection of the XML, so an edit to one verse should re-project
+     * that verse - not rebuild all 31,102. Combined with the idempotent purge, a scoped run
+     * is safe to repeat.
+     */
+    private ?string $scope = null;
+
+    /**
+     * Turn --book/--chapter/--verse into a single OSIS-id prefix.
+     *
+     * @return string|null|false prefix, null for a full run, or false if the input is invalid
+     */
+    private function resolveScope(): string|null|false
+    {
+        $given = array_filter([
+            'verse' => $this->option('verse'),
+            'chapter' => $this->option('chapter'),
+            'book' => $this->option('book'),
+        ], fn ($v) => $v !== null && $v !== '');
+
+        if (count($given) > 1) {
+            $this->error('Use only one of --book, --chapter or --verse.');
+
+            return false;
+        }
+
+        if ($given === []) {
+            return null;
+        }
+
+        $kind = array_key_first($given);
+        $value = trim($given[$kind]);
+        $expected = ['book' => 1, 'chapter' => 2, 'verse' => 3][$kind];
+
+        if (count(explode('.', $value)) !== $expected) {
+            $this->error("--{$kind} expects ".$expected.' dot-separated part(s), e.g. '.
+                ['book' => 'Gen', 'chapter' => 'Gen.28', 'verse' => 'Gen.28.1'][$kind].".  Got: {$value}");
+
+            return false;
+        }
+
+        return $value;
+    }
+
+    /**
+     * Does the current scope span at least one whole chapter?
+     *
+     * Paragraph structure is a chapter-wide property: the importer derives it by walking a
+     * chapter's verses in order and closing the run at the next pilcrow. A single-verse scope
+     * gives the state machine one verse and it emits a bogus one-verse paragraph with a NULL
+     * end (measured: --verse=Gen.28.1 took paragraphs 4,159 -> 4,160). So paragraph work is
+     * skipped unless the scope covers whole chapters.
+     */
+    private function scopeCoversWholeChapters(): bool
+    {
+        return $this->scope === null || count(explode('.', $this->scope)) < 3;
+    }
+
+    /**
+     * Is this verse inside the requested scope?
+     *
+     * Compares on dot-separated segments so --book=Gen cannot also match Genesis-like ids
+     * that merely share a string prefix.
+     */
+    private function inScope(string $verseOsisId): bool
+    {
+        if ($this->scope === null) {
+            return true;
+        }
+
+        $want = explode('.', $this->scope);
+        $have = array_slice(explode('.', $verseOsisId), 0, count($want));
+
+        return $want === $have;
+    }
+
+    /**
      * Verse-scoped tables whose rows are derived from the OSIS source.
      *
      * Structure tables (bible_versions, books, chapters, verses, paragraphs) already handle
@@ -498,6 +591,10 @@ class ImportOsisCommand extends Command
             return;
         }
 
+        if (! $this->inScope($osisId)) {
+            return;
+        }
+
         $bookOsis = $parts[0];
         $chapterNum = (int) $parts[1];
         $verseNum = (int) $parts[2];
@@ -510,7 +607,7 @@ class ImportOsisCommand extends Command
         }
 
         // Handle paragraph tracking when switching chapters
-        if ($this->currentChapterId !== $chapterId) {
+        if ($this->scopeCoversWholeChapters() && $this->currentChapterId !== $chapterId) {
             // Save previous chapter's final paragraph if exists
             if ($this->currentChapterId && $this->currentParagraphStart !== null && ! empty($this->currentParagraphVerses)) {
                 $this->saveParagraph($this->currentChapterId, $this->currentParagraphStart, $this->currentParagraphVerses);
@@ -571,12 +668,14 @@ class ImportOsisCommand extends Command
         // Check for paragraph markers in verse content BEFORE adding to current paragraph
         $hasNewParagraphMarker = preg_match('/<milestone[^>]*type="x-p"[^>]*marker="¶"[^>]*>/', $content['xml']);
 
-        if ($hasNewParagraphMarker) {
-            $this->processParagraphMarkers($content['xml'], $verseNum);
-        } else {
-            // Add verse to current paragraph tracking only if it doesn't start a new paragraph
-            if ($this->currentParagraphStart !== null && ! in_array($verseNum, $this->currentParagraphVerses)) {
-                $this->currentParagraphVerses[] = $verseNum;
+        if ($this->scopeCoversWholeChapters()) {
+            if ($hasNewParagraphMarker) {
+                $this->processParagraphMarkers($content['xml'], $verseNum);
+            } else {
+                // Add verse to current paragraph tracking only if it doesn't start a new paragraph
+                if ($this->currentParagraphStart !== null && ! in_array($verseNum, $this->currentParagraphVerses)) {
+                    $this->currentParagraphVerses[] = $verseNum;
+                }
             }
         }
 
@@ -1350,11 +1449,11 @@ class ImportOsisCommand extends Command
     {
         $this->info('🔍 Updating FTS search tables...');
 
-        try {
-            DB::statement("INSERT INTO verses_fts(verses_fts) VALUES('rebuild')");
-        } catch (Exception $e) {
-            $this->warn('FTS rebuild failed: ' . $e->getMessage());
-        }
+        // verses_fts is the ONLY search backend (DatabaseBibleReader::searchVerses queries it
+        // exclusively), so a swallowed rebuild failure silently serves the previous import's
+        // index. This used to warn and then print a success tick two lines later, exiting 0 -
+        // so an operator or CI saw a fully green import over a stale index.
+        DB::statement("INSERT INTO verses_fts(verses_fts) VALUES('rebuild')");
 
         $this->info('✅ FTS tables updated');
     }
@@ -1646,129 +1745,7 @@ class ImportOsisCommand extends Command
         }
     }
 
-    /**
-     * Add comprehensive red letter entries for verses where Jesus speaks
-     * This supplements the XML-based red letter import with missing entries
-     */
-    private function addComprehensiveRedLetters()
-    {
-        $this->info('🔴 Adding comprehensive red letter entries...');
+    
 
-        // Get all verses where Jesus speaks but don't have red letter entries
-        $jesusVerses = $this->getJesusVerses();
-
-        $addedCount = 0;
-
-        foreach ($jesusVerses as $verseRef) {
-            // Find the verse in the database
-            $verse = DB::table('verses')->where('osis_id', 'LIKE', "%{$verseRef}%")->first();
-
-            if ($verse) {
-                // Check if red letter entry already exists
-                $existingEntry = DB::table('red_letter_text')->where('verse_id', $verse->id)->first();
-
-                if (!$existingEntry) {
-                    // Extract the text content from the verse
-                    $textContent = strip_tags($verse->formatted_text ?? $verse->text);
-
-                    // Add red letter entry
-                    DB::table('red_letter_text')->insert([
-                        'verse_id' => $verse->id,
-                        'speaker' => 'Jesus',
-                        'text_content' => $textContent,
-                        'text_order' => 1,
-                        'attributes' => json_encode(['source' => 'comprehensive_import']),
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-
-                    $addedCount++;
-                    $this->redLetterCount++; // Update the counter for the summary
-                }
-            }
-        }
-
-        if ($addedCount > 0) {
-            $this->info("✅ Added {$addedCount} comprehensive red letter entries");
-        }
-    }
-
-    /**
-     * Get a comprehensive list of verses where Jesus speaks
-     * This supplements the OSIS XML markup with missing red letter verses
-     */
-    private function getJesusVerses(): array
-    {
-        return [
-            // Matthew - Jesus's words
-            'Matt.3.15', 'Matt.4.4', 'Matt.4.7', 'Matt.4.10', 'Matt.4.17', 'Matt.4.19',
-            'Matt.5.3', 'Matt.5.4', 'Matt.5.5', 'Matt.5.6', 'Matt.5.7', 'Matt.5.8', 'Matt.5.9', 'Matt.5.10', 'Matt.5.11', 'Matt.5.12',
-            'Matt.5.13', 'Matt.5.14', 'Matt.5.15', 'Matt.5.16', 'Matt.5.17', 'Matt.5.18', 'Matt.5.19', 'Matt.5.20',
-            'Matt.5.21', 'Matt.5.22', 'Matt.5.23', 'Matt.5.24', 'Matt.5.25', 'Matt.5.26', 'Matt.5.27', 'Matt.5.28',
-            'Matt.5.29', 'Matt.5.30', 'Matt.5.31', 'Matt.5.32', 'Matt.5.33', 'Matt.5.34', 'Matt.5.35', 'Matt.5.36', 'Matt.5.37',
-            'Matt.5.38', 'Matt.5.39', 'Matt.5.40', 'Matt.5.41', 'Matt.5.42', 'Matt.5.43', 'Matt.5.44', 'Matt.5.45', 'Matt.5.46', 'Matt.5.47', 'Matt.5.48',
-            'Matt.6.1', 'Matt.6.2', 'Matt.6.3', 'Matt.6.4', 'Matt.6.5', 'Matt.6.6', 'Matt.6.7', 'Matt.6.8', 'Matt.6.9', 'Matt.6.10', 'Matt.6.11', 'Matt.6.12', 'Matt.6.13',
-            'Matt.6.14', 'Matt.6.15', 'Matt.6.16', 'Matt.6.17', 'Matt.6.18', 'Matt.6.19', 'Matt.6.20', 'Matt.6.21', 'Matt.6.22', 'Matt.6.23', 'Matt.6.24', 'Matt.6.25', 'Matt.6.26',
-            'Matt.6.27', 'Matt.6.28', 'Matt.6.29', 'Matt.6.30', 'Matt.6.31', 'Matt.6.32', 'Matt.6.33', 'Matt.6.34',
-            'Matt.7.1', 'Matt.7.2', 'Matt.7.3', 'Matt.7.4', 'Matt.7.5', 'Matt.7.6', 'Matt.7.7', 'Matt.7.8', 'Matt.7.9', 'Matt.7.10', 'Matt.7.11', 'Matt.7.12',
-            'Matt.7.13', 'Matt.7.14', 'Matt.7.15', 'Matt.7.16', 'Matt.7.17', 'Matt.7.18', 'Matt.7.19', 'Matt.7.20', 'Matt.7.21', 'Matt.7.22', 'Matt.7.23', 'Matt.7.24', 'Matt.7.25', 'Matt.7.26', 'Matt.7.27',
-            'Matt.8.3', 'Matt.8.4', 'Matt.8.7', 'Matt.8.10', 'Matt.8.11', 'Matt.8.12', 'Matt.8.13', 'Matt.8.20', 'Matt.8.22', 'Matt.8.26', 'Matt.8.32',
-            'Matt.9.2', 'Matt.9.4', 'Matt.9.5', 'Matt.9.6', 'Matt.9.9', 'Matt.9.12', 'Matt.9.13', 'Matt.9.15', 'Matt.9.16', 'Matt.9.17', 'Matt.9.22', 'Matt.9.24', 'Matt.9.28', 'Matt.9.29', 'Matt.9.30', 'Matt.9.37', 'Matt.9.38',
-
-            // Mark - Jesus's words
-            'Mark.1.15', 'Mark.1.17', 'Mark.1.25', 'Mark.1.38', 'Mark.1.41', 'Mark.1.44',
-            'Mark.2.5', 'Mark.2.8', 'Mark.2.9', 'Mark.2.10', 'Mark.2.11', 'Mark.2.14', 'Mark.2.17', 'Mark.2.19', 'Mark.2.20', 'Mark.2.21', 'Mark.2.22', 'Mark.2.25', 'Mark.2.26', 'Mark.2.27', 'Mark.2.28',
-            'Mark.3.3', 'Mark.3.4', 'Mark.3.5', 'Mark.3.23', 'Mark.3.24', 'Mark.3.25', 'Mark.3.26', 'Mark.3.27', 'Mark.3.28', 'Mark.3.29', 'Mark.3.33', 'Mark.3.34', 'Mark.3.35',
-            'Mark.4.3', 'Mark.4.4', 'Mark.4.5', 'Mark.4.6', 'Mark.4.7', 'Mark.4.8', 'Mark.4.9', 'Mark.4.11', 'Mark.4.12', 'Mark.4.13', 'Mark.4.14', 'Mark.4.15', 'Mark.4.16', 'Mark.4.17', 'Mark.4.18', 'Mark.4.19', 'Mark.4.20',
-            'Mark.4.21', 'Mark.4.22', 'Mark.4.23', 'Mark.4.24', 'Mark.4.25', 'Mark.4.26', 'Mark.4.27', 'Mark.4.28', 'Mark.4.29', 'Mark.4.30', 'Mark.4.31', 'Mark.4.32', 'Mark.4.35', 'Mark.4.39', 'Mark.4.40',
-
-            // Luke - Jesus's words
-            'Luke.4.4', 'Luke.4.8', 'Luke.4.12', 'Luke.4.18', 'Luke.4.19', 'Luke.4.21', 'Luke.4.23', 'Luke.4.24', 'Luke.4.25', 'Luke.4.26', 'Luke.4.27', 'Luke.4.35', 'Luke.4.43',
-            'Luke.5.4', 'Luke.5.8', 'Luke.5.10', 'Luke.5.13', 'Luke.5.14', 'Luke.5.20', 'Luke.5.22', 'Luke.5.23', 'Luke.5.24', 'Luke.5.27', 'Luke.5.31', 'Luke.5.32', 'Luke.5.34', 'Luke.5.35', 'Luke.5.36', 'Luke.5.37', 'Luke.5.38', 'Luke.5.39',
-            'Luke.6.3', 'Luke.6.4', 'Luke.6.5', 'Luke.6.9', 'Luke.6.10', 'Luke.6.20', 'Luke.6.21', 'Luke.6.22', 'Luke.6.23', 'Luke.6.24', 'Luke.6.25', 'Luke.6.26', 'Luke.6.27', 'Luke.6.28', 'Luke.6.29', 'Luke.6.30',
-            'Luke.6.31', 'Luke.6.32', 'Luke.6.33', 'Luke.6.34', 'Luke.6.35', 'Luke.6.36', 'Luke.6.37', 'Luke.6.38', 'Luke.6.39', 'Luke.6.40', 'Luke.6.41', 'Luke.6.42', 'Luke.6.43', 'Luke.6.44', 'Luke.6.45', 'Luke.6.46', 'Luke.6.47', 'Luke.6.48', 'Luke.6.49',
-
-            // John - Jesus's words (extensive since John records many long discourses)
-            'John.1.38', 'John.1.39', 'John.1.42', 'John.1.43', 'John.1.47', 'John.1.48', 'John.1.50', 'John.1.51',
-            'John.2.4', 'John.2.7', 'John.2.8', 'John.2.16', 'John.2.19',
-            'John.3.3', 'John.3.5', 'John.3.7', 'John.3.8', 'John.3.10', 'John.3.11', 'John.3.12', 'John.3.13', 'John.3.14', 'John.3.15', 'John.3.16', 'John.3.17', 'John.3.18', 'John.3.19', 'John.3.20', 'John.3.21',
-            'John.4.7', 'John.4.9', 'John.4.10', 'John.4.13', 'John.4.14', 'John.4.16', 'John.4.17', 'John.4.18', 'John.4.21', 'John.4.22', 'John.4.23', 'John.4.24', 'John.4.26', 'John.4.32', 'John.4.34', 'John.4.35', 'John.4.36', 'John.4.37', 'John.4.38', 'John.4.48', 'John.4.50', 'John.4.53',
-            'John.5.6', 'John.5.8', 'John.5.14', 'John.5.17', 'John.5.19', 'John.5.20', 'John.5.21', 'John.5.22', 'John.5.23', 'John.5.24', 'John.5.25', 'John.5.26', 'John.5.27', 'John.5.28', 'John.5.29', 'John.5.30',
-            'John.5.31', 'John.5.32', 'John.5.33', 'John.5.34', 'John.5.35', 'John.5.36', 'John.5.37', 'John.5.38', 'John.5.39', 'John.5.40', 'John.5.41', 'John.5.42', 'John.5.43', 'John.5.44', 'John.5.45', 'John.5.46', 'John.5.47',
-            'John.6.5', 'John.6.10', 'John.6.12', 'John.6.20', 'John.6.26', 'John.6.27', 'John.6.28', 'John.6.29', 'John.6.32', 'John.6.33', 'John.6.34', 'John.6.35', 'John.6.36', 'John.6.37', 'John.6.38', 'John.6.39', 'John.6.40',
-            'John.6.41', 'John.6.42', 'John.6.43', 'John.6.44', 'John.6.45', 'John.6.46', 'John.6.47', 'John.6.48', 'John.6.49', 'John.6.50', 'John.6.51', 'John.6.52', 'John.6.53', 'John.6.54', 'John.6.55', 'John.6.56', 'John.6.57', 'John.6.58', 'John.6.61', 'John.6.62', 'John.6.63', 'John.6.64', 'John.6.65', 'John.6.67', 'John.6.70',
-
-            // John 14 - the chapter we specifically fixed
-            'John.14.1', 'John.14.2', 'John.14.3', 'John.14.4', 'John.14.6', 'John.14.7', 'John.14.9', 'John.14.10', 'John.14.11', 'John.14.12', 'John.14.13', 'John.14.14', 'John.14.15', 'John.14.16', 'John.14.17', 'John.14.18', 'John.14.19', 'John.14.20', 'John.14.21', 'John.14.23', 'John.14.24', 'John.14.25', 'John.14.26', 'John.14.27', 'John.14.28', 'John.14.29', 'John.14.30', 'John.14.31',
-
-            // John 15-17 - More extensive Jesus discourses
-            'John.15.1', 'John.15.2', 'John.15.3', 'John.15.4', 'John.15.5', 'John.15.6', 'John.15.7', 'John.15.8', 'John.15.9', 'John.15.10', 'John.15.11', 'John.15.12', 'John.15.13', 'John.15.14', 'John.15.15', 'John.15.16', 'John.15.17', 'John.15.18', 'John.15.19', 'John.15.20', 'John.15.21', 'John.15.22', 'John.15.23', 'John.15.24', 'John.15.25', 'John.15.26', 'John.15.27',
-            'John.16.1', 'John.16.2', 'John.16.3', 'John.16.4', 'John.16.5', 'John.16.6', 'John.16.7', 'John.16.8', 'John.16.9', 'John.16.10', 'John.16.11', 'John.16.12', 'John.16.13', 'John.16.14', 'John.16.15', 'John.16.16', 'John.16.19', 'John.16.20', 'John.16.21', 'John.16.22', 'John.16.23', 'John.16.24', 'John.16.25', 'John.16.26', 'John.16.27', 'John.16.28', 'John.16.31', 'John.16.32', 'John.16.33',
-
-            // John 17 - The High Priestly Prayer (entirely Jesus speaking)
-            'John.17.1', 'John.17.2', 'John.17.3', 'John.17.4', 'John.17.5', 'John.17.6', 'John.17.7', 'John.17.8', 'John.17.9', 'John.17.10', 'John.17.11', 'John.17.12', 'John.17.13', 'John.17.14', 'John.17.15', 'John.17.16', 'John.17.17', 'John.17.18', 'John.17.19', 'John.17.20', 'John.17.21', 'John.17.22', 'John.17.23', 'John.17.24', 'John.17.25', 'John.17.26',
-
-            // Post-resurrection appearances
-            'John.20.15', 'John.20.16', 'John.20.17', 'John.20.19', 'John.20.21', 'John.20.22', 'John.20.23', 'John.20.26', 'John.20.27', 'John.20.29',
-            'John.21.5', 'John.21.6', 'John.21.10', 'John.21.12', 'John.21.15', 'John.21.16', 'John.21.17', 'John.21.18', 'John.21.19', 'John.21.22', 'John.21.23',
-
-            // Acts - Post-resurrection appearances
-            'Acts.1.4', 'Acts.1.5', 'Acts.1.7', 'Acts.1.8',
-            'Acts.9.4', 'Acts.9.5', 'Acts.9.6',
-            'Acts.22.7', 'Acts.22.8', 'Acts.22.10',
-            'Acts.26.14', 'Acts.26.15', 'Acts.26.16', 'Acts.26.17', 'Acts.26.18',
-
-            // Revelation - Jesus speaking to John
-            'Rev.1.8', 'Rev.1.11', 'Rev.1.17', 'Rev.1.18', 'Rev.1.19', 'Rev.1.20',
-            'Rev.2.1', 'Rev.2.2', 'Rev.2.3', 'Rev.2.4', 'Rev.2.5', 'Rev.2.6', 'Rev.2.7',
-            'Rev.2.8', 'Rev.2.9', 'Rev.2.10', 'Rev.2.11',
-            'Rev.2.12', 'Rev.2.13', 'Rev.2.14', 'Rev.2.15', 'Rev.2.16', 'Rev.2.17',
-            'Rev.2.18', 'Rev.2.19', 'Rev.2.20', 'Rev.2.21', 'Rev.2.22', 'Rev.2.23', 'Rev.2.24', 'Rev.2.25', 'Rev.2.26', 'Rev.2.27', 'Rev.2.28', 'Rev.2.29',
-            'Rev.3.1', 'Rev.3.2', 'Rev.3.3', 'Rev.3.4', 'Rev.3.5', 'Rev.3.6',
-            'Rev.3.7', 'Rev.3.8', 'Rev.3.9', 'Rev.3.10', 'Rev.3.11', 'Rev.3.12', 'Rev.3.13',
-            'Rev.3.14', 'Rev.3.15', 'Rev.3.16', 'Rev.3.17', 'Rev.3.18', 'Rev.3.19', 'Rev.3.20', 'Rev.3.21', 'Rev.3.22',
-            'Rev.16.15',
-            'Rev.22.7', 'Rev.22.12', 'Rev.22.13', 'Rev.22.16', 'Rev.22.20',
-        ];
-    }
+    
 }
