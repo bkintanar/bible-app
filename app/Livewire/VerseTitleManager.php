@@ -141,7 +141,7 @@ class VerseTitleManager extends Component
             $verseOsisId = $this->selectedBook . '.' . $this->selectedChapter . '.' . $this->selectedVerse;
 
             // Look for existing title before verse with sID format
-            $versePattern = '/<title type="verse" canonical="true">([^<]*)<\/title>\s*<verse osisID="' .
+            $versePattern = '/<title type="verse" canonical="(?:true|false)">([^<]*)<\/title>\s*<verse osisID="' .
                            preg_quote($verseOsisId, '/') . '"[^>]*sID="[^"]*"/';
 
             if (preg_match($versePattern, $xmlContent, $matches)) {
@@ -222,13 +222,15 @@ class VerseTitleManager extends Component
             $verseOsisId = $this->selectedBook . '.' . $this->selectedChapter . '.' . $this->selectedVerse;
 
             // Remove existing title if present (handle sID format)
-            $existingTitlePattern = '/<title type="verse" canonical="true">[^<]*<\/title>\s*(?=<verse osisID="' .
+            $existingTitlePattern = '/<title type="verse" canonical="(?:true|false)">[^<]*<\/title>\s*(?=<verse osisID="' .
                                    preg_quote($verseOsisId, '/') . '"[^>]*sID="[^"]*")/';
             $xmlContent = preg_replace($existingTitlePattern, '', $xmlContent);
 
             // Add new title before the verse (handle sID format)
             $versePattern = '/(<verse osisID="' . preg_quote($verseOsisId, '/') . '"[^>]*sID="[^"]*"[^>]*>)/';
-            $replacement = '<title type="verse" canonical="true">' . htmlspecialchars($this->verseTitle) . '</title>$1';
+            // OSIS canonical="true" asserts the text IS scripture. A Psalm superscription qualifies;
+            // an editorial section heading such as "The Creation" does not. Write false.
+            $replacement = '<title type="verse" canonical="false">' . htmlspecialchars($this->verseTitle) . '</title>$1';
 
             $newXmlContent = preg_replace($versePattern, $replacement, $xmlContent);
 
@@ -286,7 +288,7 @@ class VerseTitleManager extends Component
             $verseOsisId = $this->selectedBook . '.' . $this->selectedChapter . '.' . $this->selectedVerse;
 
             // Remove title if present (handle sID format)
-            $titlePattern = '/<title type="verse" canonical="true">[^<]*<\/title>\s*(?=<verse osisID="' .
+            $titlePattern = '/<title type="verse" canonical="(?:true|false)">[^<]*<\/title>\s*(?=<verse osisID="' .
                            preg_quote($verseOsisId, '/') . '"[^>]*sID="[^"]*")/';
             $newXmlContent = preg_replace($titlePattern, '', $xmlContent);
 
