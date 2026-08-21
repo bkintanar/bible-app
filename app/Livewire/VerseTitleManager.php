@@ -9,6 +9,7 @@ use Livewire\Component;
 use App\Services\BibleService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 
 class VerseTitleManager extends Component
 {
@@ -153,6 +154,203 @@ class VerseTitleManager extends Component
     }
 
     /**
+     * Drop the reader-facing cache for a chapter and its neighbours.
+     *
+     * Neighbours matter because ChapterController pre-caches chapters +/- 1 for the page-flip
+     * preview, so a stale copy of the edited chapter can survive inside the adjacent chapters'
+     * payloads too.
+     */
+    private function forgetChapterCache(string $chapterOsisRef): void
+    {
+        [$book, $chapter] = array_pad(explode('.', $chapterOsisRef), 2, null);
+
+        if ($book === null || $chapter === null) {
+            return;
+        }
+
+        foreach ([(int) $chapter - 1, (int) $chapter, (int) $chapter + 1] as $n) {
+            if ($n < 1) {
+                continue;
+            }
+
+            Cache::forget("chapter_verses_{$book}_{$n}");
+            Cache::forget("chapter_data_{$book}_{$n}");
+        }
+    }
+
+    /**
+     * Read-modify-write the OSIS source under an exclusive lock, replacing it atomically.
+     *
+     * The XML is the source of truth, which raises the bar on this write considerably. The
+     * previous shape - file_get_contents, preg_replace, file_put_contents - had three defects:
+     *
+     *  - LOST UPDATES. Two concurrent saves both read the old content and the second clobbered
+     *    the first. The transform therefore runs INSIDE the lock, not around it.
+     *  - TORN FILE. file_put_contents truncates in place, so an interrupted write left a
+     *    partial 27MB source. We write a sibling temp file and rename() it over the original;
+     *    rename is atomic within a filesystem, so a reader sees either the old file or the new
+     *    one, never a half-written one.
+     *  - NO VALIDATION. A bad regex could persist unparseable XML. The temp file is parsed
+     *    before it is promoted.
+     *
+     * The lock lives in a sidecar .lock file rather than on the source itself: rename() replaces
+     * the inode, so a writer waiting on a lock held against the ORIGINAL inode would wake up
+     * holding a lock on an unlinked file and read stale content. The sidecar is never replaced.
+     *
+     * Serialising writers also bounds memory. A single save peaks around 55MB on the 27MB file
+     * (string + regex copy) against a 128MB FPM limit, so two concurrent saves could OOM the
+     * worker. Under the lock they cannot overlap.
+     *
+     * @param  callable(string): ?string  $transform  current contents -> new contents, or null to abort
+     * @return string one of: ok, busy, lock_failed, read_failed, transform_failed, unchanged,
+     *                invalid_xml, write_failed
+     */
+    private function updateOsisSourceAtomically(string $path, callable $transform): string
+    {
+        $lockPath = $path.'.lock';
+        $lock = @fopen($lockPath, 'c');
+
+        if ($lock === false) {
+            Log::error('Cannot open OSIS lock file', ['lock' => $lockPath]);
+
+            return 'lock_failed';
+        }
+
+        // Bounded wait rather than blocking forever: a stuck writer must not pin an FPM worker.
+        $deadline = microtime(true) + 10.0;
+        $acquired = false;
+
+        while (microtime(true) < $deadline) {
+            if (flock($lock, LOCK_EX | LOCK_NB)) {
+                $acquired = true;
+                break;
+            }
+            usleep(100_000);
+        }
+
+        if (! $acquired) {
+            fclose($lock);
+
+            return 'busy';
+        }
+
+        $tmp = null;
+
+        try {
+            $current = @file_get_contents($path);
+
+            if ($current === false) {
+                return 'read_failed';
+            }
+
+            $new = $transform($current);
+
+            if ($new === null) {
+                return 'transform_failed';
+            }
+
+            if ($new === $current) {
+                return 'unchanged';
+            }
+
+            // Temp file must be a sibling so rename() stays within the filesystem.
+            $tmp = $path.'.tmp.'.getmypid();
+
+            if (@file_put_contents($tmp, $new) === false) {
+                return 'write_failed';
+            }
+
+            if (! $this->fileParsesAsXml($tmp)) {
+                return 'invalid_xml';
+            }
+
+            // Durability before promotion, so a crash cannot leave a renamed-but-empty file.
+            if ($fh = @fopen($tmp, 'r+')) {
+                fflush($fh);
+                if (function_exists('fsync')) {
+                    @fsync($fh);
+                }
+                fclose($fh);
+            }
+
+            if (! @rename($tmp, $path)) {
+                return 'write_failed';
+            }
+
+            $tmp = null;
+
+            return 'ok';
+        } finally {
+            if ($tmp !== null && file_exists($tmp)) {
+                @unlink($tmp);
+            }
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
+    }
+
+    /**
+     * Does this file parse as XML?
+     *
+     * Streamed with XMLReader on purpose. DOMDocument->load() on the 27MB source takes RSS from
+     * ~29MB to ~422MB, and because libxml allocates through C malloc, memory_limit does not stop
+     * it - the FPM worker simply grows. Validation must not be more dangerous than the bug it
+     * guards against.
+     */
+    private function fileParsesAsXml(string $path): bool
+    {
+        $previous = libxml_use_internal_errors(true);
+        libxml_clear_errors();
+
+        $reader = new \XMLReader();
+
+        if (! @$reader->open($path)) {
+            libxml_clear_errors();
+            libxml_use_internal_errors($previous);
+
+            return false;
+        }
+
+        while (@$reader->read()) {
+            // Streaming to the end is the parse check; nothing to collect.
+        }
+
+        $errors = libxml_get_errors();
+        $reader->close();
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+
+        foreach ($errors as $error) {
+            if ($error->level === LIBXML_ERR_FATAL) {
+                Log::error('OSIS source failed validation before promotion', [
+                    'line' => $error->line,
+                    'message' => trim($error->message),
+                ]);
+
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Map an updateOsisSourceAtomically() status onto a message for the editor.
+     */
+    private function osisWriteFailureMessage(string $status): string
+    {
+        return match ($status) {
+            'busy' => 'Another save is in progress. Please try again in a moment.',
+            'lock_failed', 'write_failed' => 'Could not write the OSIS source file. Check that the web server user can write assets/ (it currently cannot).',
+            'read_failed' => 'Could not read the OSIS source file.',
+            'invalid_xml' => 'The edit would have produced invalid XML, so nothing was written.',
+            'unchanged' => 'Verse not found in XML file.',
+            'transform_failed' => 'Error processing XML content.',
+            default => 'Failed to save XML file.',
+        };
+    }
+
+    /**
      * The OSIS file backing the current translation - the source of truth we just wrote to.
      */
     private function getXmlPathForCurrentTranslation(): string
@@ -197,6 +395,12 @@ class VerseTitleManager extends Component
                 return false;
             }
 
+            // Publishing is not finished until the reader's cache is dropped. Chapter payloads
+            // are cached for 24h and nothing else in the app ever invalidates them, so without
+            // this an edit was correct in the source AND the database and still invisible to
+            // readers for up to a day - which is the same broken promise, one layer further on.
+            $this->forgetChapterCache($chapterOsisRef);
+
             return true;
         } catch (\Throwable $e) {
             Log::error('Verse re-projection threw', ['verse' => $verseOsisId, 'exception' => $e]);
@@ -218,49 +422,42 @@ class VerseTitleManager extends Component
                 return;
             }
 
-            $xmlContent = file_get_contents($xmlPath);
             $verseOsisId = $this->selectedBook . '.' . $this->selectedChapter . '.' . $this->selectedVerse;
 
-            // Remove existing title if present (handle sID format)
-            $existingTitlePattern = '/<title type="verse" canonical="(?:true|false)">[^<]*<\/title>\s*(?=<verse osisID="' .
-                                   preg_quote($verseOsisId, '/') . '"[^>]*sID="[^"]*")/';
-            $xmlContent = preg_replace($existingTitlePattern, '', $xmlContent);
+            // No file-copy backup: assets/*.osis.xml is the source of truth and is versioned in
+            // git. The previous copy-per-save wrote a full ~27MB snapshot on every save.
+            $status = $this->updateOsisSourceAtomically($xmlPath, function (string $xmlContent) use ($verseOsisId): ?string {
+                // Remove existing title if present (handle sID format)
+                $existingTitlePattern = '/<title type="verse" canonical="(?:true|false)">[^<]*<\/title>\s*(?=<verse osisID="' .
+                                       preg_quote($verseOsisId, '/') . '"[^>]*sID="[^"]*")/';
+                $xmlContent = preg_replace($existingTitlePattern, '', $xmlContent);
 
-            // Add new title before the verse (handle sID format)
-            $versePattern = '/(<verse osisID="' . preg_quote($verseOsisId, '/') . '"[^>]*sID="[^"]*"[^>]*>)/';
-            // OSIS canonical="true" asserts the text IS scripture. A Psalm superscription qualifies;
-            // an editorial section heading such as "The Creation" does not. Write false.
-            $replacement = '<title type="verse" canonical="false">' . htmlspecialchars($this->verseTitle) . '</title>$1';
-
-            $newXmlContent = preg_replace($versePattern, $replacement, $xmlContent);
-
-            if ($newXmlContent === null) {
-                $this->setMessage('Error processing XML content.', 'error');
-                return;
-            }
-
-            if ($newXmlContent === $xmlContent) {
-                $this->setMessage('Verse not found in XML file.', 'error');
-                return;
-            }
-
-            // No file-copy backup: assets/*.osis.xml is the source of truth and is
-            // versioned in git. The previous copy-per-save wrote a full ~27MB snapshot on
-            // every save from an unauthenticated page - an unbounded disk-fill vector that
-            // had already accumulated 20 untracked files (~500MB).
-
-            // Save the modified XML
-            if (file_put_contents($xmlPath, $newXmlContent) !== false) {
-                // The XML is the source of truth; the reader reads the projection. Publish it.
-                if ($this->reprojectVerse($verseOsisId)) {
-                    $this->setMessage('Title saved and published.', 'success');
-                } else {
-                    $this->setMessage('Saved to the OSIS source, but publishing to the database failed. Readers will not see it until osis:import runs.', 'error');
+                if ($xmlContent === null) {
+                    return null;
                 }
-                Log::info("Verse title saved for {$verseOsisId}: {$this->verseTitle}");
-            } else {
-                $this->setMessage('Failed to save XML file.', 'error');
+
+                // Add new title before the verse (handle sID format)
+                $versePattern = '/(<verse osisID="' . preg_quote($verseOsisId, '/') . '"[^>]*sID="[^"]*"[^>]*>)/';
+                // OSIS canonical="true" asserts the text IS scripture. A Psalm superscription
+                // qualifies; an editorial section heading such as "The Creation" does not.
+                $replacement = '<title type="verse" canonical="false">' . htmlspecialchars($this->verseTitle) . '</title>$1';
+
+                return preg_replace($versePattern, $replacement, $xmlContent);
+            });
+
+            if ($status !== 'ok') {
+                $this->setMessage($this->osisWriteFailureMessage($status), 'error');
+
+                return;
             }
+
+            // The XML is the source of truth; the reader reads the projection. Publish it.
+            if ($this->reprojectVerse($verseOsisId)) {
+                $this->setMessage('Title saved and published.', 'success');
+            } else {
+                $this->setMessage('Saved to the OSIS source, but publishing to the database failed. Readers will not see it until osis:import runs.', 'error');
+            }
+            Log::info("Verse title saved for {$verseOsisId}: {$this->verseTitle}");
 
         } catch (\Exception $e) {
             Log::error('Error saving verse title: ' . $e->getMessage());
@@ -284,32 +481,37 @@ class VerseTitleManager extends Component
                 return;
             }
 
-            $xmlContent = file_get_contents($xmlPath);
             $verseOsisId = $this->selectedBook . '.' . $this->selectedChapter . '.' . $this->selectedVerse;
 
-            // Remove title if present (handle sID format)
-            $titlePattern = '/<title type="verse" canonical="(?:true|false)">[^<]*<\/title>\s*(?=<verse osisID="' .
-                           preg_quote($verseOsisId, '/') . '"[^>]*sID="[^"]*")/';
-            $newXmlContent = preg_replace($titlePattern, '', $xmlContent);
+            // No file-copy backup - see saveTitle(). Source of truth is versioned in git.
+            $status = $this->updateOsisSourceAtomically($xmlPath, function (string $xmlContent) use ($verseOsisId): ?string {
+                // Remove title if present (handle sID format)
+                $titlePattern = '/<title type="verse" canonical="(?:true|false)">[^<]*<\/title>\s*(?=<verse osisID="' .
+                               preg_quote($verseOsisId, '/') . '"[^>]*sID="[^"]*")/';
 
-            if ($newXmlContent !== $xmlContent) {
-                // No file-copy backup - see saveTitle(). Source of truth is versioned in git.
+                return preg_replace($titlePattern, '', $xmlContent);
+            });
 
-                // Save the modified XML
-                if (file_put_contents($xmlPath, $newXmlContent) !== false) {
-                    $this->verseTitle = '';
-                    if ($this->reprojectVerse($verseOsisId)) {
-                        $this->setMessage('Title removed and published.', 'success');
-                    } else {
-                        $this->setMessage('Removed from the OSIS source, but publishing to the database failed. Readers will still see it until osis:import runs.', 'error');
-                    }
-                    Log::info("Verse title removed for {$verseOsisId}");
-                } else {
-                    $this->setMessage('Failed to save XML file.', 'error');
-                }
-            } else {
+            if ($status === 'unchanged') {
                 $this->setMessage('No title found to remove.', 'error');
+
+                return;
             }
+
+            if ($status !== 'ok') {
+                $this->setMessage($this->osisWriteFailureMessage($status), 'error');
+
+                return;
+            }
+
+            $this->verseTitle = '';
+
+            if ($this->reprojectVerse($verseOsisId)) {
+                $this->setMessage('Title removed and published.', 'success');
+            } else {
+                $this->setMessage('Removed from the OSIS source, but publishing to the database failed. Readers will still see it until osis:import runs.', 'error');
+            }
+            Log::info("Verse title removed for {$verseOsisId}");
 
         } catch (\Exception $e) {
             Log::error('Error removing verse title: ' . $e->getMessage());

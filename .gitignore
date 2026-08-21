@@ -37,3 +37,7 @@ nativephp
 
 # OSIS source snapshots written by the old VerseTitleManager backup path
 assets/*.osis.xml.backup.*
+
+# Sidecar lock/temp files for atomic OSIS source writes
+assets/*.osis.xml.lock
+assets/*.osis.xml.tmp.*

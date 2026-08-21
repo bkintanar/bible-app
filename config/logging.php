@@ -63,7 +63,11 @@ return [
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
-        ],
+            // Group-writable so www-data can append to a file artisan (root) may have
+            // created first. The daily driver makes a NEW file each day, so without this a
+            // root-created log breaks every subsequent web request.
+            'permission' => 0664,
+],
 
         'daily' => [
             'driver' => 'daily',
@@ -71,7 +75,11 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => env('LOG_DAILY_DAYS', 14),
             'replace_placeholders' => true,
-        ],
+            // Group-writable so www-data can append to a file artisan (root) may have
+            // created first. The daily driver makes a NEW file each day, so without this a
+            // root-created log breaks every subsequent web request.
+            'permission' => 0664,
+],
 
         'slack' => [
             'driver' => 'slack',
