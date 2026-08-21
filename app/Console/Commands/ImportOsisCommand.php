@@ -471,7 +471,37 @@ class ImportOsisCommand extends Command
             return false;
         }
 
+        // --verse widens to its chapter deliberately.
+        //
+        // Some derived rows are chapter-scoped but produced from a verse position: a
+        // <title type="chapter"> found at a verse is stored with verse_id = NULL (see
+        // importVerseTitle), so it cannot be purged by verse. A true single-verse re-projection
+        // therefore either duplicates that title (+1 per run, measured) or, if it purges by
+        // chapter, deletes the contributions of the chapter's other verses. Widening to the
+        // chapter avoids both and is still fast - 22 verses for Gen 28.
+        if ($kind === 'verse') {
+            $parts = explode('.', $value);
+            $chapter = $parts[0].'.'.$parts[1];
+            $this->line("ℹ️  --verse={$value} widened to --chapter={$chapter} (chapter-scoped derived rows require a whole-chapter pass).");
+
+            return $chapter;
+        }
+
         return $value;
+    }
+
+    /**
+     * Does the current scope span at least one whole book?
+     *
+     * Book-level titles are attached to a book's FIRST chapter, and rebuilding them purges
+     * that chapter's chapter-scoped titles. processAllBookTitles() is not driven by the verse
+     * loop, so without this it ran for all 66 books on every import - including a run scoped
+     * to a single chapter - deleting 61 chapter-type titles that nothing in that run would
+     * re-insert (measured: 1,184 -> 1,123).
+     */
+    private function scopeCoversWholeBooks(): bool
+    {
+        return $this->scope === null || count(explode('.', $this->scope)) < 2;
     }
 
     /**
@@ -541,6 +571,14 @@ class ImportOsisCommand extends Command
      */
     private function purgeChapterProjectionOnce(int $chapterId): void
     {
+        // Chapter-scoped titles are rebuilt by walking a whole chapter (and by the book-title
+        // pass, which is not scope-filtered). Purging them during a single-verse run deleted
+        // rows nothing in that run would re-insert - measured: chapter-type titles 1,184 ->
+        // 1,123 after one --verse run. So this is a no-op for sub-chapter scopes.
+        if (! $this->scopeCoversWholeChapters()) {
+            return;
+        }
+
         if (isset($this->purgedChapters[$chapterId])) {
             return;
         }
@@ -1555,6 +1593,12 @@ class ImportOsisCommand extends Command
      */
     private function processAllBookTitles()
     {
+        if (! $this->scopeCoversWholeBooks()) {
+            $this->line('📑 Skipping book titles (scope is narrower than a book).');
+
+            return;
+        }
+
         $this->info('📑 Processing book titles...');
 
         // Get all book divisions with namespace
@@ -1568,6 +1612,11 @@ class ImportOsisCommand extends Command
 
             $bookId = $this->books[$osisId] ?? null;
             if (! $bookId) {
+                continue;
+            }
+
+            // Respect a --book scope so an unrelated book's titles are left alone.
+            if ($this->scope !== null && $osisId !== $this->scope) {
                 continue;
             }
 

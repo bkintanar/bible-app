@@ -8,6 +8,7 @@ use App\Models\Chapter;
 use Livewire\Component;
 use App\Services\BibleService;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Artisan;
 
 class VerseTitleManager extends Component
 {
@@ -151,6 +152,59 @@ class VerseTitleManager extends Component
         }
     }
 
+    /**
+     * The OSIS file backing the current translation - the source of truth we just wrote to.
+     */
+    private function getXmlPathForCurrentTranslation(): string
+    {
+        $key = $this->currentTranslation['key'] ?? 'kjv';
+
+        return base_path("assets/{$key}.osis.xml");
+    }
+
+    /**
+     * Re-project one verse from the XML into the database.
+     *
+     * assets/*.osis.xml is the source of truth and the database is a derived read model, so a
+     * write to the XML is not visible to readers until it is projected. Before this, an editor
+     * saw "Title saved successfully!" while the reader kept serving the old text until someone
+     * remembered to re-run osis:import over the whole file.
+     *
+     * osis:import --verse is idempotent and sub-second, so this runs inline. Returns true when
+     * the projection succeeded, so the caller can tell the editor the truth either way.
+     */
+    private function reprojectVerse(string $verseOsisId): bool
+    {
+        try {
+            // Re-project the whole CHAPTER, not just the verse. Chapter-scoped derived rows
+            // (chapter titles, paragraph structure) can only be rebuilt correctly by walking a
+            // full chapter, so a single-verse scope deliberately skips them. Chapter scope is
+            // still fast - 22 verses for Gen 28 - and it is provably complete.
+            $chapterOsisRef = $this->selectedBook.'.'.$this->selectedChapter;
+
+            $exit = Artisan::call('osis:import', [
+                'file' => $this->getXmlPathForCurrentTranslation(),
+                '--chapter' => $chapterOsisRef,
+            ]);
+
+            if ($exit !== 0) {
+                Log::error('Verse re-projection failed', [
+                    'verse' => $verseOsisId,
+                    'exit_code' => $exit,
+                    'output' => Artisan::output(),
+                ]);
+
+                return false;
+            }
+
+            return true;
+        } catch (\Throwable $e) {
+            Log::error('Verse re-projection threw', ['verse' => $verseOsisId, 'exception' => $e]);
+
+            return false;
+        }
+    }
+
     public function saveTitle()
     {
         $this->validate();
@@ -195,7 +249,12 @@ class VerseTitleManager extends Component
 
             // Save the modified XML
             if (file_put_contents($xmlPath, $newXmlContent) !== false) {
-                $this->setMessage('Title saved successfully!', 'success');
+                // The XML is the source of truth; the reader reads the projection. Publish it.
+                if ($this->reprojectVerse($verseOsisId)) {
+                    $this->setMessage('Title saved and published.', 'success');
+                } else {
+                    $this->setMessage('Saved to the OSIS source, but publishing to the database failed. Readers will not see it until osis:import runs.', 'error');
+                }
                 Log::info("Verse title saved for {$verseOsisId}: {$this->verseTitle}");
             } else {
                 $this->setMessage('Failed to save XML file.', 'error');
@@ -237,7 +296,11 @@ class VerseTitleManager extends Component
                 // Save the modified XML
                 if (file_put_contents($xmlPath, $newXmlContent) !== false) {
                     $this->verseTitle = '';
-                    $this->setMessage('Title removed successfully!', 'success');
+                    if ($this->reprojectVerse($verseOsisId)) {
+                        $this->setMessage('Title removed and published.', 'success');
+                    } else {
+                        $this->setMessage('Removed from the OSIS source, but publishing to the database failed. Readers will still see it until osis:import runs.', 'error');
+                    }
                     Log::info("Verse title removed for {$verseOsisId}");
                 } else {
                     $this->setMessage('Failed to save XML file.', 'error');
