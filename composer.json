@@ -12,8 +12,8 @@
         "php": "^8.2",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
-        "livewire/livewire": "^3.6",
-        "nativephp/mobile": "^1.0"
+        "livewire/livewire": "^3.6.4",
+        "nativephp/mobile": "^4.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
@@ -39,12 +39,6 @@
             "Tests\\": "tests/"
         }
     },
-    "repositories": [
-        {
-            "type": "composer",
-            "url": "https://nativephp.composer.sh"
-        }
-    ],
     "scripts": {
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
