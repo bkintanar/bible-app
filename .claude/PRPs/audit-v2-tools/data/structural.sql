@@ -1,0 +1,41 @@
+.headers on
+.mode list
+.separator ' | '
+select '-- bible_versions'; select id, osis_work, abbreviation, title, language, canonical from bible_versions;
+select '-- book_groups'; select id,name,sub_type,sort_order from book_groups;
+select '-- books per group'; select book_group_id, count(*) from books group by 1;
+select '-- chapters by version'; select version_id, count(*) from chapters group by 1;
+select '-- orphans';
+select 'books->book_groups', count(*) from books b left join book_groups g on g.id=b.book_group_id where g.id is null;
+select 'chapters->books', count(*) from chapters c left join books b on b.id=c.book_id where b.id is null;
+select 'chapters->versions', count(*) from chapters c left join bible_versions v on v.id=c.version_id where v.id is null;
+select 'verses->chapters', count(*) from verses v left join chapters c on c.id=v.chapter_id where c.id is null;
+select 'titles->verses', count(*) from titles t left join verses v on v.id=t.verse_id where t.verse_id is not null and v.id is null;
+select 'titles->chapters', count(*) from titles t left join chapters c on c.id=t.chapter_id where t.chapter_id is not null and c.id is null;
+select 'titles both null', count(*) from titles where verse_id is null and chapter_id is null;
+select 'titles both set', count(*) from titles where verse_id is not null and chapter_id is not null;
+select 'red_letter->verses', count(*) from red_letter_text r left join verses v on v.id=r.verse_id where v.id is null;
+select 'word_elements->verses', count(*) from word_elements r left join verses v on v.id=r.verse_id where v.id is null;
+select 'translator_changes->verses', count(*) from translator_changes r left join verses v on v.id=r.verse_id where v.id is null;
+select 'divine_names->verses', count(*) from divine_names r left join verses v on v.id=r.verse_id where v.id is null;
+select 'study_notes->verses', count(*) from study_notes r left join verses v on v.id=r.verse_id where v.id is null;
+select 'poetry->verses', count(*) from poetry_structure r left join verses v on v.id=r.verse_id where v.id is null;
+select 'paragraphs->chapters', count(*) from paragraphs p left join chapters c on c.id=p.chapter_id where c.id is null;
+select 'paragraphs->start_verse', count(*) from paragraphs p left join verses v on v.id=p.start_verse_id where v.id is null;
+select 'paragraphs->end_verse', count(*) from paragraphs p left join verses v on v.id=p.end_verse_id where p.end_verse_id is not null and v.id is null;
+select 'paragraph start verse in other chapter', count(*) from paragraphs p join verses v on v.id=p.start_verse_id where v.chapter_id<>p.chapter_id;
+select 'paragraph end verse in other chapter', count(*) from paragraphs p join verses v on v.id=p.end_verse_id where v.chapter_id<>p.chapter_id;
+select '-- duplicates';
+select 'dup osis_id per version', count(*) from (select v.osis_id, c.version_id from verses v join chapters c on c.id=v.chapter_id group by 1,2 having count(*)>1);
+select 'dup chapter_id+verse_number', count(*) from (select chapter_id, verse_number from verses group by 1,2 having count(*)>1);
+select 'dup chapter osis_id per version', count(*) from (select osis_id, version_id from chapters group by 1,2 having count(*)>1);
+select 'verse osis_id mismatches chapter/verse_number', count(*) from verses v join chapters c on c.id=v.chapter_id join books b on b.id=c.book_id where v.osis_id <> b.osis_id||'.'||c.chapter_number||'.'||v.verse_number;
+select 'chapter osis_id mismatch', count(*) from chapters c join books b on b.id=c.book_id where c.osis_id <> b.osis_id||'.'||c.chapter_number or c.osis_ref<>c.osis_id;
+select 'se_id<>osis_id', count(*) from verses where se_id is null or se_id<>osis_id;
+select 'dup titles (same anchor,type,text)', count(*) from (select verse_id, chapter_id, title_type, title_text from titles group by 1,2,3,4 having count(*)>1);
+select 'dup red_letter (verse,text_order,text)', count(*) from (select verse_id, text_order, text_content from red_letter_text group by 1,2,3 having count(*)>1);
+select 'dup paragraphs (chapter,start)', count(*) from (select chapter_id,start_verse_id from paragraphs group by 1,2 having count(*)>1);
+select '-- verse numbering gaps';
+select 'chapters whose verse numbers are not 1..n', count(*) from (select chapter_id, min(verse_number) mn, max(verse_number) mx, count(*) n from verses group by 1 having mn<>1 or mx<>n);
+select 'chapters with 0 verses', count(*) from chapters c where not exists (select 1 from verses v where v.chapter_id=c.id);
+select 'books chapter numbering gaps', count(*) from (select book_id, min(chapter_number) mn, max(chapter_number) mx, count(*) n from chapters group by 1 having mn<>1 or mx<>n);

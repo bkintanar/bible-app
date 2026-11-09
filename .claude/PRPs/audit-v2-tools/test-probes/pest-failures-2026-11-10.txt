@@ -1,0 +1,132 @@
+tests/Feature/BibleControllerIntegrationTest.php   {'failure': 23, 'error': 2, 'pass': 1} 0.2 s
+tests/Feature/BibleRoutesTest.php                  {'failure': 20, 'pass': 1, 'error': 2} 0.1 s
+tests/Unit/BibleConfigTest.php                     {'pass': 13} 1.1 s
+tests/Unit/BibleControllerTest.php                 {'pass': 1, 'failure': 10, 'error': 18} 0.1 s
+tests/Unit/OsisReaderIntegrationTest.php           {'failure': 7, 'pass': 13} 22.1 s
+tests/Unit/OsisReaderTest.php                      {'pass': 19, 'failure': 5, 'error': 1} 25.7 s
+tests/Unit/Parsers/ContainedOsisParserTest.php     {'pass': 63, 'failure': 21, 'error': 1} 31.8 s
+tests/Unit/Parsers/MilestoneOsisParserTest.php     {'pass': 2} 2.2 s
+tests/Unit/Parsers/ParserIntegrationTest.php       {'failure': 3, 'pass': 1} 3.7 s
+tests/Unit/TranslationServiceIntegrationTest.php   {'pass': 7} 4.4 s
+tests/Unit/TranslationServiceTest.php              {'pass': 21} 1.7 s
+
+== tests/Feature/BibleControllerIntegrationTest.php
+   1 `Bible Controller Integration` → `Index endpoint` → it renders bible home page with real dataExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Controller Integration` → `Index endpoint` → it shows translation selector with all translationsExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Controller Integration` → `Index endpoint` → it loads with different translationsExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Controller Integration` → `Book endpoints` → it displays book chapters correctlyExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Controller Integration` → `Book endpoints` → it handles book switching between translationsExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Controller Integration` → `Book endpoints` → it returns N for invalid bookExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Controller Integration` → `Chapter endpoints` → it displays chapter verses correctlyExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Controller Integration` → `Chapter endpoints` → it shows different translations of same chapterExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Controller Integration` → `Chapter endpoints` → it supports verse and paragraph style formattingExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Controller Integration` → `Chapter endpoints` → it returns N for invalid chapterExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Controller Integration` → `Search functionality` → it performs text search and returns resultsExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Controller Integration` → `Search functionality` → it handles verse reference searchesFailed asserting that two strings are equal. | at vendor/laravel/framework/src/Illuminate/Testing/TestResponseAssert.php:N
+   1 `Bible Controller Integration` → `Search functionality` → it handles verse range searchesFailed asserting that two strings are equal. | at vendor/laravel/framework/src/Illuminate/Testing/TestResponseAssert.php:N
+   1 `Bible Controller Integration` → `Search functionality` → it handles chapter reference searchesFailed asserting that two strings are equal. | at vendor/laravel/framework/src/Illuminate/Testing/TestResponseAssert.php:N
+   1 `Bible Controller Integration` → `Search functionality` → it searches across different translationsExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Controller Integration` → `Search functionality` → it validates search inputSession is missing expected key [errors]. | Failed asserting that false is true.
+   1 `Bible Controller Integration` → `Search functionality` → it handles search limitsExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Controller Integration` → `API endpoints` → it returns JSON for books APITypeError: PHPUnit\Framework\Assert::assertArrayHasKey(): Argument #N ($array) must be of type ArrayAccess|array, int given, called in /tmp/
+   1 `Bible Controller Integration` → `API endpoints` → it returns JSON for chapters APIExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Controller Integration` → `API endpoints` → it returns JSON for verses APIExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Controller Integration` → `API endpoints` → it returns JSON for search APITypeError: PHPUnit\Framework\Assert::assertArrayHasKey(): Argument #N ($array) must be of type ArrayAccess|array, int given, called in /tmp
+   1 `Bible Controller Integration` → `Error handling and edge cases` → it handles missing translation gracefullyExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Controller Integration` → `Error handling and edge cases` → it handles concurrent requests properlyExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Controller Integration` → `Performance and caching` → it loads pages efficientlyExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Controller Integration` → `Performance and caching` → it handles search performanceExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+== tests/Feature/BibleRoutesTest.php
+   1 `Bible Routes` → `Home page` → it shows bible reader with translations dropdown when multiple availableExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Routes` → `Home page` → it shows books list for default translationExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Routes` → `Translation switching` → it loads KJV translationExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Routes` → `Translation switching` → it loads ASV translationExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Routes` → `Translation switching` → it loads Maori translationExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Routes` → `Translation switching` → it falls back to default for invalid translationExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Routes` → `Book routes` → it shows chapters for a bookExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Routes` → `Book routes` → it shows chapters for different translationsExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Routes` → `Chapter routes` → it shows verses for a chapterExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Routes` → `Chapter routes` → it shows different text for different translationsExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Routes` → `Chapter routes` → it shows Maori textExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Routes` → `Verse routes` → it shows individual verseExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Routes` → `Search functionality` → it performs search and returns resultsExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Routes` → `Search functionality` → it searches in different translationsExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Routes` → `Search functionality` → it handles empty search queryFailed asserting that two strings are equal. | at vendor/laravel/framework/src/Illuminate/Testing/TestResponseAssert.php:N
+   1 `Bible Routes` → `Search functionality` → it limits search resultsExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Routes` → `API endpoints` → it returns JSON for books APITypeError: PHPUnit\Framework\Assert::assertArrayHasKey(): Argument #N ($array) must be of type ArrayAccess|array, int given, called in /tmp/claude-N/-var-ww
+   1 `Bible Routes` → `API endpoints` → it returns JSON for chapters APIExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Routes` → `API endpoints` → it returns JSON for verses APIExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Routes` → `API endpoints` → it returns JSON for search APITypeError: PHPUnit\Framework\Assert::assertArrayHasKey(): Argument #N ($array) must be of type ArrayAccess|array, int given, called in /tmp/claude-N/-var-w
+   1 `Bible Routes` → `Error handling` → it handles invalid book gracefullyExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+   1 `Bible Routes` → `Error handling` → it handles invalid chapter gracefullyExpected response status code [N] but received N. | Failed asserting that N is identical to N.
+== tests/Unit/BibleControllerTest.php
+   1 `BibleController` → `constructor` → it requires translation service parameterException "ArgumentCountError" not thrown. | at tests/Unit/BibleControllerTest.php:N
+   1 `BibleController` → `method availability` → it has all required public methodsFailed asserting that false is true. | at tests/Unit/BibleControllerTest.php:N
+   1 `BibleController` → `index method` → it returns bible index view with dataArgumentCountError: Too few arguments to function App\Http\Controllers\BibleController::index(), N passed in /tmp/claude-N/-var-www-personal-bible
+   1 `BibleController` → `index method` → it throws N error when no reader availableFailed asserting that an instance of class ArgumentCountError is an instance of class Symfony\Component\HttpKernel\Exception\HttpException. |
+   1 `BibleController` → `book method` → it returns book view with chaptersError: Call to undefined method App\Http\Controllers\BibleController::book() | at tests/Unit/BibleControllerTest.php:N
+   1 `BibleController` → `book method` → it throws N error when no reader availableFailed asserting that an instance of class Error is an instance of class Symfony\Component\HttpKernel\Exception\HttpException. | at tests/Unit
+   1 `BibleController` → `book method` → it throws N error when book not foundFailed asserting that an instance of class Error is an instance of class Symfony\Component\HttpKernel\Exception\NotFoundHttpException. | at tests/U
+   1 `BibleController` → `chapter method` → it returns chapter view with verses in verse formatError: Call to undefined method App\Http\Controllers\BibleController::chapter() | at tests/Unit/BibleControllerTest.php:N
+   1 `BibleController` → `chapter method` → it returns chapter view with paragraphs in paragraph formatError: Call to undefined method App\Http\Controllers\BibleController::chapter() | at tests/Unit/BibleControllerTest.php:N
+   1 `BibleController` → `chapter method` → it defaults to paragraph format when no style specifiedError: Call to undefined method App\Http\Controllers\BibleController::chapter() | at tests/Unit/BibleControllerTest.php:N
+   1 `BibleController` → `chapter method` → it throws N error when no reader availableFailed asserting that an instance of class Error is an instance of class Symfony\Component\HttpKernel\Exception\HttpException. | at tests/U
+   1 `BibleController` → `chapter method` → it throws N error when book not foundFailed asserting that an instance of class Error is an instance of class Symfony\Component\HttpKernel\Exception\NotFoundHttpException. | at test
+   1 `BibleController` → `chapter method` → it throws N error when chapter not found in verse formatFailed asserting that an instance of class Error is an instance of class Symfony\Component\HttpKernel\Exception\NotFoundHttpE
+   1 `BibleController` → `chapter method` → it throws N error when chapter not found in paragraph formatFailed asserting that an instance of class Error is an instance of class Symfony\Component\HttpKernel\Exception\NotFoundH
+   1 `BibleController` → `search method` → it performs text search and returns resultsError: Call to undefined method App\Http\Controllers\BibleController::search() | at tests/Unit/BibleControllerTest.php:N
+   1 `BibleController` → `search method` → it redirects to verse when verse reference providedError: Call to undefined method App\Http\Controllers\BibleController::search() | at tests/Unit/BibleControllerTest.php:N
+   1 `BibleController` → `search method` → it redirects to verse range when verse range reference providedError: Call to undefined method App\Http\Controllers\BibleController::search() | at tests/Unit/BibleControllerTest.php:
+   1 `BibleController` → `search method` → it redirects to chapter when chapter reference providedError: Call to undefined method App\Http\Controllers\BibleController::search() | at tests/Unit/BibleControllerTest.php:N
+   1 `BibleController` → `search method` → it handles search exceptions gracefullyError: Call to undefined method App\Http\Controllers\BibleController::search() | at tests/Unit/BibleControllerTest.php:N
+   1 `BibleController` → `search method` → it throws N error when no reader availableFailed asserting that an instance of class Error is an instance of class Symfony\Component\HttpKernel\Exception\HttpException. | at tests/Un
+   1 `BibleController` → `switchTranslation method` → it switches translation when valid translation providedError: Call to undefined method App\Http\Controllers\BibleController::switchTranslation() | at tests/Unit/BibleContr
+   1 `BibleController` → `switchTranslation method` → it redirects to default when invalid translation providedError: Call to undefined method App\Http\Controllers\BibleController::switchTranslation() | at tests/Unit/BibleCon
+   1 `BibleController` → `API endpoints` → `apiBooks method` → it returns JSON response with booksError: Call to undefined method App\Http\Controllers\BibleController::apiBooks() | at tests/Unit/BibleControllerTest.php:N
+   1 `BibleController` → `API endpoints` → `apiBooks method` → it returns N error when no reader availableError: Call to undefined method App\Http\Controllers\BibleController::apiBooks() | at tests/Unit/BibleControllerTest.ph
+   1 `BibleController` → `API endpoints` → `apiChapters method` → it returns JSON response with chaptersError: Call to undefined method App\Http\Controllers\BibleController::apiChapters() | at tests/Unit/BibleControllerTest.p
+   1 `BibleController` → `API endpoints` → `apiChapters method` → it returns N error when no reader availableError: Call to undefined method App\Http\Controllers\BibleController::apiChapters() | at tests/Unit/BibleControllerT
+   1 `BibleController` → `API endpoints` → `apiVerses method` → it returns JSON response with versesError: Call to undefined method App\Http\Controllers\BibleController::apiVerses() | at tests/Unit/BibleControllerTest.php:N
+   1 `BibleController` → `API endpoints` → `apiVerses method` → it returns N error when no reader availableError: Call to undefined method App\Http\Controllers\BibleController::apiVerses() | at tests/Unit/BibleControllerTest.
+== tests/Unit/OsisReaderIntegrationTest.php
+   1 `OsisReader Integration` → `real OSIS file parsing` → it loads and parses KJV OSIS file correctlyFailed asserting that 'Unknown' [ASCII](length: N) contains "King James" [ASCII](length: N). | at tests/Unit/OsisReaderInte
+   1 `OsisReader Integration` → `real OSIS file parsing` → it extracts all N canonical booksFailed asserting that 'THE FIRST BOOK OF MOSES CALLED GENESIS' [ASCII](length: N) contains "Genesis" [ASCII](length: N). | at tests/U
+   1 `OsisReader Integration` → `real OSIS file parsing` → it reads chapter structure correctlyFailed asserting that N is identical to N. | at tests/Unit/OsisReaderIntegrationTest.php:N
+   1 `OsisReader Integration` → `paragraph style formatting` → it formats KJV with multiple paragraphsFailed asserting that N is greater than N. | at tests/Unit/OsisReaderIntegrationTest.php:N
+   1 `OsisReader Integration` → `paragraph style formatting` → it formats ASV with single paragraphFailed asserting that N is identical to N. | at tests/Unit/OsisReaderIntegrationTest.php:N
+   1 `OsisReader Integration` → `cross-translation verse comparison` → it compares translations efficientlyFailed asserting that N is identical to N. | at tests/Unit/OsisReaderIntegrationTest.php:N
+   1 `OsisReader Integration` → `performance and memory usage` → it handles large chapter reading efficientlyFailed asserting that N is identical to N. | at tests/Unit/OsisReaderIntegrationTest.php:N
+== tests/Unit/OsisReaderTest.php
+   1 `OsisReader` → `getBooks` → it returns proper book names for KJVFailed asserting that 'THE FIRST BOOK OF MOSES CALLED GENESIS' [ASCII](length: N) contains "Genesis" [ASCII](length: N). | at tests/Unit/OsisReaderTest.php:
+   1 `OsisReader` → `getBooks` → it returns standardized book names for ASVFailed asserting that two strings are identical. | at tests/Unit/OsisReaderTest.php:N
+   1 `OsisReader` → `getChapters` → it returns correct chapter count for GenesisFailed asserting that actual size N matches expected size N. | at tests/Unit/OsisReaderTest.php:N
+   1 `OsisReader` → `getChapters` → it returns chapters with verse countsErrorException: Trying to access array offset on null | at vendor/laravel/framework/src/Illuminate/Foundation/Bootstrap/HandleExceptions.php:N
+   1 `OsisReader` → `getVersesParagraphStyle` → it returns paragraphs with verses for KJVExpecting Illuminate\Support\Collection not to be empty . | at tests/Unit/OsisReaderTest.php:N
+   1 `OsisReader` → `getVersesParagraphStyle` → it returns single paragraph for ASVFailed asserting that actual size N matches expected size N. | at tests/Unit/OsisReaderTest.php:N
+== tests/Unit/Parsers/ContainedOsisParserTest.php
+   1 `ContainedOsisParser` → `getVerses` → it returns verses for a chapterExpecting Illuminate\Support\Collection not to be empty . | at tests/Unit/Parsers/ContainedOsisParserTest.php:N
+   1 `ContainedOsisParser` → `getVerses` → it returns verses in orderFailed asserting that two arrays are identical. | at tests/Unit/Parsers/ContainedOsisParserTest.php:N
+   1 `ContainedOsisParser` → `getVerseText` → it extracts text from contained versesFailed asserting that '' [ASCII](length: N) contains "beginning" [ASCII](length: N). | at tests/Unit/Parsers/ContainedOsisParserTest.php:N
+   1 `ContainedOsisParser` → `getVerseText` → it handles special formatting elementsFailed asserting that N is greater than N. | at tests/Unit/Parsers/ContainedOsisParserTest.php:N
+   1 `ContainedOsisParser` → `getVersesParagraphStyle` → it returns single paragraph with all versesExpecting Illuminate\Support\Collection not to be empty . | at tests/Unit/Parsers/ContainedOsisParserTest.php:N
+   1 `ContainedOsisParser` → `getVersesParagraphStyle` → it combines verse text correctlyErrorException: Trying to access array offset on null | at vendor/laravel/framework/src/Illuminate/Foundation/Bootstrap/HandleExceptions
+   1 `ContainedOsisParser` → `searchVerses` → it finds verses containing search termExpecting Illuminate\Support\Collection not to be empty . | at tests/Unit/Parsers/ContainedOsisParserTest.php:N
+   1 `ContainedOsisParser` → `searchVerses` → it highlights search termsExpecting Illuminate\Support\Collection not to be empty . | at tests/Unit/Parsers/ContainedOsisParserTest.php:N
+   1 `ContainedOsisParser` → `searchVerses` → it handles case-insensitive searchExpecting Illuminate\Support\Collection not to be empty . | at tests/Unit/Parsers/ContainedOsisParserTest.php:N
+   1 `ContainedOsisParser` → `searchVerses` → it handles verses with insufficient OSIS partsExpecting Illuminate\Support\Collection not to be empty . | at tests/Unit/Parsers/ContainedOsisParserTest.php:N
+   1 `ContainedOsisParser` → `specific formatting coverage tests` → it handles Red Letter text with sID attributeFailed asserting that '<span class="text-red-N dark:text-red-N font-medium">' [ASCII](length: N) contains "<span
+   1 `ContainedOsisParser` → `specific formatting coverage tests` → it handles Red Letter text with contained contentFailed asserting that '<span class="text-red-N dark:text-red-N font-medium">Jesus said</span>' [ASCII](lengt
+   1 `ContainedOsisParser` → `text extraction with formatting` → it handles Red Letter text for Jesus wordsExpecting Illuminate\Support\Collection not to be empty . | at tests/Unit/Parsers/ContainedOsisParserTest.php:N
+   1 `ContainedOsisParser` → `text extraction with formatting` → it handles translator additions (transChange)Expecting Illuminate\Support\Collection not to be empty . | at tests/Unit/Parsers/ContainedOsisParserTest.php:N
+   1 `ContainedOsisParser` → `text extraction with formatting` → it handles line breaks and poetry formattingFailed asserting that N is greater than N. | at tests/Unit/Parsers/ContainedOsisParserTest.php:N
+   1 `ContainedOsisParser` → `text extraction with formatting` → it handles nested formatting elementsExpecting Illuminate\Support\Collection not to be empty . | at tests/Unit/Parsers/ContainedOsisParserTest.php:N
+   1 `ContainedOsisParser` → `apocrypha detection` → it correctly identifies canonical books as non-apocryphaExpecting Illuminate\Support\Collection not to be empty . | at tests/Unit/Parsers/ContainedOsisParserTest.php:N
+   1 `ContainedOsisParser` → `comprehensive text extraction` → it extracts all verse elements correctlyFailed asserting that N is greater than N. | at tests/Unit/Parsers/ContainedOsisParserTest.php:N
+   1 `ContainedOsisParser` → `comprehensive text extraction` → it maintains verse order in paragraphsExpecting Illuminate\Support\Collection not to be empty . | at tests/Unit/Parsers/ContainedOsisParserTest.php:N
+   1 `ContainedOsisParser` → `comprehensive extractTextWithRedLetters coverage` → it handles q node as direct element with Jesus attributeFailed asserting that two strings are identical. | at tests/Unit/Parsers/ContainedOsisP
+   1 `ContainedOsisParser` → `comprehensive extractTextWithRedLetters coverage` → it handles mixed content with multiple child node typesFailed asserting that two strings are identical. | at tests/Unit/Parsers/ContainedOsisPa
+   1 `ContainedOsisParser` → `comprehensive extractTextWithRedLetters coverage` → it handles complex combination of all element typesFailed asserting that '<div class="text-center text-sm font-medium text-gray-N dark:text-gra
+== tests/Unit/Parsers/ParserIntegrationTest.php
+   1 `Parser Integration Tests` → `essential parser functionality` → it loads and parses different OSIS formatsFailed asserting that N is identical to N. | at tests/Unit/Parsers/ParserIntegrationTest.php:N
+   1 `Parser Integration Tests` → `essential parser functionality` → it extracts verses correctly from both formatsFailed asserting that N is identical to N. | at tests/Unit/Parsers/ParserIntegrationTest.php:N
+   1 `Parser Integration Tests` → `essential parser functionality` → it performs fast text search on both formatsFailed asserting that N is identical to N. | at tests/Unit/Parsers/ParserIntegrationTest.php:N

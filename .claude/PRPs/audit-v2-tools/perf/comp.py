@@ -1,0 +1,16 @@
+import sys,re,html
+for f in sys.argv[1:]:
+    s=open(f,encoding='utf-8').read(); B=lambda x: len(x.encode())
+    total=B(s)
+    snap=sum(B(m) for m in re.findall(r'wire:snapshot="[^"]*"', s))
+    eff=sum(B(m) for m in re.findall(r'wire:effects="[^"]*"', s))
+    scripts=re.findall(r'<script\b[^>]*>(.*?)</script>', s, re.S)
+    inl_js=sum(B(x) for x in scripts)
+    styles=re.findall(r'<style\b[^>]*>(.*?)</style>', s, re.S)
+    inl_css=sum(B(x) for x in styles)
+    body=re.sub(r'wire:snapshot="[^"]*"','',s); body=re.sub(r'<script\b.*?</script>','',body,flags=re.S); body=re.sub(r'<style\b.*?</style>','',body,flags=re.S)
+    text=html.unescape(re.sub(r'<[^>]+>',' ',body)); text=re.sub(r'\s+',' ',text)
+    ext_js=re.findall(r'<script[^>]+src="([^"]+)"', s); ext_css=re.findall(r'<link[^>]+rel="stylesheet"[^>]+href="([^"]+)"|<link[^>]+href="([^"]+)"[^>]+rel="stylesheet"', s)
+    spans=s.count('class="strong-word')
+    print(f"{f}: total={total} snapshot={snap} ({100*snap/total:.1f}%) effects={eff} inline_js={inl_js} ({len(scripts)} tags) inline_css={inl_css} ({len(styles)} tags) markup_rest={B(body)-B(text)} visible_text={B(text)} ({100*B(text)/total:.1f}%) strong-word spans={spans}")
+    print("   ext js:", ext_js); print("   ext css:", [a or b for a,b in ext_css])
