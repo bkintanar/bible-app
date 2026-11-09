@@ -4,56 +4,28 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Cloudflare proxy ranges
+    | Trusted proxies
     |--------------------------------------------------------------------------
     |
-    | bible.b8.co.nz is served through Cloudflare, which terminates TLS and forwards
-    | to this origin over plain HTTP. Without trusting the proxy, Laravel treats every
-    | request as insecure and generates http:// URLs - so GET https://bible.b8.co.nz/
-    | answered 302 to http://bible.b8.co.nz/..., downgrading the protocol on the way in.
+    | bible.b8.co.nz is served through a Cloudflare TUNNEL. cloudflared runs on 10.0.10.31 (not on
+    | this host, which is 10.0.10.73) and connects to nginx here over plain HTTP, so every public
+    | request arrives with REMOTE_ADDR=10.0.10.31. That is the only peer to trust.
     |
-    | Trusting '*' would let anyone reaching this origin directly (it is also on the LAN
-    | at 10.0.10.73) spoof X-Forwarded-For and X-Forwarded-Proto, so the ranges are
-    | explicit. Refresh from https://www.cloudflare.com/ips-v4 and ips-v6 when they change.
+    | Verified 2026-11-10 by sniffing a tagged public request: cloudflared sends X-Forwarded-For
+    | with the real client IP as its LAST entry (equal to CF-Connecting-IP; a client-supplied XFF is
+    | kept in front of it) and X-Forwarded-Proto: https. It sends no X-Forwarded-Host.
+    |
+    | Cloudflare's published edge ranges are deliberately NOT trusted: nothing reaches this origin
+    | from them, and trusting them let a request sent from a Cloudflare Worker (whose egress is in
+    | those ranges) choose its own ip() through a forged X-Forwarded-For chain. Never trust '*':
+    | the origin is also reachable on the LAN, where '*' would accept spoofed forwarding headers.
+    |
+    | To re-derive if the tunnel moves: check REMOTE_ADDR on an inbound public request.
     |
     */
 
     'proxies' => [
-
-        // The immediate peer. Traffic arrives via a Cloudflare TUNNEL (cloudflared) running on
-        // this host, NOT from a Cloudflare edge address - the probe showed
-        // REMOTE_ADDR=10.0.10.31 alongside CF-Warp-Tag-Id and X-Forwarded-Proto: https. So the
-        // published Cloudflare ranges below never matched and the proxy stayed untrusted, which
-        // is why an HTTPS request still produced an http:// redirect.
-        //
-        // To re-derive if the tunnel moves: check REMOTE_ADDR on an inbound public request.
         '10.0.10.31',
-
-        // Kept for the case where DNS is ever pointed straight at a public origin instead of
-        // through the tunnel. Refresh from https://www.cloudflare.com/ips-v4 and ips-v6.
-
-        '173.245.48.0/20',
-        '103.21.244.0/22',
-        '103.22.200.0/22',
-        '103.31.4.0/22',
-        '141.101.64.0/18',
-        '108.162.192.0/18',
-        '190.93.240.0/20',
-        '188.114.96.0/20',
-        '197.234.240.0/22',
-        '198.41.128.0/17',
-        '162.158.0.0/15',
-        '104.16.0.0/13',
-        '104.24.0.0/14',
-        '172.64.0.0/13',
-        '131.0.72.0/22',
-        '2400:cb00::/32',
-        '2606:4700::/32',
-        '2803:f800::/32',
-        '2405:b500::/32',
-        '2405:8100::/32',
-        '2a06:98c0::/29',
-        '2c0f:f248::/32',
     ],
 
 ];

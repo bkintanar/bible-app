@@ -17,22 +17,22 @@ return Application::configure(basePath: dirname(__DIR__))
         // unauthenticated POST /_native/api/events endpoint reaches the web build).
         $middleware->prepend(\App\Http\Middleware\BlockNativeRoutesOnWeb::class);
 
-        // This origin sits behind Cloudflare, which terminates TLS and forwards over plain
-        // HTTP. Untrusted, Laravel read every request as insecure and generated http:// URLs -
-        // GET https://bible.b8.co.nz/ answered 302 to http://bible.b8.co.nz/..., downgrading
-        // the protocol. Trusting the proxy lets X-Forwarded-Proto and -For be honoured.
-        //
-        // Ranges are explicit rather than '*' because this origin is also reachable directly
-        // on the LAN, where '*' would allow spoofed forwarding headers.
+        // This origin sits behind a Cloudflare tunnel, which terminates TLS and forwards over plain
+        // HTTP. Untrusted, Laravel read every request as insecure and generated http:// URLs.
+        // Only X-Forwarded-For and -Proto are honoured: cloudflared sends no X-Forwarded-Host, so
+        // accepting one could only ever come from a forged header. See config/trustedproxy.php.
         // NOTE: config() is not available this early in the bootstrap - the container has no
         // 'config' binding yet - so the file is required directly rather than resolved.
         $middleware->trustProxies(
             at: (require __DIR__.'/../config/trustedproxy.php')['proxies'],
             headers: \Illuminate\Http\Request::HEADER_X_FORWARDED_FOR
-                | \Illuminate\Http\Request::HEADER_X_FORWARDED_HOST
-                | \Illuminate\Http\Request::HEADER_X_FORWARDED_PORT
                 | \Illuminate\Http\Request::HEADER_X_FORWARDED_PROTO,
         );
+
+        // Only APP_URL's host (and its subdomains) may build URLs: a forged Host header could
+        // otherwise poison absolute links. No argument on purpose - at: ['bible.b8.co.nz'] becomes
+        // an UNANCHORED regex in Symfony. Inactive in local/testing (TrustHosts.php).
+        $middleware->trustHosts();
 
         // Public, unauthenticated API over a 31k-verse FTS index; now internet-facing.
         // No argument: throttleApi()'s first parameter is the LIMITER NAME, not a rate, so
