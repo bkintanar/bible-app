@@ -15,6 +15,8 @@ class VerseTitleController extends Controller
 
     public function index()
     {
+        abort_unless(config('bible.editor_enabled', true), 503, 'The verse-title editor is temporarily disabled for maintenance.');
+
         return view('admin.verse-titles');
     }
 }

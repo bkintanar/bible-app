@@ -103,6 +103,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Verse-Title Editor
+    |--------------------------------------------------------------------------
+    |
+    | The editor writes the OSIS source of truth and re-projects the database.
+    | Set BIBLE_EDITOR_ENABLED=false to freeze it (e.g. while the importer is
+    | being changed); the page and every Livewire action then answer 503.
+    |
+    */
+    'editor_enabled' => (bool) env('BIBLE_EDITOR_ENABLED', true),
+
+    /*
+    |--------------------------------------------------------------------------
     | Database Configuration
     |--------------------------------------------------------------------------
     |

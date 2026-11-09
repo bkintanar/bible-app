@@ -41,6 +41,15 @@ class VerseTitleManager extends Component
         'verseTitle.max' => 'Title cannot be longer than 255 characters.',
     ];
 
+    /**
+     * Runs on the initial render AND on every /livewire/update round-trip, so a page that was
+     * already open cannot keep writing the source of truth after the editor is frozen.
+     */
+    public function boot(): void
+    {
+        abort_unless(config('bible.editor_enabled', true), 503, 'The verse-title editor is temporarily disabled for maintenance.');
+    }
+
     public function mount()
     {
         $this->loadTranslations();
