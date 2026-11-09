@@ -12,7 +12,8 @@
             'paragraph' => $paragraph,
             'chapterNumber' => $chapterNumber,
             'getFontSizeClass' => $getFontSizeClass,
-            'loop' => $loop
+            'loop' => $loop,
+            'emitIds' => $emitIds ?? true,
         ])
     @endforeach
 @else

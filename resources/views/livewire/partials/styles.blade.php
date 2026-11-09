@@ -85,8 +85,15 @@
         background-color: rgba(168, 85, 247, 0.15);
     }
 
-    .strong-word.has-morph {
-        font-style: italic;
+    /* No styling for .has-morph: in the KJV, italics mean words SUPPLIED by the translators
+       (<transChange type="added">). Italicising every morphology-tagged word made the default
+       view claim translators added words like "created" in Gen 1:1. */
+
+    /* Supplied (italic) words inside Christ's words stay red, as in red-letter KJV editions;
+       the generic translator-change colour otherwise turned them grey mid-sentence (Matt 5:3 "are"). */
+    .text-red-600 em,
+    .text-red-600 .italic {
+        color: inherit;
     }
 
     /* Tooltip styling for Strong's numbers */

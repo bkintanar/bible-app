@@ -456,6 +456,44 @@ class BibleChapter extends Component
         ];
     }
 
+    /**
+     * Previous/next chapter targets, crossing book boundaries (Mal 4 -> Matt 1; Gen 1 has no
+     * previous, Rev 22 no next). URLs are the canonical /books/{book}/chapters/{n} route, so a
+     * page turn is one request - the old /{book}/{n} short form answered with a redirect.
+     *
+     * @return array{prev: ?array{url: string, label: string}, next: ?array{url: string, label: string}}
+     */
+    public function getNavigationTargets(): array
+    {
+        $books = collect($this->books)->values();
+        $current = (array) $this->currentBook;
+        $index = $books->search(fn ($book) => $book['osis_id'] === ($current['osis_id'] ?? null));
+        $lastChapter = (int) (collect($this->chapters)->max('chapter_number') ?? 0);
+
+        $target = fn (array $book, int $n) => [
+            'url' => route('chapters.show', ['bookOsisId' => $book['osis_id'], 'chapterNumber' => $n], false),
+            'label' => ($book['name'] ?? $book['osis_id']) . ' ' . $n,
+        ];
+
+        $prev = null;
+        if ($this->chapterNumber > 1) {
+            $prev = $target($current, $this->chapterNumber - 1);
+        } elseif ($index !== false && $index > 0) {
+            $book = $books[$index - 1];
+            $count = (int) ($this->bibleService->getChapters($book['osis_id'])->max('chapter_number') ?? 0);
+            $prev = $count > 0 ? $target($book, $count) : null;
+        }
+
+        $next = null;
+        if ($this->chapterNumber < $lastChapter) {
+            $next = $target($current, $this->chapterNumber + 1);
+        } elseif ($index !== false && $index < $books->count() - 1) {
+            $next = $target($books[$index + 1], 1);
+        }
+
+        return ['prev' => $prev, 'next' => $next];
+    }
+
     public function getFontSizeClass(): string
     {
         $sizeMap = [
@@ -502,9 +540,23 @@ class BibleChapter extends Component
         $xml = preg_replace('/<note[^>]*>.*?<\/note>/i', '', $xml); // Remove study notes
         $xml = preg_replace('/<milestone[^>]*\/?>/i', '', $xml); // Remove milestone markers
 
-        // Parse the XML and convert <w> tags to enhanced spans
+        // A self-closing <w .../> carries a Strong's number for a word left untranslated (e.g. the
+        // Greek article) and has no text of its own. The old pattern paired it with the NEXT
+        // word's </w>, so that word showed the wrong number (John 3:16 "For" -> G3588) and the two
+        // words were glued together (Matt 6:10 "as it isin heaven"). Drop them before pairing -
+        // as a SPACE, because the source sometimes uses one as the only separator between two
+        // words (Matt 12:31 "<w>but</w><w .../>the"); stray spaces before punctuation are
+        // removed by the clean-up below.
+        $xml = preg_replace('/<w\b[^>]*\/>/', ' ', $xml) ?? $xml;
+        // <inscription> (Exod 28:36, Dan 5:25-28) is set in small capitals in the KJV.
+        $xml = preg_replace('/<inscription\b[^>]*>(.*?)<\/inscription>/is', '<span style="font-variant: small-caps;">$1</span>', $xml) ?? $xml;
+        // <foreign> (e.g. the letter names heading Ps 119's sections): keep the text, drop the tag.
+        $xml = preg_replace('/<\/?foreign\b[^>]*>/i', '', $xml) ?? $xml;
+
+        // Parse the XML and convert <w> tags to enhanced spans. /s: some stored fragments are
+        // pretty-printed across lines, and without it those <w> elements leaked through raw.
         $enhanced = preg_replace_callback(
-            '/<w([^>]*)>(.*?)<\/w>/',
+            '/<w\b([^>]*)>(.*?)<\/w>/s',
             function ($matches) {
                 $attributes = $matches[1];
                 $text = $matches[2];
@@ -553,6 +605,12 @@ class BibleChapter extends Component
             $xml
         );
 
+        if ($enhanced === null) {
+            // PCRE failure (e.g. backtrack limit). Show the words rather than raw OSIS.
+            \Log::warning('Strong\'s render fallback', ['osis_id' => $osisId, 'preg' => preg_last_error_msg()]);
+            $enhanced = strip_tags($xml, '<em><span><strong>');
+        }
+
         // Convert KJV translator-supplied words (rendered in italics by convention) and
         // divine names (small caps LORD, distinguishing YHWH from Adonai).
         //
@@ -585,6 +643,10 @@ class BibleChapter extends Component
         // Clean up extra spaces and fix spacing around punctuation
         $enhanced = preg_replace('/\s+/', ' ', $enhanced); // Multiple spaces to single space
         $enhanced = preg_replace('/\s+([,.;:!?])/', '$1', $enhanced); // Remove space before punctuation
+        // ...including when closing tags sit between them: pretty-printed fragments leave
+        // "<span>Lord</span> </span>;" which rendered "Lord ;" (Gen 15:2, Ps 12:1, ...).
+        $enhanced = preg_replace('/\s+((?:<\/(?:span|em)>)+)(?=[,.;:!?])/', '$1', $enhanced);
+        $enhanced = preg_replace('/([(\[])\s+/', '$1', $enhanced); // "( they" -> "(they"
         $enhanced = trim($enhanced);
 
         return $enhanced;

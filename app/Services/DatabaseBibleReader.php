@@ -119,14 +119,7 @@ class DatabaseBibleReader implements BibleReaderInterface
             return collect();
         }
 
-        // Convert to proper case for database lookup
-        $properCaseRef = ucfirst(strtolower($chapterOsisRef));
-        if (strpos($properCaseRef, '.') !== false) {
-            $parts = explode('.', $properCaseRef);
-            $properCaseRef = ucfirst($parts[0]) . '.' . $parts[1];
-        }
-
-        $chapterId = $this->resolveChapterId($properCaseRef);
+        $chapterId = $this->resolveChapterId($chapterOsisRef);
 
         if ($chapterId === null) {
             return collect();
@@ -536,10 +529,9 @@ class DatabaseBibleReader implements BibleReaderInterface
             return null;
         }
 
-        $normalised = ucfirst(strtolower(trim($chapterOsisRef)));
-        if (str_contains($normalised, '.')) {
-            $parts = explode('.', $normalised);
-            $normalised = ucfirst($parts[0]) . '.' . $parts[1];
+        $normalised = $this->canonicalChapterRef($chapterOsisRef);
+        if ($normalised === null) {
+            return null;
         }
 
         $cacheKey = "chapter_id_{$this->versionKey}_{$normalised}";
@@ -549,6 +541,36 @@ class DatabaseBibleReader implements BibleReaderInterface
                 ->where('version_id', $this->bibleVersion->id)
                 ->value('id');
         });
+    }
+
+    /**
+     * Canonicalise a "Book.N" chapter ref to the stored OSIS spelling ("1sam.3" -> "1Sam.3").
+     *
+     * The previous ucfirst(strtolower()) normalisation cannot capitalise a numbered book:
+     * ucfirst('1sam') is '1sam' because the first character is a digit, so every chapter of
+     * 1 Samuel .. 3 John (17 books, 6,128 verses) resolved to nothing and 404'd. The canonical
+     * spelling comes from the cached canonical book list instead, matched in memory - no
+     * per-input cache key is created, so arbitrary input cannot grow the cache.
+     */
+    private function canonicalChapterRef(string $chapterOsisRef): ?string
+    {
+        $parts = explode('.', trim($chapterOsisRef), 2);
+
+        if (count($parts) !== 2 || $parts[0] === '' || ! ctype_digit($parts[1])) {
+            return null;
+        }
+
+        $book = $this->canonicalBookOsisId($parts[0]);
+
+        return $book === null ? null : $book . '.' . (int) $parts[1];
+    }
+
+    private function canonicalBookOsisId(string $bookOsisId): ?string
+    {
+        $needle = strtoupper(trim($bookOsisId));
+        $match = $this->getBooks()->first(fn ($book) => strtoupper($book['osis_id']) === $needle);
+
+        return $match['osis_id'] ?? null;
     }
 
     /**

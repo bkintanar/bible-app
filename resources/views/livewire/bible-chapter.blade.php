@@ -6,13 +6,17 @@
     @include('livewire.partials.header')
 
     {{-- MAIN BOOK CONTENT AREA --}}
+    {{-- Prev/next cross book boundaries (Mal 4 -> Matt 1) and point at the canonical chapter URL,
+         so a page turn is one request instead of a /Book/N -> /books/Book/chapters/N redirect. --}}
+    @php $nav = $this->getNavigationTargets(); @endphp
     <!-- Main Content - Scrollable -->
     <div class="flex-1 overflow-hidden book-container"
-         data-prev-url="{{ $chapterNumber > 1 ? '/' . $bookOsisId . '/' . ($chapterNumber - 1) : '' }}"
-         data-next-url="{{ $chapterNumber < ($chapters->max('chapter_number') ?? 0) ? '/' . $bookOsisId . '/' . ($chapterNumber + 1) : '' }}"
+         data-prev-url="{{ $nav['prev']['url'] ?? '' }}"
+         data-next-url="{{ $nav['next']['url'] ?? '' }}"
          style="--peel-progress: 0;">
-        <!-- Previous Chapter (Preloaded) -->
-        <div class="page page-prev absolute inset-0 h-full overflow-y-auto" style="z-index: 0;">
+        <!-- Previous Chapter (Preloaded). Visual only (page-peel preview): hidden from assistive
+             tech, focus and find-in-page, and emits no verse ids. -->
+        <div class="page page-prev absolute inset-0 h-full overflow-y-auto" style="z-index: 0;" aria-hidden="true" inert>
             <div class="book-spine-shadow"></div>
             <div class="page-content h-full overflow-y-auto bg-gray-50 dark:bg-gray-900" id="prev-chapter-content">
                 @if($chapterNumber > 1)
@@ -25,7 +29,8 @@
                                         @include('livewire.partials.chapter-verses', [
                                             'verses' => $previousChapterVerses,
                                             'chapterNumber' => $chapterNumber - 1,
-                                            'getFontSizeClass' => function() { return $this->getFontSizeClass(); }
+                                            'getFontSizeClass' => function() { return $this->getFontSizeClass(); },
+                                            'emitIds' => false,
                                         ])
                                     @else
                                         <!-- Fallback if previous chapter data not available -->
@@ -152,8 +157,8 @@
             </div>
         </div>
 
-        <!-- Next Chapter (Preloaded) -->
-        <div class="page page-next absolute inset-0 h-full overflow-y-auto" style="z-index: 0;">
+        <!-- Next Chapter (Preloaded). Visual only, like the previous one. -->
+        <div class="page page-next absolute inset-0 h-full overflow-y-auto" style="z-index: 0;" aria-hidden="true" inert>
             <div class="book-spine-shadow"></div>
             <div class="page-content h-full overflow-y-auto bg-gray-50 dark:bg-gray-900" id="next-chapter-content">
                 @if($chapterNumber < ($chapters->max('chapter_number') ?? 0))
@@ -166,7 +171,8 @@
                                         @include('livewire.partials.chapter-verses', [
                                             'verses' => $nextChapterVerses,
                                             'chapterNumber' => $chapterNumber + 1,
-                                            'getFontSizeClass' => function() { return $this->getFontSizeClass(); }
+                                            'getFontSizeClass' => function() { return $this->getFontSizeClass(); },
+                                            'emitIds' => false,
                                         ])
                                     @else
                                         <!-- Fallback if next chapter data not available -->
@@ -206,12 +212,12 @@
 
     {{-- FLOATING NAVIGATION BUTTONS --}}
     <!-- Floating Previous Chapter Button (Left Side) -->
-    @if($chapterNumber > 1)
+    @if($nav['prev'])
         <div class="fixed left-0 top-1/2 transform -translate-y-1/2 z-40">
-                                        <button onclick="navigateToChapter('/{{ $bookOsisId }}/{{ $chapterNumber - 1 }}')"
+            <button onclick="navigateToChapter(@js($nav['prev']['url']))"
                class="bg-blue-600 hover:bg-blue-700 dark:bg-gray-700 dark:hover:bg-gray-600 text-white w-[44px] h-[60px] shadow-lg dark:shadow-gray-900 transition-all duration-200 hover:scale-110 flex items-center justify-center group"
-               title="Previous Chapter: {{ $chapterNumber - 1 }}"
-               aria-label="Previous chapter">
+               title="Previous: {{ $nav['prev']['label'] }}"
+               aria-label="Previous chapter: {{ $nav['prev']['label'] }}">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                 </svg>
@@ -220,12 +226,12 @@
     @endif
 
     <!-- Floating Next Chapter Button (Right Side) -->
-    @if($chapterNumber < ($chapters->max('chapter_number') ?? 0))
+    @if($nav['next'])
         <div class="fixed right-0 top-1/2 transform -translate-y-1/2 z-40">
-                                        <button onclick="navigateToChapter('/{{ $bookOsisId }}/{{ $chapterNumber + 1 }}')"
+            <button onclick="navigateToChapter(@js($nav['next']['url']))"
                class="bg-blue-600 hover:bg-blue-700 dark:bg-gray-700 dark:hover:bg-gray-600 text-white w-[44px] h-[60px] shadow-lg dark:shadow-gray-900 transition-all duration-200 hover:scale-110 flex items-center justify-center group"
-               title="Next Chapter: {{ $chapterNumber + 1 }}"
-               aria-label="Next chapter">
+               title="Next: {{ $nav['next']['label'] }}"
+               aria-label="Next chapter: {{ $nav['next']['label'] }}">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                 </svg>
