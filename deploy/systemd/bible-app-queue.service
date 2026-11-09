@@ -1,0 +1,37 @@
+[Unit]
+Description=Bible App queue worker (chapter publishing, adjacent-chapter cache preloading)
+# SQLite is a local file, so there is no database daemon to order against.
+# What the worker actually needs is the filesystem holding the app.
+RequiresMountsFor=/var/www/personal/bible-app
+
+# --max-time makes the worker exit 0 every hour and systemd restart it. That is a
+# CLEAN exit, so Restart=always is correct here (Restart=on-failure would refuse to
+# restart after the first hourly exit and the queue would silently stop). Those clean
+# restarts still count toward the start limit, so the limit is disabled.
+StartLimitIntervalSec=0
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/personal/bible-app
+# CLI php has memory_limit=-1; --memory makes the worker retire itself gracefully. It cannot
+# see libxml memory, which is why PublishChapterProjection runs osis:import as a SUBPROCESS.
+ExecStart=/usr/bin/php -d memory_limit=256M artisan queue:work --sleep=3 --tries=3 --max-time=3600 --memory=200
+ExecReload=/usr/bin/php artisan queue:restart
+Restart=always
+RestartSec=5
+# MemoryMax covers the worker AND its children: a publish subprocess (osis:import DOM-loads the
+# whole 27MB source) peaks at ~480MB on top of the worker, so 512M would OOM-kill it.
+MemoryMax=1G
+
+# Cheap hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/var/www/personal/bible-app/storage /var/www/personal/bible-app/database
+# Let a running publish (job timeout 300s) finish on stop/restart.
+TimeoutStopSec=330
+
+[Install]
+WantedBy=multi-user.target
