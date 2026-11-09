@@ -69,6 +69,17 @@ return [
             'permission' => 0664,
 ],
 
+        // Who changed the OSIS source of truth, what, and whether it was published. Info level on
+        // purpose: the default channel runs at LOG_LEVEL=warning, which used to drop these lines.
+        'audit' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/audit.log'),
+            'level' => 'info',
+            'days' => 90,
+            'permission' => 0664,
+            'replace_placeholders' => true,
+        ],
+
         'daily' => [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),

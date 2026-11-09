@@ -66,9 +66,14 @@
                 @endif
             </p>
 
-            {{-- Message Display --}}
+            <form method="POST" action="{{ route('logout') }}" class="mb-6 text-right">
+                @csrf
+                <button type="submit" class="text-sm text-gray-600 underline hover:text-gray-900">Log out</button>
+            </form>
+
+            {{-- Message Display (announced to screen readers) --}}
             @if($message)
-                <div class="mb-6 p-4 rounded-lg border {{ $messageType === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800' }}">
+                <div role="status" aria-live="polite" class="mb-6 p-4 rounded-lg border {{ match($messageType) { 'success' => 'bg-green-50 border-green-200 text-green-800', 'info' => 'bg-blue-50 border-blue-200 text-blue-800', default => 'bg-red-50 border-red-200 text-red-800' } }}">
                     <div class="flex items-center">
                         @if($messageType === 'success')
                             <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -177,19 +182,22 @@
                         <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                     @enderror
                     <p class="text-gray-500 text-sm mt-1">
-                        This title will be added to the XML as:
-                        <code class="bg-gray-100 px-1 rounded">&lt;title type="verse" canonical="true"&gt;Your Title&lt;/title&gt;</code>
+                        This title will be added to the XML as an editorial heading (not scripture):
+                        <code class="bg-gray-100 px-1 rounded">&lt;title type="verse" canonical="false"&gt;Your Title&lt;/title&gt;</code>
                     </p>
                 </div>
 
                 {{-- Action Buttons --}}
                 <div class="flex flex-wrap gap-4 pt-4">
+                    {{-- Disabled while a save/remove is in flight: a double click used to submit twice. --}}
                     <button
                         type="submit"
+                        wire:loading.attr="disabled"
+                        wire:target="saveTitle,removeTitle"
                         class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                        {{ !$selectedBook || !$selectedChapter || !$selectedVerse || !$verseTitle ? '' : '' }}
                     >
-                        💾 Save Title
+                        <span wire:loading.remove wire:target="saveTitle">💾 Save Title</span>
+                        <span wire:loading wire:target="saveTitle">Saving…</span>
                     </button>
 
                     @if($verseTitle && $selectedBook && $selectedChapter && $selectedVerse)
@@ -197,7 +205,9 @@
                             type="button"
                             wire:click="removeTitle"
                             wire:confirm="Are you sure you want to remove this title?"
-                            class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-6 rounded-lg transition duration-200"
+                            wire:loading.attr="disabled"
+                            wire:target="saveTitle,removeTitle"
+                            class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-6 rounded-lg transition duration-200 disabled:opacity-50"
                         >
                             🗑️ Remove Title
                         </button>
@@ -221,17 +231,17 @@
                     <li>Choose a chapter - this will enable the verse dropdown</li>
                     <li>Pick a specific verse where you want to add a title</li>
                     <li>Enter your custom title in the text field</li>
-                    <li>Click "Save Title" to add it to the XML file</li>
-                    <li>The system will automatically create a backup of the original XML file</li>
+                    <li>Click "Save Title" to write it to the OSIS source (the source of truth)</li>
+                    <li>Readers see it once publishing finishes - usually within a minute</li>
                 </ol>
 
                 <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
                     <h4 class="font-medium text-yellow-800">⚠️ Important Notes:</h4>
                     <ul class="list-disc list-inside text-sm text-yellow-700 mt-2 space-y-1">
-                        <li>This directly modifies XML files - backups are created automatically</li>
+                        <li>This writes the OSIS source of truth directly. It is versioned in git and backed up nightly; every change is recorded in the audit log</li>
                         <li>If a verse already has a title, entering a new one will replace it</li>
                         <li>Use the "Remove Title" button to delete existing verse titles</li>
-                        <li>Changes take effect immediately and will be visible in the Bible reader</li>
+                        <li>Editorial headings are not scripture: they are stored as <code>canonical="false"</code></li>
                     </ul>
                 </div>
             </div>

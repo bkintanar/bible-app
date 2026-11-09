@@ -39,7 +39,9 @@ return [
             'connection' => env('DB_QUEUE_CONNECTION'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
+            // Must exceed the longest job timeout (PublishChapterProjection: 300s), or a running job is
+            // handed to another worker and published twice.
+            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 360),
             'after_commit' => false,
         ],
 
