@@ -179,3 +179,27 @@ it('fails on a contained-format OSIS file instead of projecting nothing', functi
     importOsis($tmp, [], 1);
     @unlink($tmp);
 });
+
+// --- cache invalidation (PIPE-5) ---------------------------------------------------------------
+
+it('invalidates every projection-derived cache entry after an import', function () {
+    seedBooks();
+    $before = \App\Support\ProjectionCache::version();
+    $key = \App\Support\ProjectionCache::key('chapter_verses_Gen_1');
+
+    importOsis(base_path('tests/Fixtures/mini-kjv.osis.xml'), ['--chapter' => 'Gen.1']);
+
+    expect(\App\Support\ProjectionCache::version())->toBe($before + 1);
+    expect(\App\Support\ProjectionCache::key('chapter_verses_Gen_1'))->not->toBe($key);
+});
+
+it('refuses to write the database in production without --production', function () {
+    seedBooks();
+    app()->detectEnvironment(fn () => 'production');
+
+    importOsis(base_path('tests/Fixtures/mini-kjv.osis.xml'), [], 1);
+    expect(DB::table('verses')->count())->toBe(0);
+
+    importOsis(base_path('tests/Fixtures/mini-kjv.osis.xml'), ['--production' => true], 0);
+    expect(DB::table('verses')->count())->toBeGreaterThan(0);
+});

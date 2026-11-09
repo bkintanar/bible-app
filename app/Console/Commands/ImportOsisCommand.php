@@ -16,7 +16,9 @@ class ImportOsisCommand extends Command
         {--chunk=100 : Number of verses to process per chunk}
         {--book= : Only project this book, by OSIS id (e.g. Gen)}
         {--chapter= : Only project this chapter, as book.chapter (e.g. Gen.28)}
-        {--verse= : Only project this verse, as book.chapter.verse (e.g. Gen.28.1)}';
+        {--verse= : Only project this verse, as book.chapter.verse (e.g. Gen.28.1)}
+        {--production : Required to write the database when APP_ENV=production}
+        {--allow-deletions : Allow removing more than 50 verses that are no longer in the source}';
     protected $description = 'Import OSIS XML file into the comprehensive Bible database';
 
     private $versionId;
@@ -33,6 +35,12 @@ class ImportOsisCommand extends Command
     private $xpath;
     private $doc;
 
+    /** @var array<string, list<string>> in-scope verses that could not be projected, by reason */
+    private array $skipped = [];
+
+    /** @var array<string, true> in-scope verse osisIDs projected in this run */
+    private array $seenVerses = [];
+
     // Paragraph tracking
     private $currentParagraphStart = null;
     private $currentParagraphVerses = [];
@@ -40,6 +48,11 @@ class ImportOsisCommand extends Command
 
     public function handle()
     {
+        // Artisan::call() and a long-lived queue worker reuse this command instance; every run
+        // must start from scratch (a stale $purgedChapters made a second in-process run append
+        // duplicate titles).
+        $this->resetRunState();
+
         $file = $this->argument('file');
         $chunkSize = (int) $this->option('chunk');
 
@@ -59,6 +72,15 @@ class ImportOsisCommand extends Command
 
         if ($this->scope !== null) {
             $this->info("🎯 Scope: {$this->scope} (targeted re-projection)");
+        }
+
+        $connection = config('database.default');
+        $this->line('🗄️  Target database: ' . config("database.connections.{$connection}.database"));
+
+        if (app()->environment('production') && ! $this->option('production')) {
+            $this->error('Refusing to write the production database without --production.');
+
+            return 1;
         }
 
         try {
@@ -82,13 +104,29 @@ class ImportOsisCommand extends Command
                 $this->finalizeParagraphs();
             }
 
+            // The projection must not keep verses the source no longer has.
+            $this->removeVersesMissingFromSource();
+
             // Update FTS tables
             $this->updateFTSTables();
 
+            // Readers' caches derive from the old projection: invalidate all of them at once.
+            \App\Support\ProjectionCache::bump();
 
             $this->displaySummary();
 
-        } catch (Exception $e) {
+            // A run that skipped in-scope verses projected an incomplete Bible: say so, and exit
+            // non-zero, instead of printing a success summary over missing scripture.
+            if ($this->skipped !== []) {
+                foreach ($this->skipped as $reason => $ids) {
+                    $this->error(sprintf('❌ %d verse(s) not projected (%s): %s', count($ids), $reason, implode(', ', array_slice($ids, 0, 10))));
+                }
+
+                return 1;
+            }
+        } catch (\Throwable $e) {
+            // Chapters committed before the failure changed the projection too.
+            \App\Support\ProjectionCache::bump();
             $this->error('❌ Import failed: ' . $e->getMessage());
             Log::error('OSIS Import Error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return 1;
@@ -102,18 +140,40 @@ class ImportOsisCommand extends Command
         $this->info('📖 Loading XML file...');
 
         $this->doc = new DOMDocument();
-        $this->doc->preserveWhiteSpace = false;
-        $this->doc->formatOutput = true;
+        // Keep the source's own whitespace and never pretty-print: stored fragments used to be
+        // re-indented ("LORD ," in 307 verses) and whitespace-only text nodes - the spaces BETWEEN
+        // words - were dropped, then guessed back by regexes that got it wrong ("( he said").
+        $this->doc->preserveWhiteSpace = true;
+        $this->doc->formatOutput = false;
 
-        // Load with error handling
-        libxml_use_internal_errors(true);
-        if (! $this->doc->load($file)) {
-            $errors = libxml_get_errors();
-            throw new Exception('XML parsing failed: ' . implode(', ', array_map(fn ($e) => $e->message, $errors)));
+        // Hold the editor's sidecar lock (shared) while reading, so a save cannot rename a new
+        // version into place mid-read. Only around load(): holding it for the whole import would
+        // make editor saves time out ("busy"). The lock file exists only for files the editor
+        // writes; fixtures and copies are read without it.
+        $lock = file_exists($file . '.lock') ? @fopen($file . '.lock', 'r') : false;
+        if ($lock) {
+            flock($lock, LOCK_SH);
+        }
+
+        try {
+            libxml_use_internal_errors(true);
+            if (! $this->doc->load($file)) {
+                $errors = libxml_get_errors();
+                throw new Exception('XML parsing failed: ' . implode(', ', array_map(fn ($e) => $e->message, $errors)));
+            }
+        } finally {
+            if ($lock) {
+                flock($lock, LOCK_UN);
+                fclose($lock);
+            }
         }
 
         $this->xpath = new DOMXPath($this->doc);
         $this->xpath->registerNamespace('osis', 'http://www.bibletechnologies.net/2003/OSIS/namespace');
+
+        if ($this->xpath->query('//osis:verse[@sID]')->length === 0 && $this->xpath->query('//osis:verse[@osisID]')->length > 0) {
+            throw new Exception('Contained-format OSIS (<verse osisID="...">text</verse>) is not supported; only milestone verses (sID/eID). Nothing was projected.');
+        }
 
         $this->info('✅ XML loaded successfully');
     }
@@ -237,6 +297,10 @@ class ImportOsisCommand extends Command
 
         foreach ($existingBooks as $book) {
             $this->books[$book->osis_id] = $book->id;
+        }
+
+        if ($this->books === []) {
+            throw new Exception('No books in the database - seed them first (php artisan db:seed). Nothing was projected.');
         }
 
         // Verify that the OSIS file contains the expected books
@@ -414,14 +478,43 @@ class ImportOsisCommand extends Command
         $bar = $this->output->createProgressBar($totalVerses);
         $bar->start();
 
+        // One short IMMEDIATE transaction per chapter: a crash can no longer leave a chapter
+        // half-purged, and readers (WAL) are never blocked for longer than one chapter's write.
         $processed = 0;
-        foreach ($verses as $verseElement) {
-            $this->processVerse($verseElement);
-            $processed++;
+        $openChapter = null;
 
-            if ($processed % 100 === 0) {
-                $bar->advance(100);
+        try {
+            foreach ($verses as $verseElement) {
+                $osisId = $verseElement->getAttribute('osisID');
+                if ($osisId && $this->inScope($osisId)) {
+                    $chapterRef = implode('.', array_slice(explode('.', $osisId), 0, 2));
+                    if ($chapterRef !== $openChapter) {
+                        if ($openChapter !== null) {
+                            DB::commit();
+                        }
+                        DB::beginTransaction();
+                        $openChapter = $chapterRef;
+                    }
+                }
+
+                $this->processVerse($verseElement);
+                $processed++;
+
+                if ($processed % 100 === 0) {
+                    $bar->advance(100);
+                }
             }
+
+            if ($openChapter !== null) {
+                DB::commit();
+                $openChapter = null;
+            }
+        } catch (\Throwable $e) {
+            if ($openChapter !== null) {
+                DB::rollBack();
+            }
+
+            throw $e;
         }
 
         $bar->finish();
@@ -610,8 +703,12 @@ class ImportOsisCommand extends Command
      */
     private function purgeChapterProjection(int $chapterId): void
     {
+        // The book's main title also lives on chapter 1 with verse_id = NULL, but only the book
+        // pass rebuilds it - a chapter-scoped run (every editor save) used to delete it for good.
         foreach (self::CHAPTER_PROJECTION_TABLES as $table) {
-            DB::table($table)->where('chapter_id', $chapterId)->whereNull('verse_id')->delete();
+            DB::table($table)->where('chapter_id', $chapterId)->whereNull('verse_id')
+                ->where(fn ($q) => $q->whereNull('title_type')->orWhere('title_type', '<>', 'main'))
+                ->delete();
         }
     }
 
@@ -641,6 +738,8 @@ class ImportOsisCommand extends Command
         $chapterRef = $bookOsis . '.' . $chapterNum;
         $chapterId = $this->chapters[$chapterRef] ?? null;
         if (! $chapterId) {
+            $this->skipped['no chapter in database'][] = $osisId;
+
             return;
         }
 
@@ -650,6 +749,10 @@ class ImportOsisCommand extends Command
             if ($this->currentChapterId && $this->currentParagraphStart !== null && ! empty($this->currentParagraphVerses)) {
                 $this->saveParagraph($this->currentChapterId, $this->currentParagraphStart, $this->currentParagraphVerses);
             }
+
+            // Paragraphs are rebuilt from the source for the whole chapter; drop the old ones so
+            // a moved pilcrow cannot leave overlapping paragraphs behind.
+            DB::table('paragraphs')->where('chapter_id', $chapterId)->delete();
 
             // Reset for new chapter
             $this->currentChapterId = $chapterId;
@@ -702,6 +805,11 @@ class ImportOsisCommand extends Command
         }
 
         $this->verseCount++;
+        $this->seenVerses[$osisId] = true;
+
+        if (! $content['ended']) {
+            $this->skipped['no end marker before the chapter ended'][] = $osisId;
+        }
 
         // Check for paragraph markers in verse content BEFORE adding to current paragraph
         $hasNewParagraphMarker = preg_match('/<milestone[^>]*type="x-p"[^>]*marker="¶"[^>]*>/', $content['xml']);
@@ -794,25 +902,9 @@ class ImportOsisCommand extends Command
             $current = $current->parentNode;
         }
 
-        // If no explicit poetry structure found but this is a poetic book,
-        // create basic poetry structure
-        if ($order === 1 && $isPoetryBook) {
-            $verseText = trim($verseElement->textContent);
-
-            // Create a basic poetry line for this verse
-            DB::table('poetry_structure')->insert([
-                'verse_id' => $verseId,
-                'structure_type' => 'l',
-                'level' => 1,
-                'line_text' => $verseText,
-                'line_order' => 1,
-                'attributes' => json_encode(['auto_generated' => true, 'book' => $bookOsis]),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-            $this->poetryLineCount++;
-        }
+        // (No fallback row any more: for poetic books without <l>/<lg> markup it used to insert a
+        // fabricated, empty "auto_generated" line per verse - 4,939 rows of noise. The KJV source
+        // has no poetry markup, so there is nothing to project.)
     }
 
     private function extractVerseTitles($verseElement, $verseId)
@@ -848,182 +940,162 @@ class ImportOsisCommand extends Command
         }
     }
 
+    /**
+     * Extract one milestone verse (<verse sID=X/> ... <verse eID=X/>) from the DOM.
+     *
+     * Verse markers are empty elements, so a verse is "everything between two markers" - and the
+     * KJV nests those markers inside <q> containers (Christ's speech). Two consequences the old
+     * sibling walk got wrong:
+     *  - QUOTE OPEN AT THE START. If the start marker sits inside <q who="Jesus"> (a discourse that
+     *    began in an earlier verse, e.g. John 3:10-21), the walk never sees the opening tag, so the
+     *    verse lost its red letters (897 verses). Each such ancestor is re-opened here as a
+     *    synthetic <q who="Jesus" marker=""> and closed where the real one closes.
+     *  - QUOTE CLOSES MID-VERSE. When the walk ran out of siblings inside that container it simply
+     *    stopped, truncating the verse (Matt 26:56 lost "Then all the disciples forsook him, and
+     *    fled."). It now climbs out of the container and carries on to the end marker.
+     * An inner Christ-quote inside an already-open one is unwrapped (children only), so fragments
+     * never nest <q> in <q> - the renderer would emit an extra </span> and one verse would get two
+     * red_letter_text rows.
+     *
+     * @return array{text: string, formatted: string, xml: string, ended: bool}
+     */
     private function extractVerseContent($verseElement)
     {
         $osisId = $verseElement->getAttribute('osisID');
 
-        // Use the original DOM traversal method which is much more efficient
-        $content = '';
+        $openQuotes = 0;
+        for ($a = $verseElement->parentNode; $a && $a->nodeType === XML_ELEMENT_NODE; $a = $a->parentNode) {
+            $name = $a->localName ?: $a->nodeName;
+            if (in_array($name, ['chapter', 'div', 'osisText', 'osis'], true)) {
+                break;
+            }
+            if ($name === 'q' && $a->getAttribute('who') === 'Jesus') {
+                $openQuotes++;
+            }
+        }
+
+        $content = str_repeat('<q who="Jesus" marker="">', $openQuotes);
         $current = $verseElement->nextSibling;
+        $container = $verseElement->parentNode;
+        $ended = false;
 
-        while ($current) {
-            // Check if this element contains the verse end marker (recursively)
+        while (true) {
+            if ($current === null) {
+                $containerName = $container ? ($container->localName ?: $container->nodeName) : null;
+                if ($container === null || in_array($containerName, ['chapter', 'div', 'osisText', 'osis'], true)) {
+                    break; // no end marker before the chapter ended: reported by the caller
+                }
+                if ($containerName === 'q' && $container->getAttribute('who') === 'Jesus' && $openQuotes > 0) {
+                    $content .= '</q>';
+                    $openQuotes--;
+                }
+                $current = $container->nextSibling;
+                $container = $container->parentNode;
+
+                continue;
+            }
+
             if ($current->nodeType === XML_ELEMENT_NODE) {
-                $nodeName = $current->localName ?: $current->nodeName;
+                $name = $current->localName ?: $current->nodeName;
 
-                // Check if this is the verse end marker
-                if ($nodeName === 'verse' && $current->getAttribute('eID') === $osisId) {
+                if ($name === 'verse' && $current->getAttribute('eID') === $osisId) {
+                    $ended = true;
                     break;
                 }
 
-                // Check if the verse end marker is nested inside this element
+                $isInnerQuote = $name === 'q' && $current->getAttribute('who') === 'Jesus' && $openQuotes > 0;
+
                 if ($this->containsVerseEndMarker($current, $osisId)) {
-                    // Extract content up to the verse end marker
-                    $content .= $this->extractContentUpToEndMarker($current, $osisId);
+                    $part = $this->extractContentUpToEndMarker($current, $osisId);
+                    if ($isInnerQuote) {
+                        $part = preg_replace('/^<q\b[^>]*>|<\/q>$/', '', $part);
+                    }
+                    $content .= $part;
+                    $ended = true;
                     break;
                 }
 
-                // If no end marker found in this element, add the whole element
-                $content .= $this->doc->saveXML($current);
+                $content .= $isInnerQuote ? $this->innerXml($current) : $this->doc->saveXML($current);
             } elseif ($current->nodeType === XML_TEXT_NODE) {
-                $content .= $current->textContent;
+                $content .= $this->doc->saveXML($current); // escaped, unlike textContent
             }
 
             $current = $current->nextSibling;
         }
 
-        // Special handling for verses that have incomplete content due to complex XML structure
-        // Only apply this fix for specific problematic verses to avoid performance impact
-        $problematicVerses = ['Matt.9.6']; // Add other problematic verses here if needed
-
-        if (in_array($osisId, $problematicVerses)) {
-            $plainText = $this->extractPlainTextWithSpacing($content);
-
-            // If the extracted text is suspiciously short, try the line-based extraction as fallback
-            if (strlen(trim($plainText)) < 100) {
-                $fixedContent = $this->extractVerseContentFromLine($osisId);
-                if (!empty($fixedContent)) {
-                    $content = $fixedContent;
-                }
-            }
-        }
-
-        // Fix spacing issues when extracting plain text
-        $plainText = $this->extractPlainTextWithSpacing($content);
-        $formattedText = $this->formatToHTML($content);
+        $content .= str_repeat('</q>', $openQuotes);
 
         return [
-            'text' => trim($plainText),
-            'formatted' => trim($formattedText),
+            'text' => trim($this->extractPlainTextWithSpacing($content)),
+            'formatted' => trim($this->formatToHTML($content)),
             'xml' => trim($content),
+            'ended' => $ended,
         ];
     }
 
-    private function extractVerseContentFromLine($osisId)
+    private function innerXml(\DOMNode $node): string
     {
-        // This method is only called for specific problematic verses
-        static $xmlLines = null;
-
-        // Cache the XML lines on first call
-        if ($xmlLines === null) {
-            $xmlString = $this->doc->saveXML();
-            $xmlLines = explode("\n", $xmlString);
+        $xml = '';
+        foreach ($node->childNodes as $child) {
+            $xml .= $this->doc->saveXML($child);
         }
 
-        foreach ($xmlLines as $line) {
-            if (strpos($line, 'osisID="' . $osisId . '"') !== false &&
-                strpos($line, 'sID="' . $osisId . '"') !== false) {
-
-                // Extract content between sID and eID markers
-                $startPattern = '/<verse osisID="' . preg_quote($osisId, '/') . '" sID="' . preg_quote($osisId, '/') . '"\/>/';
-                $endPattern = '/<verse eID="' . preg_quote($osisId, '/') . '"\/>/';
-
-                if (preg_match($startPattern, $line, $startMatch, PREG_OFFSET_CAPTURE) &&
-                    preg_match($endPattern, $line, $endMatch, PREG_OFFSET_CAPTURE)) {
-
-                    $startPos = $startMatch[0][1] + strlen($startMatch[0][0]);
-                    $endPos = $endMatch[0][1];
-                    return substr($line, $startPos, $endPos - $startPos);
-                }
-                break;
-            }
-        }
-
-        return '';
+        return $xml;
     }
 
     private function containsVerseEndMarker($element, $osisId)
     {
-        // Check if this element or any of its descendants contains the verse end marker
-        $xpath = new DOMXPath($this->doc);
-        $xpath->registerNamespace('osis', 'http://www.bibletechnologies.net/2003/OSIS/namespace');
-
-        // Create a temporary document with just this element to search within it
-        $tempDoc = new DOMDocument();
-        $tempElement = $tempDoc->importNode($element, true);
-        $tempDoc->appendChild($tempElement);
-
-        $tempXpath = new DOMXPath($tempDoc);
-        $tempXpath->registerNamespace('osis', 'http://www.bibletechnologies.net/2003/OSIS/namespace');
-
-        $endMarkers = $tempXpath->query('.//verse[@eID="' . $osisId . '"] | .//osis:verse[@eID="' . $osisId . '"]');
-
-        return $endMarkers->length > 0;
+        // Relative XPath on the live document. The previous version deep-copied every sibling into
+        // a temporary document per call - quadratic inside long discourses (Matt 5-7 is one <q>).
+        return $this->xpath
+            ->query('.//*[local-name()="verse"][@eID="' . $osisId . '"]', $element)
+            ->length > 0;
     }
 
     private function extractContentUpToEndMarker($element, $osisId)
     {
-        // Clone the element to avoid modifying the original
-        $clonedElement = $element->cloneNode(true);
-
-        // Find and remove the verse end marker and everything after it
-        $xpath = new DOMXPath($this->doc);
-        $xpath->registerNamespace('osis', 'http://www.bibletechnologies.net/2003/OSIS/namespace');
-
-        // Create a temporary document for processing
+        // Clone into a temporary document and cut the clone at the end marker
         $tempDoc = new DOMDocument();
-        $tempElement = $tempDoc->importNode($clonedElement, true);
+        $tempElement = $tempDoc->importNode($element->cloneNode(true), true);
         $tempDoc->appendChild($tempElement);
 
-        $tempXpath = new DOMXPath($tempDoc);
-        $tempXpath->registerNamespace('osis', 'http://www.bibletechnologies.net/2003/OSIS/namespace');
-
-        // Find the verse end marker
-        $endMarkers = $tempXpath->query('.//verse[@eID="' . $osisId . '"] | .//osis:verse[@eID="' . $osisId . '"]');
+        $endMarkers = (new DOMXPath($tempDoc))->query('.//*[local-name()="verse"][@eID="' . $osisId . '"]');
 
         if ($endMarkers->length > 0) {
             $endMarker = $endMarkers->item(0);
 
-            // Remove the end marker and everything after it in the same parent
-            $parent = $endMarker->parentNode;
-            $toRemove = [];
-            $found = false;
-
-            foreach ($parent->childNodes as $child) {
-                if ($found) {
-                    $toRemove[] = $child;
-                } elseif ($child === $endMarker) {
-                    $toRemove[] = $child;
-                    $found = true;
+            // Remove everything after the end marker at every level up to the clone's root (the
+            // marker may be nested), then the marker itself.
+            for ($node = $endMarker; $node !== $tempElement; $node = $node->parentNode) {
+                while ($node->nextSibling) {
+                    $node->parentNode->removeChild($node->nextSibling);
                 }
             }
-
-            foreach ($toRemove as $node) {
-                $parent->removeChild($node);
-            }
+            $endMarker->parentNode->removeChild($endMarker);
         }
 
-        return $tempDoc->saveXML($tempElement);
+        // A standalone document declares the OSIS default namespace on its root; the source
+        // fragment never had it, and regexes such as /<q\s+who=/ then failed to match it.
+        return preg_replace('/\s+xmlns(:\w+)?="[^"]*"/', '', $tempDoc->saveXML($tempElement));
     }
 
+    /**
+     * Scripture text only: study notes are apparatus, not text (they were appended to 5,844
+     * verses and indexed for search). Spacing comes from the source itself (preserveWhiteSpace);
+     * a self-closing <w/> is sometimes the only separator between two words, so it becomes a space.
+     */
     private function extractPlainTextWithSpacing($content)
     {
-        // Replace word element boundaries with spaces to preserve word separation
-        $text = $content;
-
-        // Add space before each opening <w> tag (except the first one)
-        $text = preg_replace('/(?<!^)(<w[^>]*>)/', ' $1', $text);
-
-        // Add space after each closing </w> tag, but NOT before punctuation
-        $text = preg_replace('/(<\/w>)(?![.,:;!?\'")\]\s\-]|$)/', '$1 ', $text);
-
-        // Now strip all tags
+        $text = $this->removeNotes($content);
+        $text = preg_replace('/<w\b[^>]*\/>/', ' ', $text);
         $text = strip_tags($text);
-
-        // Clean up multiple spaces
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_XML1, 'UTF-8');
         $text = preg_replace('/\s+/', ' ', $text);
+        // ...but a <w/> right before punctuation or right after an opening bracket must not leave
+        // a space there ("said , Who" Matt 5:31, "( Yea" Luke 2:35).
+        $text = preg_replace('/\s+([,.;:!?)\]])/', '$1', $text);
 
-        return $text;
+        return preg_replace('/([(\[])\s+/', '$1', $text);
     }
 
     private function processVerseElements($verseElement, $verseId, $xmlContent)
@@ -1163,7 +1235,10 @@ class ImportOsisCommand extends Command
         DB::table('divine_names')->insert([
             'verse_id' => $verseId,
             'displayed_text' => $text,
-            'original_name' => 'YHWH',
+            // The source does not say which name underlies a given <divineName> ("LORD" vs "God"
+            // vs "Lord's"); recording 'YHWH' for all 6,952 asserted a falsehood. Keep the type
+            // attribute if the source has one, else leave it unknown.
+            'original_name' => $element->getAttribute('type') ?: '',
             'attributes' => json_encode($this->getElementAttributes($element)),
             'created_at' => now(),
             'updated_at' => now(),
@@ -1294,6 +1369,11 @@ class ImportOsisCommand extends Command
     {
         $html = $content;
 
+        // A self-closing <w/> (Strong's number of an untranslated word) can be the only separator
+        // between two words (Matt 12:31 "<w>but</w><w .../>the").
+        $html = preg_replace('/<w\b[^>]*\/>/', ' ', $html);
+        $html = preg_replace('/<milestone\b[^>]*\/?>/', '', $html);
+
         $html = $this->formatTitles($html);
         $html = $this->formatPoetry($html);
         $html = $this->formatCaesura($html);
@@ -1303,6 +1383,10 @@ class ImportOsisCommand extends Command
         $html = $this->removeWordMarkup($html);
         $html = $this->addSpacing($html);
         $html = $this->removeNotes($html);
+        // KJV sets inscriptions (Exod 28:36, Dan 5:25) in small capitals; <foreign>/<seg> only wrap text.
+        $html = preg_replace('/<inscription\b[^>]*>/', '<span style="font-variant: small-caps;">', $html);
+        $html = str_replace('</inscription>', '</span>', $html);
+        $html = preg_replace('/<\/?(?:foreign|seg)\b[^>]*>/', '', $html);
         $html = $this->cleanupFormatting($html);
 
         return $html;
@@ -1360,26 +1444,12 @@ class ImportOsisCommand extends Command
      */
     private function formatRedLetterText($html)
     {
-        // First, handle the specific malformed case in Matt.9.6 where there's a stray </q> tag
-        // This happens because the XML is missing the opening <q> tag for the first Jesus speech
-        $html = preg_replace_callback('/^(.*?),<\/q>\s*(\([^)]+\))\s*(<q\s+who="Jesus"[^>]*>.*?<\/q>)/s', function($matches) {
-            $firstSpeech = $matches[1];
-            $narrative = $matches[2];
-            $secondSpeech = $matches[3];
-
-            // Wrap the first speech in red letter formatting
-            $firstSpeech = '<span class="text-red-600 dark:text-red-400 font-medium">' . $firstSpeech . ',</span>';
-
-            // Process the second speech normally
-            $secondSpeech = preg_replace_callback('/<q\s+who="Jesus"[^>]*>(.*?)<\/q>/s', function($speechMatches) {
-                return $this->processJesusQuoteContent($speechMatches[1]);
-            }, $secondSpeech);
-
-            return $firstSpeech . ' ' . $narrative . ' ' . $secondSpeech;
-        }, $html);
-
+        // (The Matt 9:6 special case that lived here is gone: the extractor now closes and re-opens
+        // quotes correctly, so every fragment carries balanced <q> pairs.)
         // Handle normal Jesus quotes (this will process any remaining <q who="Jesus"> tags)
-        $html = preg_replace_callback('/<q\s+who="Jesus"[^>]*>(.*?)<\/q>/s', function($matches) {
+        // \b...\bwho=: matches whatever attribute order/namespace declaration the tag carries
+        // (279 verses stored a raw <q xmlns=... who="Jesus"> the old /<q\s+who=/ could not match).
+        $html = preg_replace_callback('/<q\b[^>]*\bwho="Jesus"[^>]*>(.*?)<\/q>/s', function ($matches) {
             return $this->processJesusQuoteContent($matches[1]);
         }, $html);
 
@@ -1468,8 +1538,11 @@ class ImportOsisCommand extends Command
 
         // Clean up multiple spaces
         $html = preg_replace('/\s+/', ' ', $html);
+        // No space before punctuation or after an opening bracket, even across closing tags
+        // (a <w/> separator becomes a space; see formatToHTML).
+        $html = preg_replace('/\s+((?:<\/(?:span|em)>)*)([,.;:!?)\]])/', '$1$2', $html);
 
-        return $html;
+        return preg_replace('/([(\[])\s+/', '$1', $html);
     }
 
     private function getElementAttributes($element)
@@ -1591,6 +1664,69 @@ class ImportOsisCommand extends Command
     /**
      * Process all book titles after chapters have been imported
      */
+    private function resetRunState(): void
+    {
+        $this->versionId = null;
+        $this->books = [];
+        $this->chapters = [];
+        $this->verseCount = $this->wordElementCount = $this->translatorChangeCount = $this->divineNameCount = 0;
+        $this->redLetterCount = $this->titleCount = $this->poetryLineCount = $this->paragraphCount = 0;
+        $this->xpath = null;
+        $this->doc = null; // frees the previous run's DOM (~400MB for the full KJV)
+        $this->currentParagraphStart = null;
+        $this->currentParagraphVerses = [];
+        $this->currentChapterId = null;
+        $this->purgedChapters = [];
+        $this->scope = null;
+        $this->skipped = [];
+        $this->seenVerses = [];
+    }
+
+    /**
+     * Delete verses (and their derived rows) that are in scope but no longer in the source.
+     *
+     * Without this a verse removed from the XML stayed in the database for ever. Guarded: a run
+     * that saw no verses in scope (wrong file, wrong scope) touches nothing, and removing more
+     * than 50 verses needs --allow-deletions.
+     */
+    private function removeVersesMissingFromSource(): void
+    {
+        if ($this->seenVerses === []) {
+            throw new Exception('No verses in scope were found in the source file; refusing to touch the database.');
+        }
+
+        $query = DB::table('verses')
+            ->join('chapters', 'chapters.id', '=', 'verses.chapter_id')
+            ->where('chapters.version_id', $this->versionId);
+        if ($this->scope !== null) {
+            $query->where('verses.osis_id', 'like', $this->scope . '.%');
+        }
+
+        $stale = $query->pluck('verses.id', 'verses.osis_id')
+            ->reject(fn ($id, $osisId) => isset($this->seenVerses[$osisId]));
+
+        if ($stale->isEmpty()) {
+            return;
+        }
+
+        if ($stale->count() > 50 && ! $this->option('allow-deletions')) {
+            throw new Exception("{$stale->count()} verses in scope are not in the source (e.g. {$stale->keys()->take(5)->implode(', ')}); re-run with --allow-deletions if that is intended.");
+        }
+
+        DB::transaction(function () use ($stale) {
+            foreach (array_chunk($stale->values()->all(), 500) as $ids) {
+                foreach (self::VERSE_PROJECTION_TABLES as $table) {
+                    DB::table($table)->whereIn('verse_id', $ids)->delete();
+                }
+                DB::table('paragraphs')->whereIn('start_verse_id', $ids)->delete();
+                DB::table('paragraphs')->whereIn('end_verse_id', $ids)->delete();
+                DB::table('verses')->whereIn('id', $ids)->delete();
+            }
+        });
+
+        $this->warn("🗑️  Removed {$stale->count()} verse(s) no longer in the source: " . $stale->keys()->take(10)->implode(', '));
+    }
+
     private function processAllBookTitles()
     {
         if (! $this->scopeCoversWholeBooks()) {
@@ -1671,6 +1807,7 @@ class ImportOsisCommand extends Command
         // For book titles, we'll associate them with the first chapter of the book
         $firstChapter = DB::table('chapters')
             ->where('book_id', $bookId)
+            ->where('version_id', $this->versionId)
             ->orderBy('chapter_number')
             ->first();
 
@@ -1680,6 +1817,9 @@ class ImportOsisCommand extends Command
         // once so a re-run replaces them instead of appending.
         if ($chapterId) {
             $this->purgeChapterProjectionOnce($chapterId);
+            // The chapter purge deliberately keeps 'main' titles (see purgeChapterProjection), so
+            // replace this book's own main title here.
+            DB::table('titles')->where('chapter_id', $chapterId)->whereNull('verse_id')->where('title_type', $titleType)->delete();
         }
 
         // Store title in database

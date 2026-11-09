@@ -171,20 +171,10 @@ class VerseTitleManager extends Component
      */
     private function forgetChapterCache(string $chapterOsisRef): void
     {
-        [$book, $chapter] = array_pad(explode('.', $chapterOsisRef), 2, null);
-
-        if ($book === null || $chapter === null) {
-            return;
-        }
-
-        foreach ([(int) $chapter - 1, (int) $chapter, (int) $chapter + 1] as $n) {
-            if ($n < 1) {
-                continue;
-            }
-
-            Cache::forget("chapter_verses_{$book}_{$n}");
-            Cache::forget("chapter_data_{$book}_{$n}");
-        }
+        // Projection caches are versioned (App\Support\ProjectionCache): one bump invalidates
+        // every chapter, id and book entry derived from the previous projection, including the
+        // neighbours' cached payloads that embed this chapter's text.
+        \App\Support\ProjectionCache::bump();
     }
 
     /**
@@ -414,6 +404,7 @@ class VerseTitleManager extends Component
             $exit = Artisan::call('osis:import', [
                 'file' => $this->getXmlPathForCurrentTranslation(),
                 '--chapter' => $chapterOsisRef,
+                '--production' => true, // the editor only ever re-projects the live database
             ]);
 
             if ($exit !== 0) {

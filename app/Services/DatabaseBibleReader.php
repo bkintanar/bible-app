@@ -29,7 +29,7 @@ class DatabaseBibleReader implements BibleReaderInterface
      */
     private function getBibleVersion(): ?BibleVersion
     {
-        $cacheKey = "bible_version_model_{$this->versionKey}";
+        $cacheKey = \App\Support\ProjectionCache::key("bible_version_model_{$this->versionKey}");
 
         if (Cache::has($cacheKey)) {
             return Cache::get($cacheKey);
@@ -46,7 +46,7 @@ class DatabaseBibleReader implements BibleReaderInterface
      */
     public function getBooks(): Collection
     {
-        $cacheKey = "books_{$this->versionKey}";
+        $cacheKey = \App\Support\ProjectionCache::key("books_{$this->versionKey}");
 
         if (Cache::has($cacheKey)) {
             return Cache::get($cacheKey);
@@ -76,17 +76,17 @@ class DatabaseBibleReader implements BibleReaderInterface
      */
     public function getChapters(string $bookOsisId): Collection
     {
-        $normalizedBookOsisId = strtoupper($bookOsisId);
-        $cacheKey = "chapters_{$normalizedBookOsisId}_{$this->versionKey}";
+        // Resolve the canonical book first: the cache key used to be built from raw input and an
+        // EMPTY result was cached too, so any string created a cache row (unbounded growth).
+        $canonical = $this->bibleVersion ? $this->canonicalBookOsisId($bookOsisId) : null;
+        if ($canonical === null) {
+            return collect();
+        }
+
+        $cacheKey = \App\Support\ProjectionCache::key("chapters_{$canonical}_{$this->versionKey}");
 
         if (Cache::has($cacheKey)) {
             return Cache::get($cacheKey);
-        }
-
-        if (! $this->bibleVersion) {
-            $emptyCollection = collect();
-            Cache::put($cacheKey, $emptyCollection, 3600);
-            return $emptyCollection;
         }
 
         $chapters = Chapter::with('book')
@@ -534,7 +534,7 @@ class DatabaseBibleReader implements BibleReaderInterface
             return null;
         }
 
-        $cacheKey = "chapter_id_{$this->versionKey}_{$normalised}";
+        $cacheKey = \App\Support\ProjectionCache::key("chapter_id_{$this->versionKey}_{$normalised}");
 
         return Cache::remember($cacheKey, 3600, function () use ($normalised) {
             return Chapter::where('osis_id', $normalised)

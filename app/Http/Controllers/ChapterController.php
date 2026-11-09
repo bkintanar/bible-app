@@ -44,7 +44,7 @@ class ChapterController extends Controller
      */
     private function cacheChapterData(string $bookOsisId, int $chapterNumber): void
     {
-        $cacheKey = "chapter_data_{$bookOsisId}_{$chapterNumber}";
+        $cacheKey = \App\Support\ProjectionCache::key("chapter_data_{$bookOsisId}_{$chapterNumber}");
 
         if (! Cache::has($cacheKey)) {
             Cache::put($cacheKey, [
@@ -84,7 +84,7 @@ class ChapterController extends Controller
      */
     private function cacheChapterVerses(string $bookOsisId, int $chapterNumber): void
     {
-        $cacheKey = "chapter_verses_{$bookOsisId}_{$chapterNumber}";
+        $cacheKey = \App\Support\ProjectionCache::key("chapter_verses_{$bookOsisId}_{$chapterNumber}");
 
         if (! Cache::has($cacheKey)) {
             try {
@@ -131,7 +131,7 @@ class ChapterController extends Controller
      */
     public static function getCachedChapterVerses(string $bookOsisId, int $chapterNumber): ?array
     {
-        $cacheKey = "chapter_verses_{$bookOsisId}_{$chapterNumber}";
+        $cacheKey = \App\Support\ProjectionCache::key("chapter_verses_{$bookOsisId}_{$chapterNumber}");
         $cached = Cache::get($cacheKey);
 
         // An empty payload is never a valid chapter. Treat it as a miss: the reader trusts this
@@ -156,8 +156,9 @@ class ChapterController extends Controller
             // This would need a more sophisticated cache tagging system
             \Log::debug("🗑️ Requested cache clear for book: {$bookOsisId}");
         } else {
-            // Clear all chapter cache
-            Cache::flush();
+            // Invalidate every projection-derived entry (never Cache::flush(): it would also wipe
+            // rate-limiter counters and job locks that share the store).
+            \App\Support\ProjectionCache::bump();
             \Log::debug('🗑️ Cleared all chapter cache');
         }
     }

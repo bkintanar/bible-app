@@ -65,7 +65,7 @@ try:
         ("titles extra in db", r"extra in db\s*:\s*(\d+)"),
         ("titles with wrong canonical flag", r"wrong canonical flag:\s*(\d+)"),
         ("chapters whose verse count differs", r"chapters whose verse count differs xml vs db:\s*(\d+)"),
-        ("red_letter_text false-positive verses", r"FALSE POSITIVE verses \(db rows, no <q> start in xml\):\s*(\d+)"),
+        ("red_letter_text false-positive verses", r"FALSE POSITIVE verses \(db rows, no words of Christ in xml\):\s*(\d+)"),
     ]:
         v = cmp_count(pat)
         gate(label, v, v == 0)

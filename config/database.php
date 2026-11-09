@@ -46,6 +46,10 @@ return [
             'busy_timeout' => env('DB_BUSY_TIMEOUT', 10000),
             'journal_mode' => env('DB_JOURNAL_MODE', 'WAL'),
             'synchronous' => env('DB_SYNCHRONOUS', 'NORMAL'),
+            // BEGIN IMMEDIATE: take the write lock when the transaction starts. A DEFERRED
+            // transaction that reads first and writes later fails at once with SQLITE_BUSY
+            // (busy_timeout cannot help) if another writer committed in between.
+            'transaction_mode' => 'IMMEDIATE',
         ],
 
         'mysql' => [

@@ -153,10 +153,12 @@ d_r = dict(q('''select v.osis_id, count(*) from db.red_letter_text r join db.ver
 print('  xml <q who=Jesus> starts:', sum(x_q.values()), 'in', len(x_q), 'verses')
 print('  xml verses containing words of Christ (incl. continuation):', len(x_j))
 print('  db red_letter_text rows:', sum(d_r.values()), 'in', len(d_r), 'verses')
-fp = {k: v for k, v in d_r.items() if k not in x_q}
+# A red row is false only if the verse holds no words of Christ at all; continuation verses inside
+# a multi-verse quote legitimately have rows without a <q> start of their own.
+fp = {k: v for k, v in d_r.items() if k not in x_j}
 fn = {k: v for k, v in x_q.items() if d_r.get(k, 0) < v}
 over = {k: (x_q[k], v) for k, v in d_r.items() if k in x_q and v > x_q[k]}
-print('  FALSE POSITIVE verses (db rows, no <q> start in xml):', len(fp), list(fp.items())[:10])
+print('  FALSE POSITIVE verses (db rows, no words of Christ in xml):', len(fp), list(fp.items())[:10])
 print('  verses with fewer db rows than <q> starts:', len(fn), [(k, v, d_r.get(k, 0)) for k, v in list(fn.items())[:10]])
 print('  verses with more db rows than <q> starts:', len(over), list(over.items())[:10])
 cont = [k for k in x_j if k not in x_q]

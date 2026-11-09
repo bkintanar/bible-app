@@ -64,7 +64,7 @@ class CacheAdjacentChaptersJob implements ShouldQueue
      */
     private function cacheChapterVerses(BibleService $bibleService, string $bookOsisId, int $chapterNumber): void
     {
-        $cacheKey = "chapter_verses_{$bookOsisId}_{$chapterNumber}";
+        $cacheKey = \App\Support\ProjectionCache::key("chapter_verses_{$bookOsisId}_{$chapterNumber}");
 
         // Skip if already cached
         if (\Cache::has($cacheKey)) {
