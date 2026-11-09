@@ -86,6 +86,40 @@ it('does not let Christ\'s red span in Matt 9:6 bleed into 9:7', function () {
         ->toBe(substr_count(verseRow('Matt.9.6')->formatted_text, '</span>'));
 });
 
+/** Plain text of everything rendered inside red-letter spans of a stored fragment. */
+function redText(?string $html): string
+{
+    $doc = new DOMDocument();
+    @$doc->loadHTML('<?xml encoding="UTF-8"><div>' . $html . '</div>');
+    $text = '';
+    foreach ((new DOMXPath($doc))->query('//*[contains(@class, "text-red-600")]') as $node) {
+        $text .= ' ' . $node->textContent;
+    }
+
+    return plain($text);
+}
+
+// --- attribution matches the KJV red-letter text (Task 2.4, verified against eBible.org) --------
+
+it('does not attribute other speakers\' words to Christ', function (string $osisId) {
+    projectFixture();
+
+    expect(redRows($osisId))->toBe(0);
+    expect(verseRow($osisId)->formatted_text)->not->toContain('text-red-600');
+})->with(['Matt.28.5', 'Matt.28.6', 'Matt.28.7', 'Matt.21.26', 'Matt.21.41', 'Matt.16.20', 'Matt.15.33', 'Matt.19.3', 'Matt.20.34']);
+
+it('ends Christ\'s words before the narration that follows them', function (string $osisId, string $narration) {
+    projectFixture();
+
+    expect(redText(verseRow($osisId)->formatted_text))->not->toContain($narration);
+    expect(plain(verseRow($osisId)->text))->toContain($narration);
+})->with([
+    ['Matt.16.4', 'And he left them, and departed.'],
+    ['Matt.17.23', 'And they were exceeding sorry.'],
+    ['Matt.22.19', 'And they brought unto him a penny.'],
+    ['Matt.28.20', 'Amen.'],
+]);
+
 // --- idempotency and scope (TEST-2, TEST-4, PIPE-10/11) -----------------------------------------
 
 it('is idempotent across separate runs', function () {

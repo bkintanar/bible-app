@@ -22,7 +22,9 @@ for m in tok.finditer(data):
         depth -= 1
         if depth >= 1 and cur in hits:
             after_inner = cur
-    elif not s.startswith('<') and after_inner == cur and cur in hits and s.strip():
+        elif depth <= 0:
+            after_inner = None  # the outer quote closed too: later text is not inside any quote
+    elif not s.startswith('<') and depth >= 1 and after_inner == cur and cur in hits and s.strip():
         hits[cur].append(s.strip())
     elif s.startswith('<verse eID'):
         after_inner = None
