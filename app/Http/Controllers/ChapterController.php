@@ -105,6 +105,11 @@ class ChapterController extends Controller
                     $verses = $this->bibleService->getVersesParagraphStyle($chapterOsisRef);
                 }
 
+                // Never cache an empty result (see getCachedChapterVerses).
+                if ($verses->isEmpty()) {
+                    return;
+                }
+
                 // Cache the verses data
                 Cache::put($cacheKey, [
                     'verses' => $verses,
@@ -127,7 +132,16 @@ class ChapterController extends Controller
     public static function getCachedChapterVerses(string $bookOsisId, int $chapterNumber): ?array
     {
         $cacheKey = "chapter_verses_{$bookOsisId}_{$chapterNumber}";
-        return Cache::get($cacheKey);
+        $cached = Cache::get($cacheKey);
+
+        // An empty payload is never a valid chapter. Treat it as a miss: the reader trusts this
+        // cache for 24h, so a cached empty result made a real chapter 404 for a day (it is how
+        // 19 chapters of 1 Samuel .. 1 John stayed 404 after the lookup bug itself was fixed).
+        if (! is_array($cached) || collect($cached['verses'] ?? [])->isEmpty()) {
+            return null;
+        }
+
+        return $cached;
     }
 
     /**

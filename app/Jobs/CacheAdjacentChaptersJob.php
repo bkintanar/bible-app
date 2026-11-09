@@ -90,6 +90,11 @@ class CacheAdjacentChaptersJob implements ShouldQueue
                 $verses = $bibleService->getVersesParagraphStyle($chapterOsisRef);
             }
 
+            // Never cache an empty result: the reader would serve it as a 404 for 24h.
+            if ($verses->isEmpty()) {
+                return;
+            }
+
             // Cache the verses data for 24 hours
             \Cache::put($cacheKey, [
                 'verses' => $verses,
