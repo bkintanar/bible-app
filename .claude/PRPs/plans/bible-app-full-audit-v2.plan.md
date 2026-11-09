@@ -587,6 +587,10 @@ function projectFixture(string $name = 'mini-kjv'): void {
 | OD-8 | **Claude runs root-level commands** | All "(root, OD-8)" steps are executed by the implementer, each with its VALIDATE and a stated undo |
 | OD-1, OD-3, OD-4, OD-6, OD-9, OD-10, OD-11 | Not yet answered | Follow each row's *If unanswered* column below; OD-1 interim = **keep** `nativephp/mobile` (no removal without consent) |
 
+**Execution status**
+- **Task 0.1 — DONE (2026-11-10).** Snapshot `/var/backups/bible-app/pre-v2/bible-2026-11-10.sqlite` (integrity ok, 31,102 verses, 1,537 titles; single-file, journal_mode=delete) + `osis-2026-11-10.tgz` (all 3 XML). Commits `95daeb0` (Gen 33–35 titles), `87df4d6` (.gitignore), `7500ced` (this plan + tools) pushed; branch tracks `origin/feature/audit-remediation-phase-0`. **Not yet off-host** — copy `pre-v2/` off the box when 0.3's off-host target exists.
+- **Push credential GOTCHA (affects 3.4 and every push):** this host's SSH key and the *active* `gh` account are `b8-catch`, which has no write access to `bkintanar/bible-app`. Pushes were made once as `bkintanar` via a one-off credential helper (`gh auth token --user bkintanar`, HTTPS `insteadOf`), without switching the active `gh` account or changing git config. For the unattended nightly push in 3.4, add a **write-enabled deploy key** to `bkintanar/bible-app` (owner action on GitHub) and point `remote.origin.url` / an SSH `Host` alias at it.
+
 ## Open Decisions For The User
 
 | # | Decision | Recommendation | Blocks | If unanswered / if "keep" |
