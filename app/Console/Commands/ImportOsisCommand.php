@@ -1116,6 +1116,15 @@ class ImportOsisCommand extends Command
         foreach ($element->childNodes as $child) {
             if ($child->nodeType === XML_ELEMENT_NODE) {
                 $this->processSpecificElement($child, $verseId, $order);
+
+                // A <note> is apparatus: it becomes its own study_notes row, but the words inside
+                // it (translator changes, divine names) are not verse text and must not become
+                // verse-level rows. They were stored inconsistently (some notes' translator changes,
+                // every note's divine names).
+                if (($child->localName ?: $child->nodeName) === 'note') {
+                    continue;
+                }
+
                 $this->processElementsRecursively($child, $verseId, $order + 1);
             }
         }

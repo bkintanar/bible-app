@@ -77,6 +77,14 @@ try:
     m = re.search(r"docs matching Heb \(note marker\) \| (\d+)", fts)
     v = int(m.group(1)) if m else -1
     gate("FTS docs matching note marker 'Heb'", v, v == 0)
+    for label, pat in [("FTS docs matching note-only word 'midriff'", r"docs matching midriff \(note-only word\) \| (\d+)"),
+                       ("FTS docs matching title CSS 'uppercase'", r"docs matching uppercase \(title CSS\) \| (\d+)")]:
+        m = re.search(pat, fts)
+        v = int(m.group(1)) if m else -1
+        gate(label, v, v == 0)
+    m = re.search(r'phrase "all the disciples forsook him" \| (\d+)', fts)
+    v = int(m.group(1)) if m else -1
+    gate("FTS finds Matt 26:56 'all the disciples forsook him'", v, v == 1, "1")
 
     # --- scripture pipeline (truth vs real render code) ----------------------------
     sd = os.path.join(HERE, "scripture")
