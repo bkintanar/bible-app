@@ -21,6 +21,10 @@ cd "$APP"
 git diff --quiet assets/ || { echo "uncommitted OSIS edits in the live tree - commit them first"; exit 1; }
 echo "deploy: from $(git rev-parse --short HEAD) to $(git rev-parse --short "$REF")"
 git merge --ff-only "$REF"
+# Git (running as root) re-creates changed files as root:root 644. The editor writes the KJV source
+# as the app user, so restore that; the other OSIS files stay read-only (not projected).
+chown "$APPUSER:$APPUSER" assets/kjv.osis.xml && chmod 664 assets/kjv.osis.xml
+chown "root:$APPUSER" assets/asv.osis.xml assets/mao.osis.xml && chmod 644 assets/asv.osis.xml assets/mao.osis.xml
 
 composer install --no-interaction -o
 npm ci --no-audit --no-fund
