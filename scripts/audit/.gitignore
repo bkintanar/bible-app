@@ -1,0 +1,12 @@
+# outputs of the audit scripts (never commit)
+*.jsonl
+report.json
+red_status.tsv
+snap.*
+xml_*.sqlite
+dbcopy.sqlite
+*.html
+html/
+views/
+jar.*
+ref/

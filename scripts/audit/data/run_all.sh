@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Read-only data-integrity sweep: OSIS source vs SQLite projection.
-# Usage: run_all.sh [repo_dir] [osis_file]
+# Usage: run_all.sh [repo_dir] [osis_file] [db_path]
 # Takes a consistent snapshot via .backup from a -readonly connection, runs every check
 # against the snapshot (temp-schema objects only), then deletes the snapshot.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="${1:-/var/www/personal/bible-app}"
 OSIS="${2:-$REPO/assets/kjv.osis.xml}"
-DB="$REPO/database/bible_app.sqlite"
+DB="${3:-$REPO/database/bible_app.sqlite}"
 SNAP="$HERE/snap.$$.sqlite"
 XDB="$HERE/xml_extract.$$.sqlite"
 trap 'rm -f "$SNAP" "$SNAP"-shm "$SNAP"-wal "$XDB"' EXIT

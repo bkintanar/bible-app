@@ -5,10 +5,12 @@
  * The Strong's-OFF path needs \DB (red_letter_text) so it is approximated: text column = enhanceVerseText(formatted_text)
  * emulated by calling DatabaseBibleReader::cleanOsisMarkup via reflection.
  *
- * Usage: php sim_render.php /var/www/personal/bible-app out.jsonl
+ * Usage: php -d memory_limit=1G sim_render.php <app_root> out.jsonl [db_path]
+ *   app_root: whose render CODE is simulated; db_path defaults to <app_root>/database/bible_app.sqlite
  */
 $root = $argv[1];
 $out = fopen($argv[2], 'w');
+$dbPath = $argv[3] ?? ($root . '/database/bible_app.sqlite');
 require $root . '/vendor/autoload.php';
 
 $rc = new ReflectionClass(\App\Livewire\BibleChapter::class);
@@ -20,7 +22,7 @@ $rr = new ReflectionClass(\App\Services\DatabaseBibleReader::class);
 $reader = $rr->newInstanceWithoutConstructor();
 $clean = $rr->getMethod('cleanOsisMarkup');
 
-$pdo = new PDO('sqlite:file:' . $root . '/database/bible_app.sqlite?mode=ro', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+$pdo = new PDO('sqlite:file:' . $dbPath . '?mode=ro', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 $st = $pdo->query('select id, osis_id, verse_number, text, formatted_text, original_xml from verses order by id');
 while ($r = $st->fetch(PDO::FETCH_ASSOC)) {
     $offText = $clean->invoke($reader, $r['formatted_text'], true);       // what getVerses() puts in $verse['text']
