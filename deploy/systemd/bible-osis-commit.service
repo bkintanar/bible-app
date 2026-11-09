@@ -1,0 +1,16 @@
+[Unit]
+Description=Commit (and push) verse-title editor changes to the OSIS source of truth
+RequiresMountsFor=/var/www/personal/bible-app
+# Before the 03:30 backup, so the night's backup and git agree.
+Before=bible-backup.service
+
+[Service]
+Type=oneshot
+# root: the live tree and its .git are root-owned; the push key is root's.
+User=root
+WorkingDirectory=/var/www/personal/bible-app
+ExecStart=/var/www/personal/bible-app/deploy/bin/bible-osis-commit.sh
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only

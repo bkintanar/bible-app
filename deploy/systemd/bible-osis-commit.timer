@@ -1,0 +1,10 @@
+[Unit]
+Description=Nightly commit of verse-title editor changes
+
+[Timer]
+OnCalendar=*-*-* 03:15:00
+Persistent=true
+RandomizedDelaySec=60
+
+[Install]
+WantedBy=timers.target
