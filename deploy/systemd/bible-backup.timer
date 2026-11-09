@@ -1,0 +1,10 @@
+[Unit]
+Description=Run the bible-app backup nightly
+
+[Timer]
+OnCalendar=*-*-* 03:30
+Persistent=true
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target

@@ -115,7 +115,8 @@ APPUSER=www-data                           # becomes 'bible' after Task 4.7
 # visible text of a page (tags removed, NOT replaced by spaces, so run-together words stay detectable)
 vtext() { curl -s -H "$H" "http://127.0.0.1$1" | python3 -I -c 'import re,sys,html;print(html.unescape(re.sub(r"<[^>]+>","",sys.stdin.read())))'; }
 # guard before ANY test run or copy-import (run inside $DEV)
-devguard() { [ "$(pwd)" = "$DEV" ] && [ ! -f bootstrap/cache/config.php ] && grep -q 'name="DB_DATABASE" value=":memory:"' phpunit.xml && php artisan config:show database.connections.sqlite.database | grep -q "$DEV" || { echo "UNSAFE: not in dev worktree / config cached / DB not the copy"; return 1; }; }
+devguard() { [ "$(pwd)" = "$DEV" ] && [ ! -f bootstrap/cache/config.php ] && grep -q 'name="DB_DATABASE" value=":memory:"' phpunit.xml && php -r 'require "vendor/autoload.php"; $a=require "bootstrap/app.php"; $a->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap(); echo config("database.connections.sqlite.database");' | grep -q "^$DEV/" || { echo "UNSAFE: not in dev worktree / config cached / DB not the copy"; return 1; }; }
+# (artisan config:show prints paths relative to the project root, so it cannot be used for this check)
 ```
 
 ---
