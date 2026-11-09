@@ -386,9 +386,9 @@ class VerseTitleManager extends Component
      */
     private function getXmlPathForCurrentTranslation(): string
     {
-        $key = $this->currentTranslation['key'] ?? 'kjv';
-
-        return base_path("assets/{$key}.osis.xml");
+        // Same resolver as the writer (BibleService::getXmlPath), so the file written and the
+        // file re-projected can never differ; it also rejects a tampered key such as "../x".
+        return \App\Services\Osis\OsisSourcePath::for($this->currentTranslation['key'] ?? null);
     }
 
     /**

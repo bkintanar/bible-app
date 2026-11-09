@@ -388,15 +388,12 @@ class BibleService
     }
 
     /**
-     * Get XML file path for a given book
+     * OSIS source file for the current translation (one file holds every book).
+     *
+     * @throws \InvalidArgumentException when the translation key is malformed or not projected
      */
     public function getXmlPath(string $bookOsisId): string
     {
-        $currentTranslation = $this->getCurrentTranslation();
-        $translationKey = $currentTranslation['key'] ?? 'asv';
-
-        // For now, we'll use the full OSIS XML files in assets directory
-        // In a real implementation, you might want to split these by book
-        return base_path("assets/{$translationKey}.osis.xml");
+        return \App\Services\Osis\OsisSourcePath::for($this->getCurrentTranslation()['key'] ?? null);
     }
 }

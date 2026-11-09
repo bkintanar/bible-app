@@ -64,6 +64,37 @@ expect()->extend('toHaveKeys', function (array $keys, string $message = '') {
 |
 */
 
+/**
+ * Seed the books the importer requires (it does not create books itself).
+ */
+function seedBooks(): void
+{
+    test()->seed();
+}
+
+/**
+ * Run the REAL importer against an OSIS fixture into the test's in-memory database.
+ *
+ * setArtisan(null) gives every call a fresh command instance: Artisan::call reuses the cached
+ * instance, and ImportOsisCommand keeps per-run state in properties (TEST-4).
+ */
+function importOsis(string $file, array $options = [], int $expectedExit = 0): void
+{
+    app(\Illuminate\Contracts\Console\Kernel::class)->setArtisan(null);
+    test()->artisan('osis:import', array_merge(['file' => $file], $options))->assertExitCode($expectedExit);
+}
+
+function projectFixture(string $name = 'mini-kjv', array $options = []): void
+{
+    seedBooks();
+    importOsis(base_path("tests/Fixtures/{$name}.osis.xml"), $options);
+}
+
+function verseRow(string $osisId): ?object
+{
+    return \Illuminate\Support\Facades\DB::table('verses')->where('osis_id', $osisId)->first();
+}
+
 function createOsisReader(string $translation = 'kjv'): App\Services\OsisReader
 {
     $filePath = base_path("assets/{$translation}.osis.xml");
