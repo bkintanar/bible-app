@@ -5,7 +5,10 @@ namespace App\Console\Commands;
 use DOMXPath;
 use Exception;
 use DOMDocument;
+use App\Jobs\PublishChapterProjection;
 use Illuminate\Console\Command;
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -18,7 +21,8 @@ class ImportOsisCommand extends Command
         {--chapter= : Only project this chapter, as book.chapter (e.g. Gen.28)}
         {--verse= : Only project this verse, as book.chapter.verse (e.g. Gen.28.1)}
         {--production : Required to write the database when APP_ENV=production}
-        {--allow-deletions : Allow removing more than 50 verses that are no longer in the source}';
+        {--allow-deletions : Allow removing more than 50 verses that are no longer in the source}
+        {--lock-wait=60 : Seconds to wait for a running chapter publish to finish}';
     protected $description = 'Import OSIS XML file into the comprehensive Bible database';
 
     private $versionId;
@@ -83,6 +87,31 @@ class ImportOsisCommand extends Command
             return 1;
         }
 
+        // One projection at a time: a queued chapter publish (PublishChapterProjection) rebuilds the
+        // same FTS index. Its own osis:import subprocess inherits the job's lock instead.
+        $lock = null;
+
+        if (getenv(PublishChapterProjection::LOCK_HELD_ENV) !== '1') {
+            $lock = Cache::lock(PublishChapterProjection::lockKey(), 900);
+
+            try {
+                $lock->block(max(0, (int) $this->option('lock-wait')));
+            } catch (LockTimeoutException) {
+                $this->error('Another projection (a queued chapter publish) is running. Try again when the queue is idle.');
+
+                return 1;
+            }
+        }
+
+        try {
+            return $this->project($file, $chunkSize);
+        } finally {
+            $lock?->release();
+        }
+    }
+
+    private function project(string $file, int $chunkSize): int
+    {
         try {
             // Load and validate XML
             $this->loadXML($file);

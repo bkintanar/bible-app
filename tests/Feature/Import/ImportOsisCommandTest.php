@@ -203,3 +203,30 @@ it('refuses to write the database in production without --production', function 
     importOsis(base_path('tests/Fixtures/mini-kjv.osis.xml'), ['--production' => true], 0);
     expect(DB::table('verses')->count())->toBeGreaterThan(0);
 });
+
+it('waits for a running chapter publish instead of projecting alongside it', function () {
+    seedBooks();
+    $held = \Illuminate\Support\Facades\Cache::lock(\App\Jobs\PublishChapterProjection::lockKey(), 60);
+    expect($held->get())->toBeTrue();
+
+    importOsis(base_path('tests/Fixtures/mini-kjv.osis.xml'), ['--lock-wait' => 0], 1);
+    expect(\Illuminate\Support\Facades\DB::table('verses')->count())->toBe(0);
+
+    $held->release();
+    importOsis(base_path('tests/Fixtures/mini-kjv.osis.xml'));
+    expect(\Illuminate\Support\Facades\DB::table('verses')->count())->toBeGreaterThan(0);
+});
+
+it('runs under the publish job\'s lock when its parent job holds it', function () {
+    seedBooks();
+    $held = \Illuminate\Support\Facades\Cache::lock(\App\Jobs\PublishChapterProjection::lockKey(), 60);
+    $held->get();
+    putenv(\App\Jobs\PublishChapterProjection::LOCK_HELD_ENV . '=1');
+
+    try {
+        importOsis(base_path('tests/Fixtures/mini-kjv.osis.xml'), ['--lock-wait' => 0]);
+    } finally {
+        putenv(\App\Jobs\PublishChapterProjection::LOCK_HELD_ENV);
+        $held->release();
+    }
+});

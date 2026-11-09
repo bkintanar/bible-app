@@ -37,10 +37,14 @@ Then re-project (C), because the database must match the restored source.
 
 ```bash
 sudo -u "$APPUSER" php "$APP/artisan" down
-sudo -u "$APPUSER" php "$APP/artisan" osis:import "$APP/assets/kjv.osis.xml"     # add --production once Task 2.6 lands
-sudo -u "$APPUSER" php "$APP/artisan" osis:verify "$APP/assets/kjv.osis.xml"      # --content once Task 2.9 lands
+sudo -u "$APPUSER" php "$APP/artisan" osis:import "$APP/assets/kjv.osis.xml" --production
+sudo -u "$APPUSER" php "$APP/artisan" osis:verify "$APP/assets/kjv.osis.xml" --content
 sudo -u "$APPUSER" php "$APP/artisan" up
 ```
+
+`osis:import` waits up to `--lock-wait` seconds (default 60) for a running chapter publish to finish
+and then exits 1 rather than rebuilding the index alongside it. It refuses the production database
+without `--production`, and exits 1 if it skipped any verse in scope. The run takes ~31 s and ~480 MB.
 
 ## D. Total loss of the host
 

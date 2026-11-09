@@ -27,13 +27,19 @@ use RuntimeException;
  * ShouldBeUniqueUntilProcessing (not ShouldBeUnique): the unique lock is released when the job
  * STARTS, so a second save to the same chapter while a publish is running queues another publish
  * - with ShouldBeUnique it was dropped and that edit never reached readers.
- * WithoutOverlapping('osis-projection') is global: every import rebuilds the whole FTS index, so
- * two publishes never run at once. (A manual full import cannot take this lock - the job's own
- * subprocess is an osis:import - so run those with the editor frozen, per deploy/RESTORE.md.)
+ * WithoutOverlapping(LOCK) is global: every import rebuilds the whole FTS index, so two
+ * projections never run at once. A manual `osis:import` takes the same lock itself; the job's own
+ * subprocess is told (LOCK_HELD_ENV) that its parent already holds it, or it would wait on itself.
  */
 class PublishChapterProjection implements ShouldQueue, ShouldBeUniqueUntilProcessing
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    /** The one lock every projection of the database takes (publish jobs and osis:import). */
+    public const LOCK = 'osis-projection';
+
+    /** Set on the osis:import subprocess: its parent job already holds LOCK. */
+    public const LOCK_HELD_ENV = 'BIBLE_PROJECTION_LOCK_HELD';
 
     /** Retry for up to 30 minutes (waiting behind another publish releases the job, which would
      *  burn a flat $tries), but give up after 3 genuine failures. */
@@ -66,7 +72,18 @@ class PublishChapterProjection implements ShouldQueue, ShouldBeUniqueUntilProces
 
     public function middleware(): array
     {
-        return [(new WithoutOverlapping('osis-projection'))->shared()->releaseAfter(30)->expireAfter(900)];
+        return [self::overlapMiddleware()->releaseAfter(30)->expireAfter(900)];
+    }
+
+    /** The cache-lock key WithoutOverlapping uses, so osis:import can take the very same lock. */
+    public static function lockKey(): string
+    {
+        return self::overlapMiddleware()->getLockKey(null);
+    }
+
+    private static function overlapMiddleware(): WithoutOverlapping
+    {
+        return (new WithoutOverlapping(self::LOCK))->shared();
     }
 
     public function handle(): void
@@ -75,6 +92,7 @@ class PublishChapterProjection implements ShouldQueue, ShouldBeUniqueUntilProces
 
         $result = Process::path(base_path())
             ->timeout(280)
+            ->env([self::LOCK_HELD_ENV => '1'])
             ->run([PHP_BINARY, 'artisan', 'osis:import', $file, '--chapter=' . $this->chapterRef, '--production']);
 
         if ($result->failed()) {
