@@ -11,9 +11,8 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use App\Services\Contracts\BibleReaderInterface;
 
-class DatabaseBibleReader implements BibleReaderInterface
+class DatabaseBibleReader
 {
     private string $versionKey;
     private ?BibleVersion $bibleVersion = null;

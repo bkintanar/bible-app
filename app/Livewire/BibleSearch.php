@@ -158,9 +158,6 @@ class BibleSearch extends Component
         if ($this->q) {
             $this->performSearch();
         }
-
-        // Emit an event to notify other components of the translation change
-        $this->dispatch('translation-changed', $translationKey);
     }
 
     public function clearLastVisited()

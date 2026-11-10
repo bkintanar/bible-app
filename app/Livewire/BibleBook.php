@@ -81,9 +81,6 @@ class BibleBook extends Component
 
         // Reload chapters with new translation
         $this->chapters = $this->bibleService->getChapters($this->bookOsisId);
-
-        // Emit an event to notify other components of the translation change
-        $this->dispatch('translation-changed', $translationKey);
     }
 
     public function toggleSearch()

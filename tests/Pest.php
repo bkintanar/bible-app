@@ -95,11 +95,6 @@ function verseRow(string $osisId): ?object
     return \Illuminate\Support\Facades\DB::table('verses')->where('osis_id', $osisId)->first();
 }
 
-function createOsisReader(string $translation = 'kjv'): App\Services\OsisReader
-{
-    $filePath = base_path("assets/{$translation}.osis.xml");
-    return new App\Services\OsisReader($filePath);
-}
 
 function getTestTranslations(): array
 {

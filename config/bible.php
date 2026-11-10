@@ -1,16 +1,6 @@
 <?php
 
 return [
-    /*
-    |--------------------------------------------------------------------------
-    | Bible Reader Type
-    |--------------------------------------------------------------------------
-    |
-    | This value determines which reader implementation to use for Bible data.
-    | Options: 'xml' (OSIS XML files) or 'database' (SQLite database)
-    |
-    */
-    'reader_type' => env('BIBLE_READER_TYPE', 'database'),
 
     /*
     |--------------------------------------------------------------------------

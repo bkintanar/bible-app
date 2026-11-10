@@ -3,9 +3,6 @@
 namespace App\Services;
 
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Config;
-use App\Services\Contracts\BibleReaderInterface;
 
 class BibleService
 {
@@ -22,14 +19,9 @@ class BibleService
     /**
      * Get the current Bible reader based on configuration
      */
-    public function getCurrentReader(?string $translationKey = null): ?BibleReaderInterface
+    public function getCurrentReader(?string $translationKey = null): DatabaseBibleReader
     {
         $translationKey = $translationKey ?: $this->translationService->getCurrentTranslationKey();
-        $readerType = Config::get('bible.reader_type', 'database'); // 'xml' or 'database'
-
-        if ($readerType === 'xml') {
-            return $this->translationService->createReader($translationKey);
-        }
 
         // One reader per translation per request: every call used to construct a new one, and
         // each constructor looked its bible_versions row up again (8 per chapter view).
@@ -115,30 +107,11 @@ class BibleService
     }
 
     /**
-     * Get current reader type (xml or database)
-     */
-    public function getReaderType(): string
-    {
-        return Config::get('bible.reader_type', 'database');
-    }
-
-    /**
-     * Set reader type
-     */
-    public function setReaderType(string $readerType): void
-    {
-        if (in_array($readerType, ['xml', 'database'])) {
-            Config::set('bible.reader_type', $readerType);
-        }
-    }
-
-    /**
      * Delegate methods to current reader
      */
     public function getBooks(): Collection
     {
-        $reader = $this->getCurrentReader();
-        return $reader ? $reader->getBooks() : collect();
+        return $this->getCurrentReader()->getBooks();
     }
 
     public function getBook(string $bookOsisId): ?array
@@ -150,32 +123,27 @@ class BibleService
 
     public function getChapters(string $bookOsisId): Collection
     {
-        $reader = $this->getCurrentReader();
-        return $reader ? $reader->getChapters($bookOsisId) : collect();
+        return $this->getCurrentReader()->getChapters($bookOsisId);
     }
 
     public function getVerses(string $chapterOsisRef): Collection
     {
-        $reader = $this->getCurrentReader();
-        return $reader ? $reader->getVerses($chapterOsisRef) : collect();
+        return $this->getCurrentReader()->getVerses($chapterOsisRef);
     }
 
     public function getVersesParagraphStyle(string $chapterOsisRef): Collection
     {
-        $reader = $this->getCurrentReader();
-        return $reader ? $reader->getVersesParagraphStyle($chapterOsisRef) : collect();
+        return $this->getCurrentReader()->getVersesParagraphStyle($chapterOsisRef);
     }
 
     public function getVerseText(string $verseOsisId): string
     {
-        $reader = $this->getCurrentReader();
-        return $reader ? $reader->getVerseText($verseOsisId) : '';
+        return $this->getCurrentReader()->getVerseText($verseOsisId);
     }
 
     public function searchVerses(string $searchTerm, int $limit = 100): Collection
     {
-        $reader = $this->getCurrentReader();
-        return $reader ? $reader->searchVerses($searchTerm, $limit) : collect();
+        return $this->getCurrentReader()->searchVerses($searchTerm, $limit);
     }
 
     /**
@@ -210,22 +178,9 @@ class BibleService
         ];
     }
 
-    public function getBibleInfo(): array
-    {
-        $reader = $this->getCurrentReader();
-        return $reader ? $reader->getBibleInfo() : [];
-    }
-
-    public function parseVerseReference(string $input): ?array
-    {
-        $reader = $this->getCurrentReader();
-        return $reader ? $reader->parseVerseReference($input) : null;
-    }
-
     public function getVerseByReference(string $bookOsisId, int $chapter, int $verse): ?array
     {
-        $reader = $this->getCurrentReader();
-        return $reader ? $reader->getVerseByReference($bookOsisId, $chapter, $verse) : null;
+        return $this->getCurrentReader()->getVerseByReference($bookOsisId, $chapter, $verse);
     }
 
     /**
@@ -233,75 +188,32 @@ class BibleService
      */
     public function getVerseStrongsData(string $verseOsisId): Collection
     {
-        $reader = $this->getCurrentReader();
-
-        if ($reader instanceof DatabaseBibleReader) {
-            return $reader->getVerseStrongsData($verseOsisId);
-        }
-
-        return collect();
+        return $this->getCurrentReader()->getVerseStrongsData($verseOsisId);
     }
 
     public function getTranslatorChanges(string $verseOsisId): Collection
     {
-        $reader = $this->getCurrentReader();
-
-        if ($reader instanceof DatabaseBibleReader) {
-            return $reader->getTranslatorChanges($verseOsisId);
-        }
-
-        return collect();
+        return $this->getCurrentReader()->getTranslatorChanges($verseOsisId);
     }
 
     public function getDivineNames(string $verseOsisId): Collection
     {
-        $reader = $this->getCurrentReader();
-
-        if ($reader instanceof DatabaseBibleReader) {
-            return $reader->getDivineNames($verseOsisId);
-        }
-
-        return collect();
+        return $this->getCurrentReader()->getDivineNames($verseOsisId);
     }
 
     public function getStudyNotes(string $verseOsisId): Collection
     {
-        $reader = $this->getCurrentReader();
-
-        if ($reader instanceof DatabaseBibleReader) {
-            return $reader->getStudyNotes($verseOsisId);
-        }
-
-        return collect();
+        return $this->getCurrentReader()->getStudyNotes($verseOsisId);
     }
 
     public function searchByStrongsNumber(string $strongsNumber, int $limit = 100): Collection
     {
-        $reader = $this->getCurrentReader();
-
-        if ($reader instanceof DatabaseBibleReader) {
-            return $reader->searchByStrongsNumber($strongsNumber, $limit);
-        }
-
-        return collect();
+        return $this->getCurrentReader()->searchByStrongsNumber($strongsNumber, $limit);
     }
 
     public function getVerseWithDetails(string $verseOsisId): array
     {
-        $reader = $this->getCurrentReader();
-
-        if ($reader instanceof DatabaseBibleReader) {
-            return $reader->getVerseWithDetails($verseOsisId);
-        }
-
-        // Fallback for XML reader - basic verse info only
-        $verse = $this->getVerseByReference(
-            explode('.', $verseOsisId)[0],
-            (int) explode('.', $verseOsisId)[1],
-            (int) explode('.', $verseOsisId)[2]
-        );
-
-        return $verse ? ['verse' => $verse] : [];
+        return $this->getCurrentReader()->getVerseWithDetails($verseOsisId);
     }
 
     /**
@@ -309,7 +221,7 @@ class BibleService
      */
     public function hasEnhancedFeatures(): bool
     {
-        return $this->getReaderType() === 'database';
+        return true; // the database reader is the only reader
     }
 
     /**
@@ -338,62 +250,8 @@ class BibleService
         return [
             'base' => $baseCapabilities,
             'enhanced' => $this->hasEnhancedFeatures() ? $enhancedCapabilities : [],
-            'reader_type' => $this->getReaderType(),
+            'reader_type' => 'database',
         ];
-    }
-
-    /**
-     * Get chapter title for a specific chapter
-     */
-    public function getChapterTitle(string $chapterOsisRef): ?array
-    {
-        // Only try to get titles from database if we're using the database reader
-        if ($this->getReaderType() !== 'database') {
-            return null;
-        }
-
-        // Get the first verse of the chapter to find associated title
-        $firstVerse = $this->getVerses($chapterOsisRef)->first();
-        if (! $firstVerse || ! isset($firstVerse['id'])) {
-            return null;
-        }
-
-        $title = DB::table('titles')
-            ->where('verse_id', $firstVerse['id'])
-            ->where('title_type', 'chapter')
-            ->where('placement', 'before')
-            ->first();
-
-        return $title ? (array) $title : null;
-    }
-
-    /**
-     * Get paragraph information for a chapter
-     */
-    public function getChapterParagraphs(string $chapterOsisRef): Collection
-    {
-        // Only try to get paragraphs from database if we're using the database reader
-        if ($this->getReaderType() !== 'database') {
-            return collect();
-        }
-
-        // Get chapter info
-        list($bookOsisId, $chapterNumber) = explode('.', $chapterOsisRef);
-
-        $chapterInfo = DB::table('chapters')
-            ->join('books', 'chapters.book_id', '=', 'books.id')
-            ->where('books.osis_id', $bookOsisId)
-            ->where('chapters.chapter_number', $chapterNumber)
-            ->first();
-
-        if (! $chapterInfo) {
-            return collect();
-        }
-
-        return DB::table('paragraphs')
-            ->where('chapter_id', $chapterInfo->id)
-            ->orderBy('start_verse_id')
-            ->get();
     }
 
     /**

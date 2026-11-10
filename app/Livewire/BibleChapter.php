@@ -146,8 +146,6 @@ class BibleChapter extends Component
         unset($this->books, $this->testamentBooks, $this->chapterVerses, $this->previousChapterVerses, $this->nextChapterVerses);
 
         $this->chapterTitle = $this->extractChapterTitle($this->chapterVerses);
-
-        $this->dispatch('translation-changed', $translationKey);
     }
 
     /**
