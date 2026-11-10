@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Livewire\Concerns\SwitchesTranslation;
 use App\Services\BibleService;
 use App\Support\ResumePosition;
 use Livewire\Attributes\Locked;
@@ -9,6 +10,8 @@ use Livewire\Component;
 
 class BibleBook extends Component
 {
+    use SwitchesTranslation;
+
     #[Locked]
     public $bookOsisId;
 
@@ -75,21 +78,6 @@ class BibleBook extends Component
         $this->availableTranslations = $this->bibleService->getAvailableTranslations();
     }
 
-    public function switchTranslation($translationKey)
-    {
-        // Switch translation using the service
-        $this->bibleService->setCurrentTranslation($translationKey);
-        $this->currentTranslation = $this->bibleService->getCurrentTranslation();
-
-        // Refresh books data
-        $this->books = $this->bibleService->getBooks();
-        $this->testamentBooks = $this->getTestamentBooks($this->books);
-        $this->availableTranslations = $this->bibleService->getAvailableTranslations();
-
-        // Reload chapters with new translation
-        $this->chapters = $this->bibleService->getChapters($this->bookOsisId);
-    }
-
     public function toggleSearch()
     {
         $this->showSearch = ! $this->showSearch;
@@ -110,25 +98,6 @@ class BibleBook extends Component
         ResumePosition::forget();
     }
 
-    private function getTestamentBooks($books): array
-    {
-        $oldTestament = [];
-        $newTestament = [];
-
-        foreach ($books as $book) {
-            if ($book['testament'] === 'OT') {
-                $oldTestament[] = $book;
-            } else {
-                $newTestament[] = $book;
-            }
-        }
-
-        return [
-            'oldTestament' => $oldTestament,
-            'newTestament' => $newTestament,
-        ];
-    }
-
     public function getPopularChapters(): array
     {
         // Return popular chapters for specific books
@@ -143,6 +112,13 @@ class BibleBook extends Component
             'Isa' => [53, 40, 55, 9, 61, 6],
             default => []
         };
+    }
+
+    protected function translationSwitched(): void
+    {
+        $this->books = $this->bibleService->getBooks();
+        $this->testamentBooks = $this->getTestamentBooks($this->books);
+        $this->chapters = $this->bibleService->getChapters($this->bookOsisId);
     }
 
     public function render()

@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Livewire\Concerns\SwitchesTranslation;
 use App\Services\BibleService;
 use App\Support\ResumePosition;
 use Illuminate\Support\Facades\Cache;
@@ -12,6 +13,8 @@ use Livewire\Component;
 
 class BibleChapter extends Component
 {
+    use SwitchesTranslation;
+
     // Every property the browser never edits is #[Locked]: Livewire accepts a client-side update
     // to any unlocked public property, and these feed cache keys, redirects and rendered markup.
     // Only searchQuery is bound (wire:model). Actions may still change locked state server-side.
@@ -146,19 +149,6 @@ class BibleChapter extends Component
         return $this->bibleService->getVersesParagraphStyle($chapterOsisRef);
     }
 
-    public function switchTranslation($translationKey)
-    {
-        $this->bibleService->setCurrentTranslation($translationKey);
-        $this->currentTranslation = $this->bibleService->getCurrentTranslation();
-        $this->availableTranslations = $this->bibleService->getAvailableTranslations();
-        $this->chapters = $this->bibleService->getChapters($this->bookOsisId);
-
-        // Everything else is computed from the current translation: drop the memoised values.
-        unset($this->books, $this->testamentBooks, $this->chapterVerses, $this->previousChapterVerses, $this->nextChapterVerses);
-
-        $this->chapterTitle = $this->extractChapterTitle($this->chapterVerses);
-    }
-
     /**
      * This chapter's verses, grouped for display. Computed, so the verses (with their raw OSIS
      * and Strong's data) are rendered but not serialised into wire:snapshot (Matt 5: 108 KB).
@@ -288,25 +278,6 @@ class BibleChapter extends Component
     public function clearLastVisited()
     {
         ResumePosition::forget();
-    }
-
-    private function getTestamentBooks($books): array
-    {
-        $oldTestament = [];
-        $newTestament = [];
-
-        foreach ($books as $book) {
-            if ($book['testament'] === 'Old Testament') {
-                $oldTestament[] = $book;
-            } else {
-                $newTestament[] = $book;
-            }
-        }
-
-        return [
-            'oldTestament' => $oldTestament,
-            'newTestament' => $newTestament,
-        ];
     }
 
     /**
@@ -622,6 +593,16 @@ class BibleChapter extends Component
         );
 
         return $text;
+    }
+
+    protected function translationSwitched(): void
+    {
+        $this->chapters = $this->bibleService->getChapters($this->bookOsisId);
+
+        // Everything else is computed from the current translation: drop the memoised values.
+        unset($this->books, $this->testamentBooks, $this->chapterVerses, $this->previousChapterVerses, $this->nextChapterVerses);
+
+        $this->chapterTitle = $this->extractChapterTitle($this->chapterVerses);
     }
 
     public function render()

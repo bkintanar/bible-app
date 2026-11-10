@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Livewire\Concerns\SwitchesTranslation;
 use App\Services\BibleService;
 use App\Support\ResumePosition;
 use Livewire\Attributes\Locked;
@@ -10,6 +11,8 @@ use Livewire\Component;
 
 class BibleSearch extends Component
 {
+    use SwitchesTranslation;
+
     /** Results per page, and the most "load more" may reach (each step is one FTS query). */
     public const PAGE = 50;
 
@@ -151,45 +154,19 @@ class BibleSearch extends Component
         }
     }
 
-    public function switchTranslation($translationKey)
-    {
-        // Switch translation using the service
-        $this->bibleService->setCurrentTranslation($translationKey);
-        $this->currentTranslation = $this->bibleService->getCurrentTranslation();
-
-        // Refresh books data
-        $this->books = $this->bibleService->getBooks();
-        $this->testamentBooks = $this->getTestamentBooks($this->books);
-        $this->availableTranslations = $this->bibleService->getAvailableTranslations();
-
-        // Re-search with new translation if we have a query
-        if ($this->q) {
-            $this->performSearch();
-        }
-    }
-
     public function clearLastVisited()
     {
         ResumePosition::forget();
     }
 
-    private function getTestamentBooks($books): array
+    protected function translationSwitched(): void
     {
-        $oldTestament = [];
-        $newTestament = [];
+        $this->books = $this->bibleService->getBooks();
+        $this->testamentBooks = $this->getTestamentBooks($this->books);
 
-        foreach ($books as $book) {
-            if ($book['testament'] === 'OT') {
-                $oldTestament[] = $book;
-            } else {
-                $newTestament[] = $book;
-            }
+        if ($this->q) {
+            $this->performSearch();
         }
-
-        return [
-            'oldTestament' => $oldTestament,
-            'newTestament' => $newTestament,
-        ];
     }
 
     public function render()
