@@ -9,6 +9,7 @@ RequiresMountsFor=/var/www/personal/bible-app
 # restart after the first hourly exit and the queue would silently stop). Those clean
 # restarts still count toward the start limit, so the limit is disabled.
 StartLimitIntervalSec=0
+OnFailure=bible-notify@%n.service
 
 [Service]
 User=bible
@@ -24,12 +25,14 @@ RestartSec=5
 # whole 27MB source) peaks at ~480MB on top of the worker, so 512M would OOM-kill it.
 MemoryMax=1G
 
-# Cheap hardening
+# Hardening: the whole filesystem is read-only except what the worker (and the osis:import it
+# runs for a publish) must write.
 NoNewPrivileges=true
 PrivateTmp=true
-ProtectSystem=full
+PrivateDevices=true
+ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/www/personal/bible-app/storage /var/www/personal/bible-app/database /var/www/personal/bible-app/assets
+ReadWritePaths=/var/www/personal/bible-app/storage /var/www/personal/bible-app/database /var/www/personal/bible-app/bootstrap/cache /var/www/personal/bible-app/assets
 # Let a running publish (job timeout 300s) finish on stop/restart.
 TimeoutStopSec=330
 

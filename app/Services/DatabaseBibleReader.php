@@ -17,6 +17,18 @@ class DatabaseBibleReader
     private string $versionKey;
     private ?BibleVersion $bibleVersion = null;
 
+    /**
+     * Restricts a verse lookup to this reader's translation (verses carry no version_id; their
+     * chapter does). Every osis_id lookup needs it before a second translation is projected:
+     * "John.3.16" exists once per version.
+     */
+    private function versionChapterIds(): \Closure
+    {
+        $versionId = $this->bibleVersion?->id;
+
+        return fn ($query) => $query->select('id')->from('chapters')->where('version_id', $versionId);
+    }
+
     /** @var array<string, mixed> Per-instance memo of cache-backed lookups, keyed by cache key. */
     private array $memo = [];
 
@@ -504,10 +516,10 @@ class DatabaseBibleReader
             JOIN verses v ON verses_fts.rowid = v.id
             JOIN chapters c ON v.chapter_id = c.id
             JOIN books b ON c.book_id = b.id
-            WHERE verses_fts MATCH ?
+            WHERE verses_fts MATCH ? AND c.version_id = ?
             ORDER BY rank
             LIMIT ?
-        ", [$escapedSearchTerm, $limit]);
+        ", [$escapedSearchTerm, $this->bibleVersion?->id, $limit]);
         } catch (\Illuminate\Database\QueryException $e) {
             if (! str_contains($e->getMessage(), 'fts5')) {
                 throw $e; // a real database failure, not a malformed term
@@ -725,6 +737,7 @@ class DatabaseBibleReader
                 'we.word_order',
             ])
             ->where('v.osis_id', $verseOsisId)
+            ->whereIn('v.chapter_id', $this->versionChapterIds())
             ->whereNotNull('we.strongs_number')
             ->orderBy('we.word_order')
             ->get();
@@ -743,6 +756,7 @@ class DatabaseBibleReader
                 'tc.text_order',
             ])
             ->where('v.osis_id', $verseOsisId)
+            ->whereIn('v.chapter_id', $this->versionChapterIds())
             ->orderBy('tc.text_order')
             ->get();
     }
@@ -759,6 +773,7 @@ class DatabaseBibleReader
                 'dn.original_name',
             ])
             ->where('v.osis_id', $verseOsisId)
+            ->whereIn('v.chapter_id', $this->versionChapterIds())
             ->get();
     }
 
@@ -774,6 +789,7 @@ class DatabaseBibleReader
                 'sn.note_text',
             ])
             ->where('v.osis_id', $verseOsisId)
+            ->whereIn('v.chapter_id', $this->versionChapterIds())
             ->get();
     }
 
@@ -797,6 +813,7 @@ class DatabaseBibleReader
                 'we.strongs_number',
             ])
             ->where('we.strongs_number', $strongsNumber)
+            ->where('c.version_id', $this->bibleVersion?->id)
             ->orderBy('b.sort_order')
             ->orderBy('c.chapter_number')
             ->orderBy('v.verse_number')
@@ -836,6 +853,7 @@ class DatabaseBibleReader
                 'c.chapter_number',
             ])
             ->where('v.osis_id', $verseOsisId)
+            ->whereIn('v.chapter_id', $this->versionChapterIds())
             ->first();
 
         if (! $verse) {
@@ -874,7 +892,8 @@ class DatabaseBibleReader
                 't.placement',
                 't.title_order',
             ])
-            ->whereRaw('UPPER(v.osis_id) = UPPER(?)', [$verseOsisId])
+            ->where('v.osis_id', $verseOsisId)
+            ->whereIn('v.chapter_id', $this->versionChapterIds())
             ->orderBy('t.title_order')
             ->get()
             ->map(function ($title) {
@@ -901,7 +920,8 @@ class DatabaseBibleReader
                 'ps.line_text',
                 'ps.line_order',
             ])
-            ->whereRaw('UPPER(v.osis_id) = UPPER(?)', [$verseOsisId])
+            ->where('v.osis_id', $verseOsisId)
+            ->whereIn('v.chapter_id', $this->versionChapterIds())
             ->orderBy('ps.line_order')
             ->get()
             ->map(function ($structure) {

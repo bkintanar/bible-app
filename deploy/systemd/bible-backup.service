@@ -1,6 +1,7 @@
 [Unit]
 Description=bible-app nightly backup (SQLite projection + OSIS source of truth)
 RequiresMountsFor=/var/www/personal/bible-app /var/backups/bible-app
+OnFailure=bible-notify@%n.service
 
 [Service]
 Type=oneshot
@@ -8,6 +9,7 @@ Type=oneshot
 # -wal/-shm files that lock the application out.
 User=bible
 Group=bible
+EnvironmentFile=-/etc/default/bible-app-notify
 ExecStart=/var/www/personal/bible-app/deploy/bin/bible-backup.sh
 Nice=10
 IOSchedulingClass=idle

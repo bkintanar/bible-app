@@ -1,0 +1,9 @@
+[Unit]
+Description=Notify the owner that %i failed
+
+[Service]
+Type=oneshot
+# Optional: NOTIFY_URL / NOTIFY_SUCCESS_URL (owner creates this file; see deploy/bin/notify.sh).
+EnvironmentFile=-/etc/default/bible-app-notify
+ExecStart=/var/www/personal/bible-app/deploy/bin/notify.sh %i failed
+DynamicUser=yes

@@ -38,3 +38,7 @@ fi
 # Off-host copy: not configured yet (owner to provide a target). Until then this is an
 # on-disk backup only, which does not survive loss of this host.
 echo "bible-backup $S ok: verses=$VERSES, expired cache rows pruned=$PRUNED (on-disk only; no off-host target configured)"
+
+# Success ping (e.g. healthchecks.io) when the owner configured one; failures are reported by the
+# unit's OnFailure= (bible-notify@).
+"$APP/deploy/bin/notify.sh" backup ok
