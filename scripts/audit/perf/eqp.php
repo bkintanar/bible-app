@@ -1,5 +1,5 @@
 <?php
-$pdo = new PDO('sqlite:/var/www/personal/bible-app/database/bible_app.sqlite', null, null, [PDO::SQLITE_ATTR_OPEN_FLAGS => PDO::SQLITE_OPEN_READONLY, PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+$pdo = new PDO('sqlite:' . __DIR__ . '/dbcopy.sqlite', null, null, [PDO::SQLITE_ATTR_OPEN_FLAGS => PDO::SQLITE_OPEN_READONLY, PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 $seen = [];
 foreach (glob(__DIR__ . '/shapes-*.json') as $f) foreach (json_decode(file_get_contents($f), true) as $s) {
   $norm = preg_replace('/in \([\d, ]+\)/', 'in (…)', $s['sql']);

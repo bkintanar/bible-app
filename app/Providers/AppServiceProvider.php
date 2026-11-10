@@ -18,6 +18,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // One TranslationService per request, shared with BibleService (it memoises translation
+        // lookups; separate instances each queried bible_versions again).
+        $this->app->singleton(TranslationService::class);
+
         // Register BibleService as a singleton
         $this->app->singleton(BibleService::class, function ($app) {
             return new BibleService($app->make(TranslationService::class));

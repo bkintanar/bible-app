@@ -8,6 +8,13 @@ use Illuminate\Support\Facades\Log;
 
 class TranslationService
 {
+    /** @var array<string, ?array> */
+    private array $translations = [];
+
+    private ?string $defaultKey = null;
+
+    private ?Collection $available = null;
+
     /**
      * Get all available translations
      */
@@ -16,8 +23,9 @@ class TranslationService
         $readerType = config('bible.reader_type', 'database');
 
         if ($readerType === 'database') {
-            // Get translations from database
-            return $this->getAvailableTranslationsFromDatabase();
+            // One query per request: single-translation lookups and the default are answered from
+            // this list too (they asked bible_versions the same question three times).
+            return $this->available ??= $this->getAvailableTranslationsFromDatabase();
         }
         // Get translations from config file (for XML reader)
         return $this->getAvailableTranslationsFromConfig();
@@ -97,46 +105,25 @@ class TranslationService
      */
     public function getTranslation(string $translationKey): ?array
     {
+        // Memoised: a chapter view asked for the same translation ~8 times, a query each.
+        if (array_key_exists($translationKey, $this->translations)) {
+            return $this->translations[$translationKey];
+        }
+
+        return $this->translations[$translationKey] = $this->lookUpTranslation($translationKey);
+    }
+
+    private function lookUpTranslation(string $translationKey): ?array
+    {
         $readerType = config('bible.reader_type', 'database');
 
         if ($readerType === 'database') {
-            // Get translation from database
-            return $this->getTranslationFromDatabase($translationKey);
+            // Same filter (canonical) and shape as the available list.
+            return $this->getAvailableTranslations()->firstWhere('key', strtolower($translationKey));
         }
         // Get translation from config file
         return $this->getTranslationFromConfig($translationKey);
 
-    }
-
-    /**
-     * Get translation from database
-     */
-    private function getTranslationFromDatabase(string $translationKey): ?array
-    {
-        try {
-            $version = DB::table('bible_versions')
-                ->whereRaw('LOWER(abbreviation) = ?', [strtolower($translationKey)])
-                ->where('canonical', true)
-                ->first();
-
-            if ($version) {
-                return [
-                    'key' => strtolower($version->abbreviation),
-                    'name' => $version->title,
-                    'short_name' => $version->abbreviation,
-                    'language' => $this->getLanguageName($version->language),
-                    'description' => $version->description,
-                    'publisher' => $version->publisher,
-                    'is_default' => strtolower($version->abbreviation) === 'kjv',
-                ];
-            }
-
-            return null;
-        } catch (\Exception $e) {
-            Log::warning('Translation lookup failed', ['translation' => $translationKey, 'exception' => $e]);
-
-            return null;
-        }
     }
 
     /**
@@ -162,29 +149,14 @@ class TranslationService
         $readerType = config('bible.reader_type', 'database');
 
         if ($readerType === 'database') {
-            // Get default from database (first translation or KJV if available)
-            try {
-                $defaultVersion = DB::table('bible_versions')
-                    ->whereRaw('LOWER(abbreviation) = ?', ['kjv'])
-                    ->where('canonical', true)
-                    ->first();
+            // KJV if projected, else the first available translation.
+            $available = $this->getAvailableTranslations();
 
-                if ($defaultVersion) {
-                    return strtolower($defaultVersion->abbreviation);
-                }
-
-                // If no KJV, get the first available translation
-                $firstVersion = DB::table('bible_versions')
-                    ->where('canonical', true)
-                    ->orderBy('abbreviation')
-                    ->first();
-
-                return $firstVersion ? strtolower($firstVersion->abbreviation) : 'kjv';
-            } catch (\Exception $e) {
-                Log::warning('Default translation lookup failed; using the configured default', ['exception' => $e]);
-
+            if ($available->isEmpty()) {
                 return config('bible.default_translation', 'kjv');
             }
+
+            return $available->firstWhere('key', 'kjv') ? 'kjv' : $available->first()['key'];
         } else {
             return config('bible.default_translation', 'kjv');
         }
@@ -245,7 +217,9 @@ class TranslationService
      */
     public function getCurrentTranslationKey(): string
     {
-        return session('current_translation', $this->getDefaultTranslationKey());
+        // session(key, default) evaluated the default (a database query) on every call, even when
+        // the session already had a translation.
+        return session('current_translation') ?? ($this->defaultKey ??= $this->getDefaultTranslationKey());
     }
 
     /**

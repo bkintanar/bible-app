@@ -18,6 +18,9 @@ class DatabaseBibleReader implements BibleReaderInterface
     private string $versionKey;
     private ?BibleVersion $bibleVersion = null;
 
+    /** @var array<string, mixed> Per-instance memo of cache-backed lookups, keyed by cache key. */
+    private array $memo = [];
+
     public function __construct(string $versionKey = 'kjv')
     {
         $this->versionKey = $versionKey;
@@ -31,14 +34,7 @@ class DatabaseBibleReader implements BibleReaderInterface
     {
         $cacheKey = \App\Support\ProjectionCache::key("bible_version_model_{$this->versionKey}");
 
-        if (Cache::has($cacheKey)) {
-            return Cache::get($cacheKey);
-        }
-
-        $bibleVersion = BibleVersion::where('abbreviation', strtoupper($this->versionKey))->first();
-        Cache::put($cacheKey, $bibleVersion, 3600);
-
-        return $bibleVersion;
+        return Cache::remember($cacheKey, 3600, fn () => BibleVersion::where('abbreviation', strtoupper($this->versionKey))->first());
     }
 
     /**
@@ -49,13 +45,16 @@ class DatabaseBibleReader implements BibleReaderInterface
         // v2: entries carry chapter_count (the book selector renders chapter links client-side).
         $cacheKey = \App\Support\ProjectionCache::key("books_v2_{$this->versionKey}");
 
-        if (Cache::has($cacheKey)) {
-            return Cache::get($cacheKey);
-        }
+        // Memoised per instance too (the reader lives for the request; the key carries the
+        // projection version): the book list is consulted many times per chapter view.
+        return $this->memo[$cacheKey] ??= Cache::remember($cacheKey, 3600, fn () => $this->loadBooks());
+    }
 
+    private function loadBooks(): Collection
+    {
         $versionId = $this->bibleVersion?->id;
 
-        $books = Book::with('bookGroup')
+        return Book::with('bookGroup')
             ->withCount(['chapters' => fn ($q) => $q->where('version_id', $versionId)])
             ->canonical()
             ->ordered()
@@ -70,10 +69,6 @@ class DatabaseBibleReader implements BibleReaderInterface
                     'chapter_count' => (int) $book->chapters_count,
                 ];
             });
-
-        Cache::put($cacheKey, $books, 3600);
-
-        return $books;
     }
 
     /**
@@ -90,14 +85,17 @@ class DatabaseBibleReader implements BibleReaderInterface
 
         $cacheKey = \App\Support\ProjectionCache::key("chapters_{$canonical}_{$this->versionKey}");
 
-        if (Cache::has($cacheKey)) {
-            return Cache::get($cacheKey);
-        }
+        return $this->memo[$cacheKey] ??= Cache::remember($cacheKey, 3600, fn () => $this->loadChapters($canonical));
+    }
 
-        $chapters = Chapter::with('book')
-            ->whereHas('book', function ($query) use ($bookOsisId) {
-                $query->whereRaw('UPPER(osis_id) = UPPER(?)', [$bookOsisId]);
-            })
+    private function loadChapters(string $canonicalBookOsisId): Collection
+    {
+        // The canonical id is matched exactly (books.osis_id is indexed); UPPER(osis_id) could not
+        // use the index.
+        $bookId = Book::where('osis_id', $canonicalBookOsisId)->value('id');
+
+        return Chapter::with('book')
+            ->where('book_id', $bookId) // indexed (book_id, version_id, chapter_number); whereHas scanned chapters
             ->where('version_id', $this->bibleVersion->id)
             ->withCount('verses')
             ->orderBy('chapter_number')
@@ -109,10 +107,6 @@ class DatabaseBibleReader implements BibleReaderInterface
                     'verse_count' => $chapter->verses_count,
                 ];
             });
-
-        Cache::put($cacheKey, $chapters, 3600);
-
-        return $chapters;
     }
 
     /**
@@ -213,18 +207,20 @@ class DatabaseBibleReader implements BibleReaderInterface
             return collect();
         }
 
-        return Paragraph::with(['startVerse', 'endVerse'])
-            ->where('chapter_id', $chapterId)
-            ->orderBy('start_verse_id')
-            ->get()
-            ->map(function ($paragraph) {
-                return [
-                    'paragraph_type' => $paragraph->paragraph_type,
-                    'start_verse' => $paragraph->startVerse->verse_number,
-                    'end_verse' => $paragraph->endVerse ? $paragraph->endVerse->verse_number : $paragraph->startVerse->verse_number,
-                    'text_content' => $paragraph->text_content,
-                ];
-            });
+        // One query: the boundary verse numbers come from a join (eager-loading startVerse and
+        // endVerse cost two more queries per chapter rendered, neighbours included).
+        return DB::table('paragraphs as p')
+            ->join('verses as sv', 'sv.id', '=', 'p.start_verse_id')
+            ->leftJoin('verses as ev', 'ev.id', '=', 'p.end_verse_id')
+            ->where('p.chapter_id', $chapterId)
+            ->orderBy('p.start_verse_id')
+            ->get(['p.paragraph_type', 'p.text_content', 'sv.verse_number as start_verse', 'ev.verse_number as end_verse'])
+            ->map(fn ($row) => [
+                'paragraph_type' => $row->paragraph_type,
+                'start_verse' => (int) $row->start_verse,
+                'end_verse' => (int) ($row->end_verse ?? $row->start_verse),
+                'text_content' => $row->text_content,
+            ]);
     }
 
     /**
@@ -454,9 +450,19 @@ class DatabaseBibleReader implements BibleReaderInterface
      */
     public function getVerseText(string $verseOsisId): string
     {
+        // Canonical id + exact, indexed match in this reader's version (UPPER(osis_id) scanned
+        // every verse of every version).
+        $parts = explode('.', $verseOsisId, 2);
+        $book = $this->bibleVersion ? $this->canonicalBookOsisId($parts[0]) : null;
+        if ($book === null || ! isset($parts[1])) {
+            return '';
+        }
+
         $verse = DB::table('verses')
-            ->whereRaw('UPPER(osis_id) = UPPER(?)', [$verseOsisId])
-            ->first(['formatted_text', 'osis_id']);
+            ->join('chapters', 'chapters.id', '=', 'verses.chapter_id')
+            ->where('verses.osis_id', $book . '.' . $parts[1])
+            ->where('chapters.version_id', $this->bibleVersion->id)
+            ->first(['verses.formatted_text', 'verses.osis_id']);
 
         if (! $verse) {
             return '';
@@ -541,7 +547,8 @@ class DatabaseBibleReader implements BibleReaderInterface
 
         $cacheKey = \App\Support\ProjectionCache::key("chapter_id_{$this->versionKey}_{$normalised}");
 
-        return Cache::remember($cacheKey, 3600, function () use ($normalised) {
+        // Memoised: each chapter view resolves the same ref for its verses and its paragraphs.
+        return $this->memo[$cacheKey] ??= Cache::remember($cacheKey, 3600, function () use ($normalised) {
             return Chapter::where('osis_id', $normalised)
                 ->where('version_id', $this->bibleVersion->id)
                 ->value('id');

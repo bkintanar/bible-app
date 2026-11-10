@@ -12,7 +12,7 @@ $over = [
 ];
 foreach ($over as $k => $v) { putenv("$k=$v"); $_ENV[$k] = $v; $_SERVER[$k] = $v; }
 [$_, $label, $path] = $argv; $strongsOff = ($argv[3] ?? '') === 'strongs_off';
-$base = '/var/www/personal/bible-app';
+$base = dirname(__DIR__, 3); // the tree this script lives in (run it in the dev worktree)
 require "$base/vendor/autoload.php";
 $app = require "$base/bootstrap/app.php";
 $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);

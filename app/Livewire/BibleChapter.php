@@ -565,12 +565,7 @@ class BibleChapter extends Component
         // If we have red letter data for this verse in the database, apply it
         $verseId = $verse['id'] ?? null;
         if ($verseId) {
-            $redLetterEntries = \DB::table('red_letter_text')
-                ->where('verse_id', $verseId)
-                ->orderBy('text_order')
-                ->get();
-
-            if ($redLetterEntries->count() > 0) {
+            if (isset($this->redLetterVerseIds()[$verseId])) {
                 // For verses with red letter entries, wrap the entire verse in red letter styling
                 // This handles cases where the verse text has HTML markup that doesn't match exactly
                 $text = '<span class="text-red-600 dark:text-red-400 font-medium">' . $text . '</span>';
@@ -582,6 +577,25 @@ class BibleChapter extends Component
         }
 
         return $text;
+    }
+
+    /** @var array<int, true>|null */
+    private ?array $redLetterVerseIds = null;
+
+    /**
+     * Ids of every verse with words of Christ (~2,000), as a set: one cached query instead of one
+     * per rendered verse (this path runs for every verse when Strong's numbers are off).
+     */
+    private function redLetterVerseIds(): array
+    {
+        return $this->redLetterVerseIds ??= array_fill_keys(
+            \Illuminate\Support\Facades\Cache::remember(
+                \App\Support\ProjectionCache::key('red_letter_verse_ids'),
+                3600,
+                fn () => \DB::table('red_letter_text')->distinct()->pluck('verse_id')->map(fn ($id) => (int) $id)->all()
+            ),
+            true
+        );
     }
 
     /**

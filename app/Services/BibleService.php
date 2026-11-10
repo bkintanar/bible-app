@@ -9,6 +9,9 @@ use App\Services\Contracts\BibleReaderInterface;
 
 class BibleService
 {
+    /** @var array<string, DatabaseBibleReader> */
+    private array $readers = [];
+
     private TranslationService $translationService;
 
     public function __construct(TranslationService $translationService)
@@ -24,16 +27,13 @@ class BibleService
         $translationKey = $translationKey ?: $this->translationService->getCurrentTranslationKey();
         $readerType = Config::get('bible.reader_type', 'database'); // 'xml' or 'database'
 
-        switch ($readerType) {
-            case 'database':
-                return new DatabaseBibleReader($translationKey);
-
-            case 'xml':
-                return $this->translationService->createReader($translationKey);
-
-            default:
-                return new DatabaseBibleReader($translationKey);
+        if ($readerType === 'xml') {
+            return $this->translationService->createReader($translationKey);
         }
+
+        // One reader per translation per request: every call used to construct a new one, and
+        // each constructor looked its bible_versions row up again (8 per chapter view).
+        return $this->readers[$translationKey] ??= new DatabaseBibleReader($translationKey);
     }
 
     /**
