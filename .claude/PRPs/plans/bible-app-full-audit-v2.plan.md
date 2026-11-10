@@ -1129,17 +1129,17 @@ Each task: ACTION / IMPLEMENT / MIRROR / GOTCHA / VALIDATE. Shell variables and 
 | `tests/Unit/Osis/OsisSourceWriterTest.php`, `OsisSourcePathTest.php` | statuses; traversal rejected; config override | atomic writer, TEST-6 |
 
 ### Edge Cases Checklist
-- [ ] Numbered books (1Sam…3John), lowercase/uppercase URLs
-- [ ] Quote spanning 12 verses (John 3:10–21); quote closing mid-verse (Matt 26:56); verse ending inside a new quote (Matt 21:31); nested discourse + per-verse quotes (Matt 5:3–12); narration inside a quote (Matt 16:4)
-- [ ] Verse with a note containing `transChange` (Judg 11:3); note glued to text (1Chr 21:11)
-- [ ] Psalm title with divineName (Ps 18); acrostic headers (Ps 119); inscription (Dan 5:25)
-- [ ] Self-closing `<w/>` before a word (John 3:15)
-- [ ] Titles containing `$1`, `\1`, `$10`, `&`, `<`, control chars, 255 chars
-- [ ] Two saves on the same chapter while a publish runs; a save while a CLI full import runs
-- [ ] Queue worker down when a publish is dispatched
-- [ ] Search with NUL, FTS operators, 1-char and 255-char queries; `?query=` and `?q=`
-- [ ] Spoofed `X-Forwarded-For` / `X-Forwarded-Host` (proxy_sim)
-- [ ] Mal 4 → Matt 1; Rev 22 end; chapter 0 / overflow
+- [x] Numbered books (1Sam…3John), lowercase/uppercase URLs — all 1,189 chapters 200 (crawl); `/books/gen/chapters/1`, `/1john/4` → 301 canonical (SeoTest, RoutesAndErrorsTest)
+- [x] Quote spanning 12 verses (John 3:10–21); quote closing mid-verse (Matt 26:56); verse ending inside a new quote (Matt 21:31); nested discourse + per-verse quotes (Matt 5:3–12); narration inside a quote (Matt 16:4) — ImportOsisCommandTest (Matt 26:56, 21:31, 5:4, John 3:16, 16:4) + run_all red 2,026/2,026, 0 partial
+- [x] Verse with a note containing `transChange` (Judg 11:3); note glued to text (1Chr 21:11) — run_all: 0 note text in db/on/off for all 31,102 verses; verify --content 0
+- [x] Psalm title with divineName (Ps 18); acrostic headers (Ps 119); inscription (Dan 5:25) — Ps 18 title LORD small caps (2.x), Ps 119 acrostics render (crawl), inscriptions small caps (the 14, by design)
+- [x] Self-closing `<w/>` before a word (John 3:15) — Phase 1.3 fix; run_all text clean
+- [x] Titles containing `$1`, `\1`, `$10`, `&`, `<`, control chars, 255 chars — OsisSourceWriterTest dataset ($1, $0, ${1}, \\1, &, quotes, <angled>); control chars rejected; max:255 rule
+- [x] Two saves on the same chapter while a publish runs; a save while a CLI full import runs — ShouldBeUniqueUntilProcessing + WithoutOverlapping (PublishChapterProjectionTest); CLI import waits on the shared lock (ImportOsisCommandTest)
+- [x] Queue worker down when a publish is dispatched — database queue in runtime.sqlite persists the job; worker restart processes it (Restart=always; crash → notification)
+- [x] Search with NUL, FTS operators, 1-char and 255-char queries; `?query=` and `?q=` — live probes iteration 6: OR/NEAR/"/*/-/SQL-ish → no 500; 1 char API 422; 255 ok, 256 API 422; ?query= and ?q= (SearchPageTest)
+- [x] Spoofed `X-Forwarded-For` / `X-Forwarded-Host` (proxy_sim) — proxy_sim.php 6/6 (4.2)
+- [x] Mal 4 → Matt 1; Rev 22 end; chapter 0 / overflow — live: Mal 4 next → /books/Matt/chapters/1, Matt 1 prev → Mal 4, Rev 22 no next, chapter 0 and Rev 23 404, overflow 404
 
 ---
 
