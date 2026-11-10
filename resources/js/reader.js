@@ -322,14 +322,16 @@ function handleKeyboardNavigation(e) {
 
     // Skip while a dialog (the book selector) is OPEN. It is always in the DOM since it became
     // client-side (x-show), so presence alone disabled arrow-key navigation entirely.
-    const openDialog = [...document.querySelectorAll('[role="dialog"]')].some((el) => el.offsetParent !== null);
+    // getClientRects, not offsetParent: offsetParent is ALWAYS null for position:fixed elements
+    // (the dialog is fixed), which made this check think the dialog was never open.
+    const openDialog = [...document.querySelectorAll('[role="dialog"]')].some((el) => el.getClientRects().length > 0);
     if (openDialog) {
         return;
     }
 
     // Skip if search input is visible (search mode is active)
     const searchInput = document.querySelector('input[wire\\:model="searchQuery"]');
-    if (searchInput && searchInput.offsetParent !== null) {
+    if (searchInput && searchInput.getClientRects().length > 0) {
         return;
     }
 

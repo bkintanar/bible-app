@@ -37,7 +37,10 @@
             </div>
         @else
           {{-- Opening/closing the search box is client-side; only the search itself is a request. --}}
-          <div x-data="{ searching: false }">
+          {{-- Focus the box once x-show has revealed it: a $nextTick from the click ran before that,
+               so focus stayed on <body> (found by a headless-Chrome check). --}}
+          <div x-data="{ searching: false }"
+               x-init="$watch('searching', open => open && setTimeout(() => $refs.chapterSearch.focus()))">
             <!-- Normal Chapter Header -->
             <div x-show="!searching" class="flex items-center justify-between">
                 <div class="flex flex-col space-y-1">
@@ -102,7 +105,7 @@
                     </div>
 
                     <!-- Search Toggle -->
-                    <button type="button" @click="searching = true; $nextTick(() => $refs.chapterSearch.focus())" aria-label="Search"
+                    <button type="button" @click="searching = true" aria-label="Search"
 
                             class="min-w-[44px] min-h-[44px] flex items-center justify-center p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
