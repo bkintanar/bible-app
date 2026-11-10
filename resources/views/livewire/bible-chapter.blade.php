@@ -2,6 +2,8 @@
 <div class="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col"
      x-data="{ selector: false, mode: 'books', book: null }"
      @keydown.escape.window="selector = false">
+    <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[60] focus:bg-white focus:text-blue-700 focus:px-4 focus:py-2 focus:rounded-lg focus:shadow">Skip to the text</a>
+
     {{-- STYLES & DARK MODE INITIALIZATION --}}
     @include('livewire.partials.styles')
 
@@ -13,7 +15,7 @@
          so a page turn is one request instead of a /Book/N -> /books/Book/chapters/N redirect. --}}
     @php $nav = $this->getNavigationTargets(); @endphp
     <!-- Main Content - Scrollable -->
-    <div class="flex-1 overflow-hidden book-container"
+    <main id="main" tabindex="-1" class="flex-1 overflow-hidden book-container focus:outline-none"
          data-prev-url="{{ $nav['prev']['url'] ?? '' }}"
          data-next-url="{{ $nav['next']['url'] ?? '' }}"
          style="--peel-progress: 0;">
@@ -212,7 +214,7 @@
                 @endif
             </div>
         </div>
-    </div>
+    </main>
 
     {{-- FLOATING NAVIGATION BUTTONS --}}
     <!-- Floating Previous Chapter Button (Left Side) -->

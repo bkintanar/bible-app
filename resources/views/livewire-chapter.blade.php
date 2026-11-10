@@ -3,7 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bible Chapter</title>
+    <title>{{ $meta['title'] }}</title>
+    <meta name="description" content="{{ $meta['description'] }}">
+    <link rel="canonical" href="{{ $meta['url'] }}">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="Bible">
+    <meta property="og:title" content="{{ $meta['title'] }}">
+    <meta property="og:description" content="{{ $meta['description'] }}">
+    <meta property="og:url" content="{{ $meta['url'] }}">
+    @include('partials.dark-mode-head')
 
     {{-- Only the web font the reader actually falls back to (Charter is a system font; the stack
          continues with Source Serif Pro). Three more families were downloaded and never used. --}}

@@ -84,3 +84,27 @@ it('never leaks raw OSIS markup, emits each verse anchor once, and balances its 
     expect(substr_count($html, 'id="verse-1"'))->toBe(1);
     expect(substr_count($page, '<span'))->toBe(substr_count($page, '</span>'));
 })->with([['Gen', 1], ['Ps', 23], ['Matt', 5], ['Matt', 26], ['John', 3], ['1John', 4]]);
+
+it('has one h1, one main landmark, a skip link and real metadata', function () {
+    config(['app.url' => 'https://bible.example']);
+    $html = $this->get('/books/Gen/chapters/1')->getContent();
+
+    expect(substr_count($html, '<h1'))->toBe(1)
+        ->and(substr_count($html, '<main'))->toBe(1)
+        ->and($html)->toContain('<main id="main"')
+        ->and($html)->toContain('href="#main"')
+        ->and($html)->toMatch('/<h1[^>]*>\s*<button[^>]*>\s*Genesis 1\s*<\/button>\s*<\/h1>/');
+
+    expect($html)->toMatch('/<title>Genesis 1 — [^<]+<\/title>/')
+        ->and($html)->toContain('<link rel="canonical" href="https://bible.example/books/Gen/chapters/1">')
+        ->and($html)->toContain('<meta property="og:url" content="https://bible.example/books/Gen/chapters/1">');
+
+    preg_match('/<meta name="description" content="([^"]*)">/', $html, $m);
+    expect(html_entity_decode($m[1]))->toStartWith('Genesis 1: In the beginning God created the heaven and the earth.')
+        ->and(mb_strlen(html_entity_decode($m[1])))->toBeLessThanOrEqual(155);
+});
+
+it('marks editorial titles as headings and psalm titles as text', function () {
+    expect(currentPage($this->get('/books/Gen/chapters/1')->getContent()))->toMatch('/<h2 class="verse-title[^"]*">The Creation<\/h2>/');
+    expect(currentPage($this->get('/books/Ps/chapters/23')->getContent()))->toMatch('/<p class="psalm-title[^"]*">A Psalm of David\.?<\/p>/');
+});

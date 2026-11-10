@@ -41,9 +41,11 @@
             <!-- Normal Chapter Header -->
             <div x-show="!searching" class="flex items-center justify-between">
                 <div class="flex flex-col space-y-1">
-                    <button type="button" @click="selector = true; mode = 'books'; book = null" class="text-xl font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-serif text-left" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif;">
+                    <h1 class="m-0">
+                    <button type="button" @click="selector = true; mode = 'books'; book = null" aria-haspopup="dialog" title="Choose a book and chapter" class="text-xl font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-serif text-left" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif;">
                         {{ $currentBook['name'] ?? $bookOsisId }} {{ $chapterNumber }}
                     </button>
+                    </h1>
                     <!-- Translation Selector - Click to show dropdown -->
                     <div class="relative" x-data="{ open: false }" @click.away="open = false">
                         <button @click="open = !open" class="text-sm text-gray-600 dark:text-gray-400 font-medium font-serif hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-left flex items-center whitespace-nowrap" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif;">

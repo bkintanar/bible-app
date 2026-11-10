@@ -142,15 +142,24 @@ class DatabaseBibleReader implements BibleReaderInterface
                         'acrostic' => 'acrostic-title text-center text-lg font-semibold text-blue-700 dark:text-blue-400 mb-2',
                         'chapter' => 'chapter-title text-center text-lg font-bold text-gray-900 dark:text-gray-100 mb-4',
                         'sub' => 'sub-title text-center text-base font-semibold text-gray-800 dark:text-gray-200 mb-3',
-                        'verse' => 'verse-title text-transform: uppercase ml-8 text-xs font-medium text-blue-600 dark:text-blue-400',
+                        'verse' => 'verse-title uppercase ml-8 text-xs font-medium text-blue-600 dark:text-blue-400',
                         default => 'title text-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'
                     };
 
+                    // Semantic elements (A11Y-2): editorial section headings are headings (<h2>, under
+                    // the page's <h1>); a psalm's superscription is part of the text, so a paragraph.
+                    $element = match ($title->title_type) {
+                        'verse' => 'h2',
+                        'psalm' => 'p',
+                        default => 'div',
+                    };
+                    $html = '<' . $element . ' class="' . $titleClass . '">' . $title->title_text . '</' . $element . '>';
+
                     // Separate verse titles from chapter titles
                     if ($title->title_type === 'verse') {
-                        $verseTitleHtml .= '<div class="' . $titleClass . '">' . $title->title_text . '</div>';
+                        $verseTitleHtml .= $html;
                     } else {
-                        $chapterTitleHtml .= '<div class="' . $titleClass . '">' . $title->title_text . '</div>';
+                        $chapterTitleHtml .= $html;
                     }
                 }
             }
@@ -933,7 +942,7 @@ class DatabaseBibleReader implements BibleReaderInterface
                         'acrostic' => 'acrostic-title text-center text-lg font-semibold text-blue-700 dark:text-blue-400 mb-2',
                         'chapter' => 'chapter-title text-center text-lg font-bold text-gray-900 dark:text-gray-100 mb-4',
                         'sub' => 'sub-title text-center text-base font-semibold text-gray-800 dark:text-gray-200 mb-3',
-                        'verse' => 'verse-title text-transform: uppercase ml-8 text-xs font-medium text-blue-600 dark:text-blue-400',
+                        'verse' => 'verse-title uppercase ml-8 text-xs font-medium text-blue-600 dark:text-blue-400',
                         default => 'title text-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'
                     };
                     $titleHtml .= '<div class="' . $titleClass . '">' . $title['text'] . '</div>';

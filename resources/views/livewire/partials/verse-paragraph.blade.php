@@ -31,7 +31,7 @@
                     <!-- Display verse title if it exists for verse 1 -->
                     @if(isset($verse['verse_titles']) && !empty($verse['verse_titles']))
                         <div class="mb-4 block w-full clear-both">
-                            <div class="verse-title text-xs font-semibold text-blue-700 dark:text-blue-400 font-serif">{!! strip_tags($verse['verse_titles'], '<div><span><em><strong><sup><sub><foreign>') !!}</div>
+                            <div class="verse-title text-xs font-semibold text-blue-700 dark:text-blue-400 font-serif">{!! strip_tags($verse['verse_titles'], '<div><h2><p><span><em><strong><sup><sub><foreign>') !!}</div>
                         </div>
                     @endif
 
@@ -43,7 +43,7 @@
                     <!-- Display verse title if it exists for other verses -->
                     @if(isset($verse['verse_titles']) && !empty($verse['verse_titles']))
                         <div class="mt-6 block w-full">
-                            <div class="verse-title text-xs font-semibold text-blue-700 dark:text-blue-400 font-serif">{!! strip_tags($verse['verse_titles'], '<div><span><em><strong><sup><sub><foreign>') !!}</div>
+                            <div class="verse-title text-xs font-semibold text-blue-700 dark:text-blue-400 font-serif">{!! strip_tags($verse['verse_titles'], '<div><h2><p><span><em><strong><sup><sub><foreign>') !!}</div>
                         </div>
                     @endif
 
@@ -61,7 +61,7 @@
                     <!-- Display titles only once per paragraph (from first verse) -->
                     @if(!$titlesDisplayed && isset($verse['chapter_titles']) && !empty($verse['chapter_titles']))
                         <div class="mb-4 block w-full -indent-8">
-                            {!! strip_tags($verse['chapter_titles'], '<div><span><em><strong><sup><sub><foreign>') !!}
+                            {!! strip_tags($verse['chapter_titles'], '<div><h2><p><span><em><strong><sup><sub><foreign>') !!}
                         </div>
                         @php $titlesDisplayed = true; @endphp
                     @endif
@@ -70,7 +70,7 @@
                         <!-- Display verse title if it exists for verse 1 -->
                         @if(isset($verse['verse_titles']) && !empty($verse['verse_titles']))
                             <div class="block w-full -indent-8 clear-both">
-                                <div class="verse-title text-xs font-semibold text-blue-700 dark:text-blue-400 font-serif">{!! strip_tags($verse['verse_titles'], '<div><span><em><strong><sup><sub><foreign>') !!}</div>
+                                <div class="verse-title text-xs font-semibold text-blue-700 dark:text-blue-400 font-serif">{!! strip_tags($verse['verse_titles'], '<div><h2><p><span><em><strong><sup><sub><foreign>') !!}</div>
                             </div>
                         @endif
 
@@ -80,7 +80,7 @@
                         <!-- Display verse title if it exists for other verses -->
                         @if(isset($verse['verse_titles']) && !empty($verse['verse_titles']))
                             <div class="mt-6 block w-full -indent-8">
-                                <div class="verse-title text-xs font-semibold text-blue-700 dark:text-blue-400 font-serif">{!! strip_tags($verse['verse_titles'], '<div><span><em><strong><sup><sub><foreign>') !!}</div>
+                                <div class="verse-title text-xs font-semibold text-blue-700 dark:text-blue-400 font-serif">{!! strip_tags($verse['verse_titles'], '<div><h2><p><span><em><strong><sup><sub><foreign>') !!}</div>
                             </div>
                         @endif
 

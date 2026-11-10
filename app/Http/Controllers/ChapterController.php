@@ -34,6 +34,33 @@ class ChapterController extends Controller
 
         ResumePosition::remember($bookOsisId, $chapterNumber);
 
-        return view('livewire-chapter', compact('bookOsisId', 'chapterNumber'));
+        return view('livewire-chapter', [
+            'bookOsisId' => $bookOsisId,
+            'chapterNumber' => $chapterNumber,
+            'meta' => $this->meta($bookOsisId, $chapterNumber),
+        ]);
+    }
+
+    /**
+     * <title>, description and canonical/Open Graph data for the page head (SEO-2): every chapter
+     * used to be titled "Bible Chapter", with no description and no canonical URL.
+     *
+     * @return array{title: string, description: string, url: string}
+     */
+    private function meta(string $bookOsisId, int $chapterNumber): array
+    {
+        $book = $this->bibleService->getBooks()->firstWhere('osis_id', $bookOsisId);
+        $translation = $this->bibleService->getCurrentTranslation()['name'] ?? 'King James Version';
+        $heading = ($book['name'] ?? $bookOsisId) . ' ' . $chapterNumber;
+
+        $first = $this->bibleService->getVerses("{$bookOsisId}.{$chapterNumber}")->first();
+        $text = trim(preg_replace('/\s+/', ' ', html_entity_decode(strip_tags((string) ($first['text'] ?? '')), ENT_QUOTES | ENT_HTML5)));
+
+        return [
+            'title' => "{$heading} — {$translation}",
+            'description' => $text === '' ? "{$heading}, {$translation}." : \Illuminate\Support\Str::limit("{$heading}: {$text}", 155, '…'),
+            // From APP_URL, like the sitemap: the canonical must not depend on how the request arrived.
+            'url' => rtrim((string) config('app.url'), '/') . route('chapters.show', ['bookOsisId' => $bookOsisId, 'chapterNumber' => $chapterNumber], false),
+        ];
     }
 }

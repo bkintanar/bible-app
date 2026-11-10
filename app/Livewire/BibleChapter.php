@@ -179,8 +179,8 @@ class BibleChapter extends Component
         $firstVerse = $verses->first()['verses'][0] ?? null;
 
         if ($firstVerse && ! empty($firstVerse['chapter_titles'])
-            && preg_match('/<div[^>]*>(.*?)<\/div>/', $firstVerse['chapter_titles'], $matches)) {
-            return ['title_text' => $matches[1]];
+            && preg_match('/<(div|p|h2)\b[^>]*>(.*?)<\/\1>/s', $firstVerse['chapter_titles'], $matches)) {
+            return ['title_text' => $matches[2]];
         }
 
         return null;
