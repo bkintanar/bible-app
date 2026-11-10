@@ -12,11 +12,6 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // Runs before routing on EVERY request, so it also covers routes registered by
-        // packages outside the app's own route files (which is how nativephp/mobile's
-        // unauthenticated POST /_native/api/events endpoint reaches the web build).
-        $middleware->prepend(\App\Http\Middleware\BlockNativeRoutesOnWeb::class);
-
         // This origin sits behind a Cloudflare tunnel, which terminates TLS and forwards over plain
         // HTTP. Untrusted, Laravel read every request as insecure and generated http:// URLs.
         // Only X-Forwarded-For and -Proto are honoured: cloudflared sends no X-Forwarded-Host, so

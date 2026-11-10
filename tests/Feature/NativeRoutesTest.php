@@ -1,10 +1,18 @@
 <?php
 
+use Illuminate\Support\Facades\Route;
+
 /*
- * nativephp/mobile (kept on the web build until OD-1 is decided) registers unauthenticated
- * /_native/* routes. BlockNativeRoutesOnWeb must refuse every one of them outside the native app;
- * nginx denies the prefix too. 4.7.0 added /_native/api/call - the prefix check covers it.
+ * OD-1 (owner, 2026-11-11): nativephp/mobile is removed from the web app. It registered
+ * unauthenticated /_native/* routes whose controller instantiated an attacker-named class; this
+ * guards against the package (or its routes) coming back.
  */
-it('refuses every nativephp route on the web build', function (string $path) {
+it('registers no nativephp routes', function () {
+    $native = collect(Route::getRoutes()->getRoutes())->filter(fn ($route) => str_starts_with($route->uri(), '_native'));
+
+    expect($native)->toBeEmpty();
+});
+
+it('answers the old nativephp endpoints with 404', function (string $path) {
     $this->postJson($path, ['event' => 'App\\Events\\Anything', 'method' => 'Anything', 'payload' => []])->assertNotFound();
-})->with(['/_native/api/events', '/_native/api/call', '/_native/anything-added-later']);
+})->with(['/_native/api/events', '/_native/api/call']);
