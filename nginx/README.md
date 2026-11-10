@@ -1,10 +1,13 @@
 # nginx configuration
 
-Copies of the live vhost, kept in the repo so the deployment is reviewable and
-recoverable. The live files are:
+The live vhost, kept in the repo so the deployment is reviewable and recoverable:
 
-    /etc/nginx/sites-available/bible.local   <- bible.b8.co.nz.conf
-    /etc/nginx/snippets/bible-headers.conf   <- bible-headers.conf
+    /etc/nginx/sites-available/bible.local   -> symlink to $APP/nginx/bible.b8.co.nz.conf
+    /etc/nginx/snippets/bible-headers.conf   <- copy of bible-headers.conf
+
+Because the vhost is a symlink into the live tree, a deploy that changes it needs
+`nginx -t && systemctl reload nginx` afterwards (and `nginx -t` before every reload).
+Only the tunnel (10.0.10.31) and localhost may connect; everything else gets 403.
 
 ## Topology
 
