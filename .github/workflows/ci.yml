@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: dom, xmlreader, intl, mbstring, pdo_sqlite, sqlite3, pcntl, posix
+          coverage: none
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Build assets
+        run: npm ci --no-audit --no-fund && npm run build
+
+      - name: Prepare the application
+        run: cp .env.example .env && php artisan key:generate --ansi
+
+      # Tests run against in-memory SQLite (phpunit.xml) and the mini KJV fixture.
+      - name: Tests
+        run: composer test
+
+      # Non-blocking until the one-off Pint pass (plan Task 9.6, "Pint last"); then drop this line.
+      - name: Lint (Pint)
+        run: composer lint
+        continue-on-error: true
