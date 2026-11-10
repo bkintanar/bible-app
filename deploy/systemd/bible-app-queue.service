@@ -9,6 +9,9 @@ RequiresMountsFor=/var/www/personal/bible-app
 # restart after the first hourly exit and the queue would silently stop). Those clean
 # restarts still count toward the start limit, so the limit is disabled.
 StartLimitIntervalSec=0
+# A crash, kill or OOM (result != success) triggers OnFailure even with Restart=always - verified on
+# systemd 257, 2026-11-11 (an ExecStopPost hook sent the same alert twice). The hourly --max-time
+# exit is clean and stays silent.
 OnFailure=bible-notify@%n.service
 
 [Service]
@@ -19,9 +22,6 @@ WorkingDirectory=/var/www/personal/bible-app
 # see libxml memory, which is why PublishChapterProjection runs osis:import as a SUBPROCESS.
 ExecStart=/usr/bin/php -d memory_limit=256M artisan queue:work --sleep=3 --tries=3 --max-time=3600 --memory=200
 ExecReload=/usr/bin/php artisan queue:restart
-# Crash / kill / OOM: tell the owner (an hourly --max-time exit is clean and stays silent).
-EnvironmentFile=-/etc/default/bible-app-notify
-ExecStopPost=/var/www/personal/bible-app/deploy/bin/notify.sh --if-failed %n
 Restart=always
 RestartSec=5
 # MemoryMax covers the worker AND its children: a publish subprocess (osis:import DOM-loads the
