@@ -42,7 +42,5 @@ jobs:
       - name: Tests
         run: composer test
 
-      # Non-blocking until the one-off Pint pass (plan Task 9.6, "Pint last"); then drop this line.
       - name: Lint (Pint)
         run: composer lint
-        continue-on-error: true
