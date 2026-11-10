@@ -89,7 +89,7 @@
         </div>
 
         <!-- Scrollable Content Area -->
-        <div id="search-scroller" class="flex-1 overflow-y-auto p-4 sm:p-8">
+        <div id="search-scroller" class="flex-1 overflow-y-auto p-4 sm:p-8 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" tabindex="0" role="region" aria-label="Search results">
             @if($q)
                 <!-- Search Info -->
                 <div class="mb-6">
