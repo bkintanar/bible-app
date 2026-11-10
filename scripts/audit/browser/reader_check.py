@@ -130,6 +130,14 @@ try:
     pages = pdf.count(b'/Type /Page') - pdf.count(b'/Type /Pages')
     check('printing Matt 5 gives the whole chapter (several pages)', pages >= 3, f'{pages} pages')
 
+    # Phone width (375 px): nothing may scroll sideways
+    call('POST', f'{S}/window/rect', {'width': 375, 'height': 812})
+    for path in ('/books/Gen/chapters/1', '/books/Ps/chapters/119', '/searches?q=love', '/login', '/books/Nope/chapters/1'):
+        go(path); time.sleep(1.2)
+        w = js('return [document.documentElement.scrollWidth, document.documentElement.clientWidth]')
+        check(f'no horizontal scroll at 375 px: {path}', w[0] <= w[1], f'{w[0]} > {w[1]}' if w[0] > w[1] else '')
+    go('/books/Gen/chapters/1'); time.sleep(1.2); shot('06-gen1-375px')
+
     call('DELETE', S)
 finally:
     proc.terminate()

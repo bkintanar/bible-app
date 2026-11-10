@@ -1,3 +1,7 @@
+> **SUPERSEDED (2026-11-10) by [`bible-app-full-audit-v2.plan.md`](bible-app-full-audit-v2.plan.md) for every open item.**
+> v2 re-audited the app, corrected v1's misdiagnoses (red letters, the 17-book 404s, verse truncation) and was executed
+> and deployed in full (phases 0–9). Keep this file as history only; do not act on its open tasks.
+
 # Feature: bible-app Full Audit & Remediation
 
 ## Summary
