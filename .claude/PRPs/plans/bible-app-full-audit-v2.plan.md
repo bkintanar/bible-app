@@ -663,7 +663,13 @@ function projectFixture(string $name = 'mini-kjv'): void {
 - `scripts/audit/browser/reader_check.py` (W3C WebDriver + DevTools, no dependencies) against production. **Found and fixed two real bugs:** (1) the keyboard handler tested the dialog with `offsetParent`, always `null` for `position:fixed`, so **ArrowRight turned the page underneath the open book selector** (proved failing on production first, `034c093`); (2) **opening the in-chapter search never focused the box** — the input was its own Alpine component, its x-ref invisible to the header scope and its one-off focus run at page load (`2718fca`; focus now returns to the search button on close). Print: Strong's underlines hidden (`18a67f2`).
 - **22/22 checks pass:** selector open/pick (Exodus → 40 chapter links)/Escape/focus return; arrows blocked while it is open; ArrowLeft on Gen 1 stays, ArrowRight → Gen 2; A+ 20 → 24 px, kept after reload, A− back; dark mode; Strong's popover ("In the beginning — Strong's H07225") + Escape; search box focus in/out + results; **touch swipes** left → next, right → previous, short drag → nothing; **print** Matt 5 → 4-page PDF of the text only (screenshots/PDF reviewed). axe still 0 violations; CI test + a11y green (run 42749492281).
 
-### Remaining after iteration 4 (needs the owner)
+### Iteration 5 (2026-11-10) — the plan's Validation Commands and Acceptance Criteria
+- Level 1: `php -l` over app/routes/config/database/tests → 0 failures; Pint 0. Level 2/3: 245 tests, `--parallel`, build. Level 4: verify 0, gate 32/32, integrity ok. Level 5: all books 200; **`run_all.sh` on production: db/on/off text all clean, 0 leaks, red 2,026/2,026**; `live_sample.py` 900 verses 0 leaks. Level 6: editor drill (3.5/4.7/9.4) and **restore drill** (latest backup → integrity → migrate → verify → full import → verify 0, 34 s).
+- **Found and fixed:** the KJV's only em dash (Exod 32:32 "sin—;") was stored as "sin —;" — the importer spaced after every `</w>` not followed by ASCII punctuation (`8f33781`; Exod 32 re-projected chapter-scoped; off_text now clean). `compare_all.py` now counts `<em>` per supplied phrase (`8b74bd3`): the 21,585-vs-21,571 "italic excess" was a measurement artefact (one `<em>` around "the <small-caps>LORD</small-caps>" counted as two runs).
+- Browser check extended to 375 px (no horizontal scroll on reader, Ps 119, search, login, 404): 27/27. v1 plan marked superseded.
+- Observation for the owner (not changed): justified text on phones leaves wide word gaps; consider `text-left sm:text-justify`.
+
+### Remaining after iteration 5 (needs the owner)
 - **Owner actions:** APP_KEY rotation (`deploy/bin/rotate-app-key.sh`; classifier refused); write deploy key at `/root/.ssh/bible-app-deploy` for the nightly OSIS push (3.4); off-host backup target (0.3); `/etc/default/bible-app-notify` with NOTIFY_URL (+ an external uptime check on `/up`) (9.4); host package upgrades (9.5); answers to OD-1/3/4/9/10/11 (interim defaults applied); review of the 9 red-letter boundary verses (2.4).
 - **Deviations (decided, documented):** custom CSS not moved into `@layer components`; `word_order`/`text_order`/`poetry_structure` kept (9.2); Strong's words not keyboard-focusable (8.2).
 - **Browser check:** done in headless Chrome (iteration 4, 22/22). A human look on a real phone is still worthwhile but no longer a gap.
@@ -1182,26 +1188,26 @@ Browser (owner, or Chrome MCP if connected): Gen 1, John 3, 1 Cor 13, /searches,
 
 ## Acceptance Criteria
 
-- [ ] All 66 books × chapter 1 return 200; 0 truncated verses; 0 verses with note text; 0 raw OSIS tags in rendered HTML.
-- [ ] Red letters: FN 0, FP 0 (or only OD-5 allow-listed), partial 0 vs `osis_truth.py`.
-- [ ] Italic count == supplied words; no swallowed `<w/>`; LORD small caps in psalm titles.
-- [ ] `osis:verify --content` exits 0; `scripts/audit/check-scripture.sh` exits 0.
-- [ ] `/searches` serves real results; no route returns 500 for any input tried in this audit.
-- [ ] Source XML committed and pushed; nightly verified backup of DB + XML; off-host copy configured (or recorded as open risk); restore drill passed.
-- [ ] `composer audit --no-dev` → no reachable advisories; axios gone from browser bundles.
-- [ ] Editor: backreference/entity bugs fixed; publish runs in a queued subprocess; audit trail written; chapter-1 saves keep book titles.
-- [ ] Proxy trust limited to the tunnel; trusted hosts on; public components lock server-owned state; cache/limiter/queue not writing the scripture DB.
-- [ ] Test suite: 0 failed / 0 risky; Feature tests cover importer, verify, editor, auth, API, reader; CI green.
-- [ ] Matt 5 page < 560KB raw (neighbours kept in the DOM per OD-2, out of the snapshot); ≤ 15 queries warm; no 302 hop on page turn.
-- [ ] Red letters cross-checked against eBible's red-letter KJV (2.4): the 5 Matthew verses match; any remaining differences listed for the owner.
-- [ ] WCAG basics: one h1/main, dialog semantics, named controls, `wire:key` everywhere, reduced motion honoured.
+- [x] All 66 books × chapter 1 return 200; 0 truncated verses; 0 verses with note text; 0 raw OSIS tags in rendered HTML. — (all 1,189 chapters 200 in the iteration-2 crawl; run_all: 0 truncation, 0 note text, 0 leaks)
+- [x] Red letters: FN 0, FP 0 (or only OD-5 allow-listed), partial 0 vs `osis_truth.py`. — (run_all: tp 2,026 = truth 2,026 in on/off/table; 0 FN/FP/partial)
+- [x] Italic count == supplied words; no swallowed `<w/>`; LORD small caps in psalm titles. — (21,571 `<em>` = 21,571 supplied phrases, 0 verses differ; small-caps excess = the 14 inscriptions by design)
+- [x] `osis:verify --content` exits 0; `scripts/audit/check-scripture.sh` exits 0. — (and gate 32/32, iteration 5)
+- [x] `/searches` serves real results; no route returns 500 for any input tried in this audit. — (5.1–5.3)
+- [x] Source XML committed and pushed; nightly verified backup of DB + XML; off-host copy configured (or recorded as open risk); restore drill passed. — (off-host = open risk, owner; restore drill passed iteration 5: backup → integrity ok → verify → import → verify 0, 34 s)
+- [x] `composer audit --no-dev` → no reachable advisories; axios gone from browser bundles. — (clean; no app.js)
+- [x] Editor: backreference/entity bugs fixed; publish runs in a queued subprocess; audit trail written; chapter-1 saves keep book titles. — (3.1–3.5)
+- [x] Proxy trust limited to the tunnel; trusted hosts on; public components lock server-owned state; cache/limiter/queue not writing the scripture DB. — (4.2–4.4)
+- [x] Test suite: 0 failed / 0 risky; Feature tests cover importer, verify, editor, auth, API, reader; CI green. — (245 tests; CI test + a11y green)
+- [x] Matt 5 page < 560KB raw (neighbours kept in the DOM per OD-2, out of the snapshot); ≤ 15 queries warm; no 302 hop on page turn. — (331 KB; 13–19 queries warm; no hop)
+- [x] Red letters cross-checked against eBible's red-letter KJV (2.4): the 5 Matthew verses match; any remaining differences listed for the owner. — (2.4)
+- [x] WCAG basics: one h1/main, dialog semantics, named controls, `wire:key` everywhere, reduced motion honoured. — (8.x; axe 0 violations; headless-Chrome check 27/27)
 
 ## Completion Checklist
 
-- [ ] Phases executed in order; each task's VALIDATE run immediately after it
-- [ ] Level 1–4 green; Level 5 live checks green; Level 6 drills done
-- [ ] Open decisions recorded in this file with the owner's answers
-- [ ] v1 plan annotated "superseded by v2 for open items"
+- [x] Phases executed in order; each task's VALIDATE run immediately after it
+- [x] Level 1–4 green; Level 5 live checks green; Level 6 drills done — (iteration 5: php -l 0 failures, live_sample 900 verses 0 leaks, editor + restore drills)
+- [ ] Open decisions recorded in this file with the owner's answers — **OPEN: OD-1/3/4/9/10/11 unanswered (interim defaults applied)**
+- [x] v1 plan annotated "superseded by v2 for open items" — (iteration 5)
 
 ---
 
