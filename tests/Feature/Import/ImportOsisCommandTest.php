@@ -230,3 +230,20 @@ it('runs under the publish job\'s lock when its parent job holds it', function (
         $held->release();
     }
 });
+
+it('does not put a space before an em dash after a word (Exod 32:32 "sin—;")', function () {
+    seedBooks();
+    $file = sys_get_temp_dir().'/dash-'.uniqid().'.osis.xml';
+    $xml = file_get_contents(base_path('tests/Fixtures/mini-kjv.osis.xml'));
+    file_put_contents($file, str_replace('the earth</w>.<verse eID="Gen.1.1"/>', 'the earth</w>—; and the rest.<verse eID="Gen.1.1"/>', $xml));
+
+    try {
+        importOsis($file);
+    } finally {
+        @unlink($file);
+    }
+
+    $verse = verseRow('Gen.1.1');
+    expect($verse->formatted_text)->toContain('the earth—;')->not->toContain('the earth —')
+        ->and($verse->text)->toContain('the earth—;');
+});

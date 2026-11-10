@@ -1555,8 +1555,11 @@ class ImportOsisCommand extends Command
     private function removeWordMarkup($html)
     {
         $html = preg_replace('/<w[^>]*>/', '', $html);
-        // Add space after </w> only if followed by actual text content (not punctuation or whitespace)
-        $html = preg_replace('/<\/w>(?=[^\s.,:;!?\'")\]\-])/', '</w> ', $html);
+        // Add space after </w> only if followed by actual text content (not punctuation or whitespace).
+        // Dashes count as punctuation: Exod 32:32 "their sin</w>—;" read "sin —;" in the stored HTML.
+        // /u so the multi-byte dashes are single characters, not bytes (which would also have
+        // matched the lead bytes of curly quotes).
+        $html = preg_replace('/<\/w>(?=[^\s.,:;!?\'")\]\-\x{2013}\x{2014}])/u', '</w> ', $html);
         $html = str_replace('</w>', '', $html); // Clean up remaining </w> tags
 
         return $html;
