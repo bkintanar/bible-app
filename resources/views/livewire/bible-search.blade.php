@@ -13,7 +13,7 @@
                 <!-- Mobile Actions -->
                 <div class="flex items-center space-x-1 sm:hidden">
                     <!-- Dark Mode Toggle (Mobile) -->
-                    <button onclick="toggleDarkMode()"
+                    <button type="button" onclick="toggleDarkMode()" aria-label="Toggle dark mode" title="Toggle dark mode"
                             class="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center">
                         <svg class="w-5 h-5 dark:hidden" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
@@ -34,7 +34,7 @@
                     />
 
                     <!-- Dark Mode Toggle (Desktop) -->
-                    <button onclick="toggleDarkMode()"
+                    <button type="button" onclick="toggleDarkMode()" aria-label="Toggle dark mode" title="Toggle dark mode"
                             class="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center">
                         <svg class="w-5 h-5 dark:hidden" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
@@ -96,7 +96,7 @@
                     <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
                         Search Results for "{{ $q }}"
                     </h2>
-                    <div class="text-sm text-gray-600 dark:text-gray-400">
+                    <div class="text-sm text-gray-600 dark:text-gray-400" role="status" aria-live="polite">
                         @if(!empty($searchInfo) && $searchInfo['count'] > 0)
                             Found {{ number_format($searchInfo['count']) }} result{{ $searchInfo['count'] !== 1 ? 's' : '' }}
                             @if($hasMoreResults)(showing first {{ $limit }})@endif
@@ -111,7 +111,7 @@
                 @if(!empty($results))
                     <div class="space-y-4">
                         @foreach($results as $index => $result)
-                            <div
+                            <div wire:key="result-{{ $result['book_osis_id'] }}-{{ $result['chapter'] }}-{{ $result['verse'] }}"
                                 id="result-{{ $index }}"
                                 class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
                             >
@@ -170,13 +170,4 @@
             @endif
         </div>
     </div>
-
-    <!-- Dark Mode Script -->
-    <script>
-        // Initial theme is set in <head> (partials/dark-mode-head) to avoid a flash.
-        function toggleDarkMode() {
-            document.documentElement.classList.toggle('dark');
-            try { localStorage.setItem('darkMode', document.documentElement.classList.contains('dark')); } catch (e) {}
-        }
-    </script>
 </div>

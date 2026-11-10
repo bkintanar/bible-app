@@ -1,5 +1,5 @@
 {{-- UI-only state lives in Alpine (no server round-trip): the book/chapter selector. --}}
-<div class="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col"
+<div class="h-screen h-dvh bg-gray-50 dark:bg-gray-900 flex flex-col"
      x-data="{ selector: false, mode: 'books', book: null }"
      @keydown.escape.window="selector = false">
     <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[60] focus:bg-white focus:text-blue-700 focus:px-4 focus:py-2 focus:rounded-lg focus:shadow">Skip to the text</a>
@@ -72,7 +72,8 @@
         </div>
 
         <!-- Current Chapter -->
-        <div class="page page-current absolute inset-0 h-full overflow-y-auto" style="z-index: 2;">
+        <div class="page page-current absolute inset-0 h-full overflow-y-auto" style="z-index: 2;"
+             tabindex="0" role="region" aria-label="{{ ($currentBook['name'] ?? $bookOsisId) . ' ' . $chapterNumber }}">
             <!-- Book spine shadow -->
             <div class="book-spine-shadow"></div>
 
@@ -90,7 +91,7 @@
                             @elseif(!empty($searchStats['invalid']))
                                 <div class="text-red-700 dark:text-red-400 mb-6" role="alert">{{ $searchStats['invalid'] }}</div>
                             @elseif(!empty($searchStats))
-                                <div class="text-gray-600 dark:text-gray-400 mb-6">
+                                <div class="text-gray-600 dark:text-gray-400 mb-6" role="status" aria-live="polite">
                                     Found {{ $searchStats['total_found'] }} results for "<strong>{{ $searchStats['query'] }}</strong>"
                                     <span class="text-gray-500">({{ $searchStats['search_time_ms'] }}ms)</span>
                                 </div>
@@ -111,7 +112,7 @@
                                 <!-- Search Results List -->
                                 <div class="space-y-4">
                                     @foreach($searchResults as $result)
-                                        <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 hover:border-blue-300 dark:hover:border-blue-600 transition-colors">
+                                        <div wire:key="result-{{ $result['book_osis_id'] }}-{{ $result['chapter'] }}-{{ $result['verse'] }}" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 hover:border-blue-300 dark:hover:border-blue-600 transition-colors">
                                             <div class="flex items-start justify-between">
                                                 <div class="flex-1">
                                                     <a href="{{ route('chapters.show', ['bookOsisId' => $result['book_osis_id'], 'chapterNumber' => $result['chapter']]) }}#verse-{{ $result['verse'] }}"
@@ -219,7 +220,7 @@
     {{-- FLOATING NAVIGATION BUTTONS --}}
     <!-- Floating Previous Chapter Button (Left Side) -->
     @if($nav['prev'])
-        <div class="fixed left-0 top-1/2 transform -translate-y-1/2 z-40">
+        <div class="fixed left-0 top-1/2 transform -translate-y-1/2 z-40 hidden sm:block">
             <a href="{{ $nav['prev']['url'] }}"
                class="bg-blue-600 hover:bg-blue-700 dark:bg-gray-700 dark:hover:bg-gray-600 text-white w-[44px] h-[60px] shadow-lg dark:shadow-gray-900 transition-all duration-200 hover:scale-110 flex items-center justify-center group"
                title="Previous: {{ $nav['prev']['label'] }}"
@@ -233,7 +234,7 @@
 
     <!-- Floating Next Chapter Button (Right Side) -->
     @if($nav['next'])
-        <div class="fixed right-0 top-1/2 transform -translate-y-1/2 z-40">
+        <div class="fixed right-0 top-1/2 transform -translate-y-1/2 z-40 hidden sm:block">
             <a href="{{ $nav['next']['url'] }}"
                class="bg-blue-600 hover:bg-blue-700 dark:bg-gray-700 dark:hover:bg-gray-600 text-white w-[44px] h-[60px] shadow-lg dark:shadow-gray-900 transition-all duration-200 hover:scale-110 flex items-center justify-center group"
                title="Next: {{ $nav['next']['label'] }}"
@@ -251,7 +252,7 @@
     @php
         $chapterUrlTemplate = route('chapters.show', ['bookOsisId' => '__BOOK__', 'chapterNumber' => 999999], false);
     @endphp
-    <div x-show="selector" x-cloak
+    <div x-show="selector" x-cloak x-trap.noscroll.inert="selector"
          class="fixed inset-0 z-50 bg-white dark:bg-gray-900"
          role="dialog" aria-modal="true" aria-labelledby="book-selector-title"
          x-data="{ chapterUrl(id, n) { return @js($chapterUrlTemplate).replace('__BOOK__', id).replace('999999', n) } }">
@@ -287,7 +288,7 @@
                         <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 font-serif">Old Testament</h3>
                         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                             @foreach($this->testamentBooks['oldTestament'] as $book)
-                                <button type="button"
+                                <button wire:key="book-{{ $book['osis_id'] }}" type="button"
                                         @click="book = @js(['id' => $book['osis_id'], 'name' => $book['name'], 'count' => $book['chapter_count'] ?? 0]); mode = 'chapters'"
                                         class="p-3 text-left bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-blue-50 dark:hover:bg-gray-700 hover:border-blue-200 dark:hover:border-gray-600 transition-colors {{ $book['osis_id'] === $bookOsisId ? 'bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-600' : '' }}">
                                     <span class="font-medium text-gray-900 dark:text-white font-serif text-sm">{{ $book['name'] }}</span>
@@ -299,7 +300,7 @@
                         <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 font-serif">New Testament</h3>
                         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                             @foreach($this->testamentBooks['newTestament'] as $book)
-                                <button type="button"
+                                <button wire:key="book-{{ $book['osis_id'] }}" type="button"
                                         @click="book = @js(['id' => $book['osis_id'], 'name' => $book['name'], 'count' => $book['chapter_count'] ?? 0]); mode = 'chapters'"
                                         class="p-3 text-left bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-blue-50 dark:hover:bg-gray-700 hover:border-blue-200 dark:hover:border-gray-600 transition-colors {{ $book['osis_id'] === $bookOsisId ? 'bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-600' : '' }}">
                                     <span class="font-medium text-gray-900 dark:text-white font-serif text-sm">{{ $book['name'] }}</span>

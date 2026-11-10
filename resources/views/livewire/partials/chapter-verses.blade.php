@@ -12,6 +12,7 @@
             'chapterNumber' => $chapterNumber,
             'loop' => $loop,
             'emitIds' => $emitIds ?? true,
+            'wireKey' => 'p-' . $chapterNumber . '-' . $loop->index,
         ])
     @endforeach
 @else

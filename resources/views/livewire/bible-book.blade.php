@@ -32,7 +32,7 @@
                     />
 
                     <!-- Dark Mode Toggle -->
-                    <button onclick="toggleDarkMode()"
+                    <button type="button" onclick="toggleDarkMode()" aria-label="Toggle dark mode" title="Toggle dark mode"
                             class="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                         <svg class="w-5 h-5 dark:hidden" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
@@ -115,7 +115,7 @@
                         <div class="grid grid-cols-3 sm:grid-cols-6 gap-3">
                             @foreach($this->getPopularChapters() as $chapterNum)
                                 @if($chapterNum <= count($chapters))
-                                    <a href="{{ route('chapters.show', ['bookOsisId' => $bookOsisId, 'chapterNumber' => $chapterNum]) }}"
+                                    <a wire:key="popular-{{ $chapterNum }}" href="{{ route('chapters.show', ['bookOsisId' => $bookOsisId, 'chapterNumber' => $chapterNum]) }}"
                                        class="bg-blue-600 hover:bg-blue-700 text-white text-center py-3 px-4 rounded-lg transition-colors font-medium">
                                         {{ $chapterNum }}
                                     </a>
@@ -131,7 +131,7 @@
 
                     <div class="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-3">
                         @foreach($chapters as $chapter)
-                            <a href="{{ route('chapters.show', ['bookOsisId' => $bookOsisId, 'chapterNumber' => $chapter['chapter_number']]) }}"
+                            <a wire:key="chapter-{{ $chapter['chapter_number'] }}" href="{{ route('chapters.show', ['bookOsisId' => $bookOsisId, 'chapterNumber' => $chapter['chapter_number']]) }}"
                                class="bg-gray-100 dark:bg-gray-700 hover:bg-blue-600 hover:text-white text-gray-900 dark:text-gray-100 text-center py-3 px-2 rounded-lg transition-colors font-medium group">
                                 <div class="text-lg">{{ $chapter['chapter_number'] }}</div>
                                 @if(isset($chapter['verse_count']))
@@ -217,17 +217,4 @@
             </a>
         </div>
     @endif
-
-    <!-- Dark Mode Script -->
-    <script>
-        function toggleDarkMode() {
-            document.documentElement.classList.toggle('dark');
-            localStorage.setItem('darkMode', document.documentElement.classList.contains('dark'));
-        }
-
-        // Initialize dark mode from localStorage
-        if (localStorage.getItem('darkMode') === 'true') {
-            document.documentElement.classList.add('dark');
-        }
-    </script>
 </div>

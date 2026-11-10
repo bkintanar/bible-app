@@ -1,13 +1,24 @@
-{{-- In <head>, before the first paint: stored choice wins, else the OS preference. Tailwind's dark
-     variant is class-based here, so prefers-color-scheme has to be resolved in script. --}}
+{{-- In <head> on every page, before the first paint: the reader's theme (stored choice, else the OS
+     preference - Tailwind's dark variant is class-based here) and text size, and the ONE
+     toggleDarkMode() the pages' theme buttons call. --}}
 <script>
     (function () {
+        var root = document.documentElement;
         try {
             var stored = localStorage.getItem('darkMode');
             var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
             if (stored === 'true' || (stored === null && prefersDark)) {
-                document.documentElement.classList.add('dark');
+                root.classList.add('dark');
             }
-        } catch (e) { /* private mode or blocked storage: fall back to light */ }
+            var size = localStorage.getItem('fontSize');
+            if (['sm', 'base', 'lg', 'xl', '2xl'].indexOf(size) !== -1) {
+                root.setAttribute('data-font-size', size);
+            }
+        } catch (e) { /* private mode or blocked storage: defaults */ }
+
+        window.toggleDarkMode = function () {
+            root.classList.toggle('dark');
+            try { localStorage.setItem('darkMode', root.classList.contains('dark')); } catch (e) {}
+        };
     })();
 </script>

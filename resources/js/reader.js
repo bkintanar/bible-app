@@ -12,10 +12,6 @@ function readerFontSize(step) {
     try { localStorage.setItem('fontSize', next); } catch (e) {}
 }
 
-function toggleDarkMode() {
-    document.documentElement.classList.toggle('dark');
-    localStorage.setItem('darkMode', document.documentElement.classList.contains('dark'));
-}
 
 
 
@@ -67,7 +63,8 @@ function handleTouchStart(e) {
 }
 
 function handleTouchMove(e) {
-    if (!touchStartX || !touchStartY) return;
+    // === null, not falsy: a touch at x = 0 (the screen edge) is a real touch.
+    if (touchStartX === null || touchStartY === null) return;
 
     // Only handle single finger touches
     if (e.touches.length !== 1) return;
@@ -96,7 +93,7 @@ function handleTouchMove(e) {
 }
 
 function handleTouchEnd(e) {
-    if (!touchStartX || !touchStartY || !touchStartTime) {
+    if (touchStartX === null || touchStartY === null || touchStartTime === null) {
         resetTouch();
         return;
     }
@@ -313,10 +310,8 @@ function handleKeyboardNavigation(e) {
         return;
     }
 
-    // Skip if in form elements
-    if (e.target.tagName === 'INPUT' ||
-        e.target.tagName === 'TEXTAREA' ||
-        e.target.contentEditable === 'true') {
+    // Skip if typing or on a control that uses the arrow keys itself
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName) || e.target.isContentEditable) {
         return;
     }
 
@@ -325,9 +320,10 @@ function handleKeyboardNavigation(e) {
         return;
     }
 
-    // Skip if book selector modal is open (check if element exists and is visible)
-    const bookSelectorModal = document.querySelector('.fixed.inset-0.z-50');
-    if (bookSelectorModal) {
+    // Skip while a dialog (the book selector) is OPEN. It is always in the DOM since it became
+    // client-side (x-show), so presence alone disabled arrow-key navigation entirely.
+    const openDialog = [...document.querySelectorAll('[role="dialog"]')].some((el) => el.offsetParent !== null);
+    if (openDialog) {
         return;
     }
 
@@ -343,17 +339,17 @@ function handleKeyboardNavigation(e) {
         return;
     }
 
-    // All checks passed, handle navigation
-    e.preventDefault();
+    // Only swallow the key when it navigates: on Gen 1 (no previous chapter) ArrowLeft must still
+    // scroll the page horizontally like any other.
     const urls = getNavigationUrls();
+    const target = e.key === 'ArrowLeft' ? urls.prevUrl : urls.nextUrl;
 
-    if (e.key === 'ArrowLeft' && urls.prevUrl) {
-        navigateToChapter(urls.prevUrl);
-    } else if (e.key === 'ArrowRight' && urls.nextUrl) {
-        navigateToChapter(urls.nextUrl);
+    if (target) {
+        e.preventDefault();
+        navigateToChapter(target);
     }
 }
 
 document.addEventListener('keydown', handleKeyboardNavigation);
 
-Object.assign(window, { readerFontSize, toggleDarkMode });
+Object.assign(window, { readerFontSize }); // toggleDarkMode lives in partials/dark-mode-head

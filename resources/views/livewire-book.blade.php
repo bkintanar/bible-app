@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bible Book</title>
+    @include('partials.dark-mode-head')
     @vite(['resources/css/app.css'])
     @livewireStyles
 </head>

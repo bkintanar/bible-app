@@ -35,7 +35,7 @@
                                 style="display: none;"
                             >
                                 @foreach($availableTranslations as $translation)
-                                    <button
+                                    <button wire:key="translation-{{ $translation['key'] ?? $loop->index }}"
                                         wire:click="switchTranslation('{{ $translation['key'] }}')"
                                         @click="open = false"
                                         class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 transition-colors {{ $currentTranslation && $currentTranslation['key'] === $translation['key'] ? 'bg-blue-600 text-white hover:bg-blue-700' : 'text-gray-700' }}"
@@ -104,7 +104,7 @@
                         >
                             <option value="">Select a book...</option>
                             @foreach($books as $book)
-                                <option value="{{ $book->osis_id }}">{{ $book->name }}</option>
+                                <option wire:key="book-{{ $loop->index }}" value="{{ $book->osis_id }}">{{ $book->name }}</option>
                             @endforeach
                         </select>
                         @error('selectedBook')
@@ -125,7 +125,7 @@
                         >
                             <option value="">{{ empty($selectedBook) ? 'Select a book first...' : 'Select a chapter...' }}</option>
                             @foreach($chapters as $chapter)
-                                <option value="{{ $chapter->chapter_number }}">Chapter {{ $chapter->chapter_number }}</option>
+                                <option wire:key="chapter-{{ $loop->index }}" value="{{ $chapter->chapter_number }}">Chapter {{ $chapter->chapter_number }}</option>
                             @endforeach
                         </select>
                         @error('selectedChapter')
@@ -146,7 +146,7 @@
                         >
                             <option value="">{{ empty($selectedChapter) ? 'Select a chapter first...' : 'Select a verse...' }}</option>
                             @foreach($verses as $verse)
-                                <option value="{{ $verse->verse_number }}">Verse {{ $verse->verse_number }}</option>
+                                <option wire:key="verse-{{ $loop->index }}" value="{{ $verse->verse_number }}">Verse {{ $verse->verse_number }}</option>
                             @endforeach
                         </select>
                         @error('selectedVerse')

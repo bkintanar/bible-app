@@ -24,8 +24,8 @@
 
                 <div class="flex items-center space-x-2">
                     <!-- Dark Mode Toggle -->
-                    <button onclick="toggleDarkMode()"
-                            class="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    <button type="button" onclick="toggleDarkMode()" aria-label="Toggle dark mode" title="Toggle dark mode"
+                            class="min-w-[44px] min-h-[44px] flex items-center justify-center p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                         <svg class="w-5 h-5 dark:hidden" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M17.293 13.293A8 8 0 0 1 6.707 2.707a8.001 8.001 0 1 0 10.586 10.586z"></path>
                         </svg>
@@ -46,7 +46,8 @@
                         {{ $currentBook['name'] ?? $bookOsisId }} {{ $chapterNumber }}
                     </button>
                     </h1>
-                    <!-- Translation Selector - Click to show dropdown -->
+                    <!-- Translation: a dropdown only when there is something to choose -->
+                    @if(count($availableTranslations ?? []) > 1)
                     <div class="relative" x-data="{ open: false }" @click.away="open = false">
                         <button @click="open = !open" class="text-sm text-gray-600 dark:text-gray-400 font-medium font-serif hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-left flex items-center whitespace-nowrap" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif;">
                             {{ $currentTranslation['name'] ?? $currentTranslation['abbreviation'] ?? 'Unknown Version' }}
@@ -70,7 +71,7 @@
 
                             @if(!empty($availableTranslations))
                                 @foreach($availableTranslations as $translation)
-                                    <button wire:click="switchTranslation('{{ $translation['key'] }}')"
+                                    <button wire:key="translation-{{ $translation['key'] }}" wire:click="switchTranslation('{{ $translation['key'] }}')"
                                             @click="open = false"
                                             class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-serif {{ $currentTranslation && $currentTranslation['key'] === $translation['key'] ? 'bg-blue-600 dark:bg-blue-600 text-white dark:text-white' : 'text-gray-700 dark:text-gray-200' }}" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif;">
                                         <div class="flex items-center justify-between">
@@ -86,29 +87,32 @@
                             @endif
                         </div>
                     </div>
+                    @else
+                    <span class="text-sm text-gray-600 dark:text-gray-400 font-medium font-serif whitespace-nowrap">{{ $currentTranslation['name'] ?? 'King James Version' }}</span>
+                    @endif
                 </div>
 
                 <div class="flex items-center space-x-2">
                     <!-- Text size (client-side, remembered in localStorage) -->
                     <div class="flex items-center" role="group" aria-label="Text size">
                         <button type="button" onclick="readerFontSize(-1)" title="Smaller text" aria-label="Smaller text"
-                                class="px-2 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-serif text-sm">A&minus;</button>
+                                class="min-w-[44px] min-h-[44px] px-2 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-serif text-sm">A&minus;</button>
                         <button type="button" onclick="readerFontSize(1)" title="Larger text" aria-label="Larger text"
-                                class="px-2 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-serif text-lg">A+</button>
+                                class="min-w-[44px] min-h-[44px] px-2 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-serif text-lg">A+</button>
                     </div>
 
                     <!-- Search Toggle -->
                     <button type="button" @click="searching = true; $nextTick(() => $refs.chapterSearch.focus())" aria-label="Search"
 
-                            class="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                            class="min-w-[44px] min-h-[44px] flex items-center justify-center p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                         </svg>
                     </button>
 
                     <!-- Strong's Numbers Toggle -->
-                    <button wire:click="toggleStrongsNumbers"
-                            class="p-2 rounded-lg transition-colors {{ $showStrongsNumbers ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700' }}"
+                    <button type="button" wire:click="toggleStrongsNumbers" aria-label="Strong's numbers" aria-pressed="{{ $showStrongsNumbers ? 'true' : 'false' }}"
+                            class="min-w-[44px] min-h-[44px] flex items-center justify-center p-2 rounded-lg transition-colors {{ $showStrongsNumbers ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700' }}"
                             title="Toggle Strong's Numbers">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
@@ -116,8 +120,8 @@
                     </button>
 
                     <!-- Dark Mode Toggle -->
-                    <button onclick="toggleDarkMode()"
-                            class="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    <button type="button" onclick="toggleDarkMode()" aria-label="Toggle dark mode" title="Toggle dark mode"
+                            class="min-w-[44px] min-h-[44px] flex items-center justify-center p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                         <svg class="w-5 h-5 dark:hidden" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M17.293 13.293A8 8 0 0 1 6.707 2.707a8.001 8.001 0 1 0 10.586 10.586z"></path>
                         </svg>
@@ -133,6 +137,7 @@
                 <div class="relative flex-1 mr-2">
                     <input
                         x-ref="chapterSearch"
+                        aria-label="Search the Bible"
                         @keydown.escape="searching = false"
                         wire:model="searchQuery"
                         wire:keydown.enter="search"

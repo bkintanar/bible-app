@@ -634,3 +634,19 @@ mark {
 .dark .page-current.peeling.peel-left::before {
     background: linear-gradient(135deg, rgba(31,41,55,0.8) 0%, rgba(0,0,0,0.2) 100%);
 }
+
+/* Native controls and scrollbars follow the theme. */
+.dark { color-scheme: dark; }
+
+/* Print the chapter, not the app: the reader is a fixed-height scroller with hidden neighbour
+   pages, so without this only the first screenful printed. */
+@media print {
+    html, body, .h-screen { height: auto !important; overflow: visible !important; }
+    .book-container, .page { position: static !important; overflow: visible !important; height: auto !important; }
+    .page-prev, .page-next, nav, .fixed, [role="dialog"], a[href="#main"] { display: none !important; }
+}
+
+/* Honour "reduce motion": no transitions or animations (the page peel is gated in reader.js). */
+@media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}

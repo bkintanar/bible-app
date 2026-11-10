@@ -108,3 +108,16 @@ it('marks editorial titles as headings and psalm titles as text', function () {
     expect(currentPage($this->get('/books/Gen/chapters/1')->getContent()))->toMatch('/<h2 class="verse-title[^"]*">The Creation<\/h2>/');
     expect(currentPage($this->get('/books/Ps/chapters/23')->getContent()))->toMatch('/<p class="psalm-title[^"]*">A Psalm of David\.?<\/p>/');
 });
+
+it('names and describes its controls for assistive technology', function () {
+    $html = $this->get('/books/John/chapters/3')->getContent();
+
+    expect($html)->toContain('aria-label="Strong\'s numbers" aria-pressed="true"')
+        ->and($html)->toContain('aria-label="Toggle dark mode"')
+        ->and($html)->toContain('aria-label="Smaller text"')
+        ->and($html)->toContain('aria-label="Search the Bible"')
+        ->and($html)->toMatch('/class="page page-current[^"]*"[^>]*tabindex="0" role="region" aria-label="John 3"/')
+        ->and($html)->toContain('x-trap.noscroll.inert="selector"')
+        ->and($html)->toContain('viewport-fit=cover')
+        ->and(substr_count($html, 'wire:key="v-3-'))->toBe(36); // one key per verse of John 3
+});

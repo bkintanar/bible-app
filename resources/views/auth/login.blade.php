@@ -5,18 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Sign in — Bible</title>
     @vite(['resources/css/app.css'])
-    <script>
-        // Match the reader's dark-mode behaviour: stored choice wins, else OS preference.
-        (function () {
-            try {
-                var stored = localStorage.getItem('darkMode');
-                var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-                if (stored === 'true' || (stored === null && prefersDark)) {
-                    document.documentElement.classList.add('dark');
-                }
-            } catch (e) { /* private mode or blocked storage: fall back to light */ }
-        })();
-    </script>
+    @include('partials.dark-mode-head')
 </head>
 <body class="h-full bg-gray-50 dark:bg-gray-900">
     <main class="min-h-full flex items-center justify-center px-4 py-12">
@@ -36,6 +25,7 @@
                         Email
                     </label>
                     <input id="email" name="email" type="email" required autofocus
+                           @error('email') aria-invalid="true" aria-describedby="login-error" @enderror
                            autocomplete="username"
                            value="{{ old('email') }}"
                            class="w-full px-3 py-3 rounded-md border border-gray-300 dark:border-gray-600
@@ -62,7 +52,7 @@
 
                 @if ($errors->any())
                     {{-- role=alert so the failure is announced, not just shown --}}
-                    <div role="alert" class="text-sm text-red-700 dark:text-red-400">
+                    <div id="login-error" role="alert" class="text-sm text-red-700 dark:text-red-400">
                         {{ $errors->first() }}
                     </div>
                 @endif

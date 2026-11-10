@@ -13,7 +13,7 @@
 --}}
 @php $emitIds = $emitIds ?? true; @endphp
 
-<div class="{{ isset($paragraph['has_paragraph_marker']) ? 'mb-8 osis-paragraph' : 'mb-3 artificial-paragraph' }} {{ isset($paragraph['type']) && $paragraph['type'] === 'individual_verse' ? 'mb-3' : 'mb-8' }}">
+<div wire:key="{{ $wireKey ?? '' }}" class="{{ isset($paragraph['has_paragraph_marker']) ? 'mb-8 osis-paragraph' : 'mb-3 artificial-paragraph' }} {{ isset($paragraph['type']) && $paragraph['type'] === 'individual_verse' ? 'mb-3' : 'mb-8' }}">
     @if(isset($paragraph['verses']) && !empty($paragraph['verses']))
         @if(isset($paragraph['type']) && $paragraph['type'] === 'individual_verse')
             <!-- Individual verse display (for Psalm 119 with acrostic titles) -->
@@ -36,8 +36,8 @@
                     @endif
 
                     <!-- Proper drop cap implementation -->
-                    <div class="mb-2 text-gray-900 dark:text-gray-100 leading-relaxed reader-text font-serif verse-content" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.7; letter-spacing: 0.01em;">
-                        <span class="text-gray-700 dark:text-gray-300 font-serif" style="float: left; font-size: 4rem; line-height: 3.2rem; margin-right: 0.5rem; margin-top: 0rem; font-weight: bold;">{{ $chapterNumber }}</span><span class="inline" @if($emitIds) id="verse-{{ $verse['verse_number'] }}" @endif>{!! $this->parseEnhancedVerseText($verse) !!}</span>
+                    <div class="mb-2 text-gray-900 dark:text-gray-100 leading-relaxed reader-text font-serif verse-content" wire:key="v-{{ $chapterNumber }}-{{ $verse['verse_number'] }}" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.7; letter-spacing: 0.01em;">
+                        <span class="text-gray-700 dark:text-gray-300 font-serif" style="float: left; font-size: 4rem; line-height: 3.2rem; margin-right: 0.5rem; margin-top: 0rem; font-weight: bold;">{{ $chapterNumber }}</span><span class="inline" wire:key="v-{{ $chapterNumber }}-{{ $verse['verse_number'] }}" @if($emitIds) id="verse-{{ $verse['verse_number'] }}" @endif>{!! $this->parseEnhancedVerseText($verse) !!}</span>
                     </div>
                 @else
                     <!-- Display verse title if it exists for other verses -->
@@ -47,7 +47,7 @@
                         </div>
                     @endif
 
-                    <div class="mb-2 text-gray-900 dark:text-gray-100 leading-relaxed reader-text font-serif verse-content" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.7; letter-spacing: 0.01em;" @if($emitIds) id="verse-{{ $verse['verse_number'] }}" @endif>
+                    <div class="mb-2 text-gray-900 dark:text-gray-100 leading-relaxed reader-text font-serif verse-content" wire:key="v-{{ $chapterNumber }}-{{ $verse['verse_number'] }}" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.7; letter-spacing: 0.01em;" @if($emitIds) id="verse-{{ $verse['verse_number'] }}" @endif>
                         <!-- Regular verse number for other verses -->
                         <span class="verse-number text-xs font-medium text-gray-600 dark:text-gray-400 align-super font-serif">{{ $verse['verse_number'] }}</span>{!! $this->parseEnhancedVerseText($verse) !!}
                     </div>
@@ -75,7 +75,7 @@
                         @endif
 
                         <!-- Proper drop cap implementation -->
-                        <span class="text-gray-700 dark:text-gray-300 font-serif" style="float: left; font-size: 4rem; line-height: 3.2rem; margin-right: 0.5rem; margin-top: 0rem; font-weight: bold;">{{ $chapterNumber }}</span><span class="inline" @if($emitIds) id="verse-{{ $verse['verse_number'] }}" @endif>{!! $this->parseEnhancedVerseText($verse) !!}</span>
+                        <span class="text-gray-700 dark:text-gray-300 font-serif" style="float: left; font-size: 4rem; line-height: 3.2rem; margin-right: 0.5rem; margin-top: 0rem; font-weight: bold;">{{ $chapterNumber }}</span><span class="inline" wire:key="v-{{ $chapterNumber }}-{{ $verse['verse_number'] }}" @if($emitIds) id="verse-{{ $verse['verse_number'] }}" @endif>{!! $this->parseEnhancedVerseText($verse) !!}</span>
                     @else
                         <!-- Display verse title if it exists for other verses -->
                         @if(isset($verse['verse_titles']) && !empty($verse['verse_titles']))
@@ -84,7 +84,7 @@
                             </div>
                         @endif
 
-                        <span class="inline" @if($emitIds) id="verse-{{ $verse['verse_number'] }}" @endif>
+                        <span class="inline" wire:key="v-{{ $chapterNumber }}-{{ $verse['verse_number'] }}" @if($emitIds) id="verse-{{ $verse['verse_number'] }}" @endif>
                             <!-- Regular verse number for other verses -->
                             <span class="verse-number text-xs font-medium text-gray-500 dark:text-gray-400 align-super font-serif">{{ $verse['verse_number'] }}</span>{!! $this->parseEnhancedVerseText($verse) !!}
                         </span>
