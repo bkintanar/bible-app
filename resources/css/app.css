@@ -439,9 +439,9 @@ mark {
 .book-title > .book-title-text { font-size: 0.85em; }
 .colophon { margin: 2.5rem 0 0; padding-top: 1.25rem; line-height: 1.6; font-style: italic; }
 .colophon > .colophon-text { font-size: 0.8em; }
-/* Its supplied words in roman, as printed KJVs set them. !important (and later in the file) to
-   beat the em[class*="italic"] rule above, which forces every supplied word italic. */
-.colophon em { font-style: normal !important; font-family: inherit !important; }
+/* Its supplied words in roman, as printed KJVs set them. !important and more specific, to beat
+   the em[class*="italic"] / .prose em.italic rules above, which force every supplied word italic. */
+.colophon em, .prose .colophon em.italic { font-style: normal !important; font-family: inherit !important; }
 
 /* Native controls and scrollbars follow the theme. */
 .dark { color-scheme: dark; }
