@@ -431,11 +431,17 @@ mark {
 
 /* OD-9: the book's title above chapter 1 and an epistle's colophon after its last verse. Neither
    is scripture. Both carry .reader-text (so A-/A+ scale them); the sizes here are relative to it. */
+.book-title, .colophon {
+    /* the verse paragraphs' typeface (verse-paragraph.blade.php sets it inline) */
+    font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif;
+}
 .book-title { margin: 0.25rem 0 2rem; line-height: 1.35; letter-spacing: 0.06em; }
 .book-title > .book-title-text { font-size: 0.85em; }
 .colophon { margin: 2.5rem 0 0; padding-top: 1.25rem; line-height: 1.6; font-style: italic; }
 .colophon > .colophon-text { font-size: 0.8em; }
-.colophon em { font-style: normal; } /* its supplied words in roman, as printed KJVs set them */
+/* Its supplied words in roman, as printed KJVs set them. !important (and later in the file) to
+   beat the em[class*="italic"] rule above, which forces every supplied word italic. */
+.colophon em { font-style: normal !important; font-family: inherit !important; }
 
 /* Native controls and scrollbars follow the theme. */
 .dark { color-scheme: dark; }

@@ -148,6 +148,9 @@ try:
         " return !!c && c.getClientRects().length > 0 && !v.contains(c)"
         " && !!(v.compareDocumentPosition(c) & Node.DOCUMENT_POSITION_FOLLOWING) && getComputedStyle(c).fontStyle === 'italic'"))
     js("document.querySelector('.page-current .colophon').scrollIntoView()"); time.sleep(0.3); shot('07-phlm-colophon')
+    go('/books/Rom/chapters/16'); time.sleep(1.5)
+    st = js("const e = document.querySelector('.page-current .colophon em'); return e && [e.textContent, getComputedStyle(e).fontStyle]")
+    check('a supplied word in a colophon is set in roman (Rom 16 "and sent")', st == ['and sent', 'normal'], str(st))
 
     # Phone width (375 px): nothing may scroll sideways
     call('POST', f'{S}/window/rect', {'width': 375, 'height': 812})
