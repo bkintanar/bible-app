@@ -69,6 +69,17 @@ CI (`.github/workflows/ci.yml`) runs the tests on every push. Tests never run in
 - PHP runs as the app user **`bible`** in its own FPM pool (`deploy/php-fpm/bible.conf`). Run
   artisan as that user: `sudo -u bible php artisan …` — never as root.
 - After editing `.env`: `sudo -u bible php artisan config:cache && sudo -u bible php artisan queue:restart`.
-- Units: `deploy/systemd/` (queue worker, nightly backup, nightly OSIS commit). nginx:
-  `nginx/README.md`. Backups and restore: `deploy/RESTORE.md`. APP_KEY rotation:
-  `deploy/bin/rotate-app-key.sh`.
+- Units: `deploy/systemd/` (queue worker, nightly backup, nightly OSIS commit, 5-minute uptime
+  check). Install or update one with `cp deploy/systemd/<unit> /etc/systemd/system/ &&
+  systemctl daemon-reload`. nginx: `nginx/README.md`. Backups and restore: `deploy/RESTORE.md`.
+  APP_KEY rotation: `deploy/bin/rotate-app-key.sh`.
+- **Alerts** (`deploy/bin/notify.sh`): queue-worker crashes, a failed nightly backup or OSIS
+  commit/push, and the site going down (`bible-uptime.timer`, alerts after 2 failed checks and again
+  on recovery) go to the ntfy topic in `/etc/default/bible-app-notify` (root-only;
+  `NOTIFY_URL=https://ntfy.sh/<topic>` - subscribe to that topic in the ntfy app). Everything is also
+  in the journal: `journalctl -t bible-notify -t bible-uptime`. The uptime check runs on this host,
+  so it cannot report the host itself being down.
+- **Off-host copy:** the OSIS XML is the source of truth and lives in git; the nightly job pushes
+  editor changes to GitHub with the write deploy key `/root/.ssh/bible-app-deploy`. The database is
+  rebuilt from it with `osis:import` (~35 s, see `deploy/RESTORE.md`). The nightly DB/XML backups in
+  `/var/backups/bible-app` are on this host only; the admin login and audit logs are not in git.

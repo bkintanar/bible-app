@@ -1,0 +1,18 @@
+[Unit]
+Description=Check https://bible.b8.co.nz/up and alert on down / recovery
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# No access to the app at all: it only needs the network, its own state file and notify.sh.
+DynamicUser=yes
+StateDirectory=bible-uptime
+EnvironmentFile=-/etc/default/bible-app-notify
+ExecStart=/var/www/personal/bible-app/deploy/bin/bible-uptime-check.sh
+TimeoutStartSec=90
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true

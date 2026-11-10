@@ -1,0 +1,9 @@
+[Unit]
+Description=Check bible.b8.co.nz/up every 5 minutes
+
+[Timer]
+OnCalendar=*:0/5
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

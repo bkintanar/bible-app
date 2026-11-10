@@ -3,6 +3,8 @@ Description=Commit (and push) verse-title editor changes to the OSIS source of t
 RequiresMountsFor=/var/www/personal/bible-app
 # Before the 03:30 backup, so the night's backup and git agree.
 Before=bible-backup.service
+# A refused commit or a failed push (with the deploy key in place) exits non-zero: tell the owner.
+OnFailure=bible-notify@%n.service
 
 [Service]
 Type=oneshot
