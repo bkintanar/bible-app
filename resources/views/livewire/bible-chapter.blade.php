@@ -325,6 +325,5 @@
         </div>
     </div>
 
-    {{-- JAVASCRIPT FUNCTIONS --}}
-    @include('livewire.partials.scripts')
+    {{-- Behaviour (swipe, keyboard, text size): resources/js/reader.js, loaded by livewire-chapter. --}}
 </div>
