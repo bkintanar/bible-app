@@ -438,6 +438,7 @@ mark {
     html, body, .h-screen { height: auto !important; overflow: visible !important; }
     .book-container, .page { position: static !important; overflow: visible !important; height: auto !important; }
     .page-prev, .page-next, nav, .fixed, [role="dialog"], a[href="#main"] { display: none !important; }
+    .strong-word { border-bottom: 0 !important; }   /* Strong's underlines are a screen affordance */
 }
 
 /* Honour "reduce motion": no transitions or animations (the page peel is gated in reader.js). */
