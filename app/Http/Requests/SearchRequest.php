@@ -20,7 +20,8 @@ class SearchRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'q' => 'required|string|min:2|max:255',
+            // No control characters: a NUL reached FTS5 and answered 500.
+            'q' => ['required', 'string', 'min:2', 'max:255', 'regex:/^[^\x00-\x1F\x7F]+$/u'],
             'limit' => 'integer|min:1|max:500',
             'type' => 'string|in:text,strongs',
         ];
@@ -35,6 +36,7 @@ class SearchRequest extends FormRequest
             'q.required' => 'Search query is required.',
             'q.min' => 'Search query must be at least 2 characters long.',
             'q.max' => 'Search query cannot exceed 255 characters.',
+            'q.regex' => 'Search query cannot contain control characters.',
             'limit.integer' => 'Limit must be a valid integer.',
             'limit.min' => 'Limit must be at least 1.',
             'limit.max' => 'Limit cannot exceed 500.',

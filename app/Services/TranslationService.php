@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class TranslationService
 {
@@ -45,8 +46,11 @@ class TranslationService
                     ];
                 });
         } catch (\Exception $e) {
-            // If database is not available, fall back to config
-            return $this->getAvailableTranslationsFromConfig();
+            // Offer nothing rather than config entries that may not be projected (the reader
+            // would then fail on them). The page still renders in the default translation.
+            Log::warning('Translations unavailable', ['exception' => $e]);
+
+            return collect();
         }
     }
 
@@ -129,8 +133,9 @@ class TranslationService
 
             return null;
         } catch (\Exception $e) {
-            // If database is not available, fall back to config
-            return $this->getTranslationFromConfig($translationKey);
+            Log::warning('Translation lookup failed', ['translation' => $translationKey, 'exception' => $e]);
+
+            return null;
         }
     }
 
@@ -176,7 +181,8 @@ class TranslationService
 
                 return $firstVersion ? strtolower($firstVersion->abbreviation) : 'kjv';
             } catch (\Exception $e) {
-                // Fall back to config default
+                Log::warning('Default translation lookup failed; using the configured default', ['exception' => $e]);
+
                 return config('bible.default_translation', 'kjv');
             }
         } else {

@@ -75,67 +75,11 @@ class SearchController extends Controller
             ];
 
             return $this->successResponse($data, 'Search completed successfully');
+        } catch (\InvalidArgumentException $e) {
+            return $this->errorResponse($e->getMessage(), 422);
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('API failure', ['route' => request()->path(), 'exception' => $e]);
             return $this->serverErrorResponse('Search failed');
         }
-    }
-
-    /**
-     * Search suggestions/autocomplete
-     * GET /api/search/suggestions
-     */
-    public function suggestions(SearchRequest $request): JsonResponse
-    {
-        try {
-            $params = $request->getSearchParameters();
-            $query = $params['query'];
-
-            // This could be expanded to provide search suggestions
-            // For now, return basic suggestions based on common terms
-            $suggestions = $this->generateSearchSuggestions($query);
-
-            return $this->successResponse([
-                'query' => $query,
-                'suggestions' => $suggestions,
-            ], 'Suggestions retrieved successfully');
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('API failure', ['route' => request()->path(), 'exception' => $e]);
-            return $this->serverErrorResponse('Failed to retrieve suggestions');
-        }
-    }
-
-    /**
-     * Get search history (if implemented)
-     * GET /api/search/history
-     */
-    public function history(): JsonResponse
-    {
-        try {
-            // This could be implemented to return user's search history
-            // For now, return empty array
-            return $this->successResponse([
-                'history' => [],
-            ], 'Search history retrieved successfully');
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('API failure', ['route' => request()->path(), 'exception' => $e]);
-            return $this->serverErrorResponse('Failed to retrieve search history');
-        }
-    }
-
-    /**
-     * Generate search suggestions based on query
-     */
-    private function generateSearchSuggestions(string $query): array
-    {
-        // Simple suggestion logic - could be expanded with actual database lookups
-        $commonTerms = [
-            'love', 'faith', 'hope', 'peace', 'joy', 'grace', 'truth', 'light',
-            'salvation', 'forgiveness', 'mercy', 'wisdom', 'strength', 'prayer',
-        ];
-
-        return array_filter($commonTerms, function ($term) use ($query) {
-            return stripos($term, $query) !== false;
-        });
     }
 }

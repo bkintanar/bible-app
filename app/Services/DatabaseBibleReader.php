@@ -173,17 +173,7 @@ class DatabaseBibleReader implements BibleReaderInterface
      */
     public function getVersesParagraphStyle(string $chapterOsisRef): Collection
     {
-        \Log::debug("DatabaseBibleReader: getVersesParagraphStyle called with '{$chapterOsisRef}'");
-
         $verses = $this->getVerses($chapterOsisRef);
-
-        // Debug: Log what was retrieved
-        if (! empty($verses) && isset($verses[0]['text'])) {
-            $firstText = substr(strip_tags($verses[0]['text']), 0, 30);
-            \Log::debug("DatabaseBibleReader: First verse retrieved: {$firstText}...");
-        } else {
-            \Log::debug("DatabaseBibleReader: No verses retrieved for {$chapterOsisRef}");
-        }
 
         // Try to get actual paragraph data from database first
         $paragraphData = $this->getParagraphDataFromDatabase($chapterOsisRef);
@@ -478,7 +468,9 @@ class DatabaseBibleReader implements BibleReaderInterface
         // Escape and prepare search term for FTS5
         $escapedSearchTerm = $this->escapeFtsSearchTerm($searchTerm);
 
-        // Use FTS5 for high-performance search
+        // A search term FTS5 still cannot parse is the caller's input, not a server fault: say so
+        // (InvalidArgumentException -> 422 / a message), log only its length (never the text).
+        try {
         $results = DB::select("
             SELECT
                 v.osis_id,
@@ -497,6 +489,14 @@ class DatabaseBibleReader implements BibleReaderInterface
             ORDER BY rank
             LIMIT ?
         ", [$escapedSearchTerm, $limit]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            if (! str_contains($e->getMessage(), 'fts5')) {
+                throw $e; // a real database failure, not a malformed term
+            }
+            \Log::warning('Search term rejected by FTS5', ['term_length' => mb_strlen($searchTerm), 'error' => $e->errorInfo[2] ?? null]);
+
+            throw new \InvalidArgumentException('That search could not be understood. Try plain words.', 0, $e);
+        }
 
         return collect($results)->map(function ($result) {
             return [

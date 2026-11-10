@@ -104,9 +104,7 @@ class BibleChapter extends Component
 
         // Try to load current chapter from cache first
         $this->verses = $this->loadChapterVerses($bookOsisId, $chapterNumber);
-        \Log::debug("📖 Loaded main chapter {$bookOsisId} {$chapterNumber} with " . $this->verses->count() . ' paragraphs');
 
-        // DEBUG: Log verse titles for Genesis 1 in mount
 
         // Create chapter OSIS reference for error messages
         $chapterOsisRef = $this->bookOsisId . '.' . $this->chapterNumber;
@@ -155,18 +153,15 @@ class BibleChapter extends Component
      */
     private function loadAdjacentChapters($bookOsisId, $chapterNumber)
     {
-        \Log::debug("📋 Loading adjacent chapters for {$bookOsisId} chapter {$chapterNumber}");
 
         // Try to load cached adjacent chapters
         $loadedFromCache = $this->loadCachedAdjacentChapters($bookOsisId, $chapterNumber);
 
         // If not fully cached, dispatch background job to cache them
         if (! $loadedFromCache) {
-            \Log::debug("🔄 Dispatching background job to cache adjacent chapters for {$bookOsisId} {$chapterNumber}");
             CacheAdjacentChaptersJob::dispatch($bookOsisId, $chapterNumber);
         }
 
-        \Log::debug("📋 Adjacent-chapter load attempted for {$bookOsisId} {$chapterNumber} (cache hit or job queued)");
     }
 
     /**
@@ -184,15 +179,12 @@ class BibleChapter extends Component
             $cached = ChapterController::getCachedChapterVerses($bookOsisId, $chapterNumber - 1);
             if ($cached && isset($cached['verses'])) {
                 $this->previousChapterVerses = $cached['verses'];
-                \Log::debug('📋 Loaded previous chapter ' . ($chapterNumber - 1) . ' from cache');
             } else {
                 $this->previousChapterVerses = collect();
                 $bothCached = false;
-                \Log::debug('🌐 Previous chapter ' . ($chapterNumber - 1) . ' not cached, will load in background');
             }
         } else {
             $this->previousChapterVerses = collect();
-            \Log::debug('📋 No previous chapter (at chapter 1)');
         }
 
         // Try to load next chapter from cache
@@ -201,15 +193,12 @@ class BibleChapter extends Component
             $cached = ChapterController::getCachedChapterVerses($bookOsisId, $chapterNumber + 1);
             if ($cached && isset($cached['verses'])) {
                 $this->nextChapterVerses = $cached['verses'];
-                \Log::debug('📋 Loaded next chapter ' . ($chapterNumber + 1) . ' from cache');
             } else {
                 $this->nextChapterVerses = collect();
                 $bothCached = false;
-                \Log::debug('🌐 Next chapter ' . ($chapterNumber + 1) . ' not cached, will load in background');
             }
         } else {
             $this->nextChapterVerses = collect();
-            \Log::debug('📋 No next chapter (at last chapter)');
         }
 
         return $bothCached;
@@ -226,50 +215,25 @@ class BibleChapter extends Component
         $cached = ChapterController::getCachedChapterVerses($bookOsisId, $chapterNumber);
 
         if ($cached && isset($cached['verses'])) {
-            \Log::debug("📋 Using cached verses for {$bookOsisId} {$chapterNumber}");
             return $cached['verses'];
         }
 
         // Cache miss - load from database
-        \Log::debug("🌐 Loading verses from database for {$bookOsisId} {$chapterNumber}");
 
         $chapterOsisRef = $bookOsisId . '.' . $chapterNumber;
 
-        try {
-            // Use the same logic as the main chapter for consistency
-            if (strtolower($bookOsisId) === 'ps' && $chapterNumber == 119) {
-                $individualVerses = $this->bibleService->getVerses($chapterOsisRef);
-                return $individualVerses->map(function ($verse) {
-                    return [
-                        'verses' => [$verse],
-                        'type' => 'individual_verse',
-                    ];
-                });
-            } else {
-                $verses = $this->bibleService->getVersesParagraphStyle($chapterOsisRef);
-
-                return $verses;
-            }
-        } catch (\Exception $e) {
-            \Log::error("❌ Error loading verses for {$bookOsisId} {$chapterNumber}: " . $e->getMessage());
-            return collect();
+        // No catch: a database failure here used to be logged and turned into an EMPTY chapter,
+        // which the caller then reported as 404 "Chapter not found" - an outage disguised as a
+        // missing page. It now surfaces as a 500 (and the real error is logged by the handler).
+        if (strtolower($bookOsisId) === 'ps' && $chapterNumber == 119) {
+            // Individual verses, so Psalm 119's acrostic titles show
+            return $this->bibleService->getVerses($chapterOsisRef)->map(fn ($verse) => [
+                'verses' => [$verse],
+                'type' => 'individual_verse',
+            ]);
         }
-    }
 
-    /**
-     * Log the result of chapter loading for debugging
-     * @param mixed $direction
-     * @param mixed $chapterNumber
-     * @param mixed $verses
-     */
-    private function logChapterLoadResult($direction, $chapterNumber, $verses)
-    {
-        if (! empty($verses) && isset($verses[0]['verses'][0]['text'])) {
-            $firstText = substr(strip_tags($verses[0]['verses'][0]['text']), 0, 30);
-            \Log::debug("{$direction}: Loaded chapter {$chapterNumber} - First verse: {$firstText}...");
-        } else {
-            \Log::debug("{$direction}: No verses loaded for chapter {$chapterNumber}");
-        }
+        return $this->bibleService->getVersesParagraphStyle($chapterOsisRef);
     }
 
     public function switchTranslation($translationKey)
@@ -378,8 +342,27 @@ class BibleChapter extends Component
                 'book_name' => $this->currentBook['name'] ?? $this->bookOsisId,
             ];
 
-            // Use the BibleService to search for verses
-            $searchData = $this->bibleService->search($this->searchQuery, 50);
+            $invalid = null;
+
+            if (! is_string($this->searchQuery) || preg_match('/[\x00-\x1F\x7F]/u', $this->searchQuery)) {
+                $invalid = 'Please remove control characters from your search.';
+            } else {
+                try {
+                    $searchData = $this->bibleService->search($this->searchQuery, 50);
+                } catch (\InvalidArgumentException $e) {
+                    $invalid = $e->getMessage();
+                }
+            }
+
+            if ($invalid !== null) {
+                $this->isSearching = false;
+                $this->searchResults = [];
+                $this->searchStats = ['total_found' => 0, 'search_time_ms' => 0, 'query' => (string) $this->searchQuery, 'invalid' => $invalid];
+                $this->showSearchResults = true;
+                $this->showSearch = false;
+
+                return;
+            }
 
             $this->searchResults = $searchData['results'] ?? [];
             $this->searchStats = [
@@ -556,7 +539,6 @@ class BibleChapter extends Component
         // If Strong's numbers are disabled, use regular text but still handle red letters
         if (!$this->showStrongsNumbers) {
             $basicText = strip_tags($verse['text'], '<em><strong><sup><sub><span>');
-            \Log::debug("📖 Strong's disabled, using basic text path for {$osisId}");
             // Still need to handle red letters even when Strong's are disabled
             return $this->applyRedLetterFormatting($basicText, $verse);
         }

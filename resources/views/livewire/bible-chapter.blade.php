@@ -83,6 +83,8 @@
                                 <div class="text-amber-700 dark:text-amber-400 mb-6" role="status">
                                     Too many searches in the last minute. Please wait a moment and try again.
                                 </div>
+                            @elseif(!empty($searchStats['invalid']))
+                                <div class="text-red-700 dark:text-red-400 mb-6" role="alert">{{ $searchStats['invalid'] }}</div>
                             @elseif(!empty($searchStats))
                                 <div class="text-gray-600 dark:text-gray-400 mb-6">
                                     Found {{ $searchStats['total_found'] }} results for "<strong>{{ $searchStats['query'] }}</strong>"

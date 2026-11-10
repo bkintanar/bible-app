@@ -107,8 +107,27 @@ class BibleSearch extends Component
             return;
         }
 
-        // Perform search using the service
-        $searchResults = $this->bibleService->search($this->q, $this->limit);
+        $this->resetErrorBag('q');
+
+        if (preg_match('/[\x00-\x1F\x7F]/u', $this->q) || ! mb_check_encoding($this->q, 'UTF-8')) {
+            $this->addError('q', 'Please remove control characters from your search.');
+            $this->results = [];
+            $this->searchInfo = [];
+            $this->hasMoreResults = false;
+
+            return;
+        }
+
+        try {
+            $searchResults = $this->bibleService->search($this->q, $this->limit);
+        } catch (\InvalidArgumentException $e) {
+            $this->addError('q', $e->getMessage());
+            $this->results = [];
+            $this->searchInfo = [];
+            $this->hasMoreResults = false;
+
+            return;
+        }
 
         if ($searchResults) {
             $this->results = $searchResults['results'] ?? [];

@@ -82,6 +82,9 @@
                         Search
                     </button>
                 </form>
+                @error('q')
+                    <p class="mt-2 text-sm text-red-700 dark:text-red-400" role="alert">{{ $message }}</p>
+                @enderror
             </div>
         </div>
 

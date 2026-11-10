@@ -5,6 +5,10 @@ use App\Services\OsisReader;
 
 describe('TranslationService Integration', function () {
     beforeEach(function () {
+        // These tests cover the CONFIG-backed translation list (the XML reader's). They used to
+        // reach it only because the database had no bible_versions table and the service fell
+        // back to config on the error; it no longer offers unprojected translations that way.
+        config(['bible.reader_type' => 'xml']);
         $this->service = app(TranslationService::class);
     });
 

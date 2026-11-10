@@ -51,7 +51,6 @@ class ChapterController extends Controller
                 'cached_at' => now(),
             ], now()->addHours(24)); // Cache for 24 hours
 
-            \Log::debug("📚 Cached chapter data: {$bookOsisId} {$chapterNumber}");
         }
     }
 
@@ -74,7 +73,6 @@ class ChapterController extends Controller
             $this->cacheChapterVerses($bookOsisId, $chapterNumber + 1);
         }
 
-        \Log::debug("🔄 Preloaded adjacent chapters for {$bookOsisId} {$chapterNumber}");
     }
 
     /**
@@ -116,7 +114,6 @@ class ChapterController extends Controller
                     'cached_at' => now(),
                 ], now()->addHours(24)); // Cache for 24 hours
 
-                \Log::debug("📖 Cached verses for {$bookOsisId} {$chapterNumber}");
 
             } catch (\Exception $e) {
                 \Log::error("❌ Failed to cache verses for {$bookOsisId} {$chapterNumber}: " . $e->getMessage());
@@ -152,12 +149,10 @@ class ChapterController extends Controller
             $pattern = "chapter_*_{$bookOsisId}_*";
             // Note: Laravel doesn't have pattern-based cache clearing by default
             // This would need a more sophisticated cache tagging system
-            \Log::debug("🗑️ Requested cache clear for book: {$bookOsisId}");
         } else {
             // Invalidate every projection-derived entry (never Cache::flush(): it would also wipe
             // rate-limiter counters and job locks that share the store).
             \App\Support\ProjectionCache::bump();
-            \Log::debug('🗑️ Cleared all chapter cache');
         }
     }
 
@@ -185,7 +180,6 @@ class ChapterController extends Controller
         $cachedChapters = 0;
         $errors = [];
 
-        \Log::debug("🔥 Starting cache warmup for {$bookOsisId} ({$totalChapters} chapters)");
 
         foreach ($chapters as $chapter) {
             try {
@@ -208,7 +202,6 @@ class ChapterController extends Controller
             'success_rate' => round(($cachedChapters / $totalChapters) * 100, 1),
         ];
 
-        \Log::debug("🔥 Cache warmup completed for {$bookOsisId}: {$cachedChapters}/{$totalChapters} chapters in {$duration}ms");
 
         return $result;
     }

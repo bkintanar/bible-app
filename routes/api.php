@@ -12,8 +12,6 @@ use App\Http\Controllers\Api\ChapterController;
 
 // Search endpoints
 Route::get('/search', [SearchController::class, 'search'])->middleware('throttle:search')->name('api.search');
-Route::get('/search/suggestions', [SearchController::class, 'suggestions'])->middleware('throttle:search')->name('api.search.suggestions');
-Route::get('/search/history', [SearchController::class, 'history'])->name('api.search.history');
 
 // General Bible endpoints
 Route::get('/capabilities', [BibleController::class, 'capabilities'])->name('api.capabilities');
