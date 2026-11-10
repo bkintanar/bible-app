@@ -6,8 +6,8 @@ RequiresMountsFor=/var/www/personal/bible-app /var/backups/bible-app
 Type=oneshot
 # The app user owns the database files; running as root would leave root-owned
 # -wal/-shm files that lock the application out.
-User=www-data
-Group=www-data
+User=bible
+Group=bible
 ExecStart=/var/www/personal/bible-app/deploy/bin/bible-backup.sh
 Nice=10
 IOSchedulingClass=idle

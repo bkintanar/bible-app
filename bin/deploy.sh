@@ -15,7 +15,8 @@ set -euo pipefail
 
 REF=${1:?usage: deploy.sh <ref>}
 APP=/var/www/personal/bible-app
-APPUSER=${APPUSER:-www-data}
+# The app user (Task 4.7): owns storage, database, the KJV source; runs PHP-FPM [bible] and the queue.
+APPUSER=${APPUSER:-bible}
 cd "$APP"
 
 git diff --quiet assets/ || { echo "uncommitted OSIS edits in the live tree - commit them first"; exit 1; }

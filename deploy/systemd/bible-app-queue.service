@@ -11,8 +11,8 @@ RequiresMountsFor=/var/www/personal/bible-app
 StartLimitIntervalSec=0
 
 [Service]
-User=www-data
-Group=www-data
+User=bible
+Group=bible
 WorkingDirectory=/var/www/personal/bible-app
 # CLI php has memory_limit=-1; --memory makes the worker retire itself gracefully. It cannot
 # see libxml memory, which is why PublishChapterProjection runs osis:import as a SUBPROCESS.
@@ -29,7 +29,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full
 ProtectHome=true
-ReadWritePaths=/var/www/personal/bible-app/storage /var/www/personal/bible-app/database
+ReadWritePaths=/var/www/personal/bible-app/storage /var/www/personal/bible-app/database /var/www/personal/bible-app/assets
 # Let a running publish (job timeout 300s) finish on stop/restart.
 TimeoutStopSec=330
 

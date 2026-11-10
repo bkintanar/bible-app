@@ -10,12 +10,12 @@ Backups (`deploy/bin/bible-backup.sh`, nightly via `bible-backup.timer`) hold bo
 /var/backups/bible-app/pre-v2/                      # snapshot taken before the audit-v2 work
 ```
 
-`APPUSER` is `www-data` (or `bible` once the dedicated FPM pool exists). Run everything as root unless shown.
+`APPUSER` is `bible` (the dedicated FPM pool user, since Task 4.7). Run everything as root unless shown.
 
 ## A. Restore the database only (bad deploy, bad projection)
 
 ```bash
-APP=/var/www/personal/bible-app; DB=$APP/database/bible_app.sqlite; APPUSER=www-data
+APP=/var/www/personal/bible-app; DB=$APP/database/bible_app.sqlite; APPUSER=bible
 sudo -u "$APPUSER" php "$APP/artisan" down
 systemctl stop bible-app-queue
 B=$(ls -t /var/backups/bible-app/bible-*.sqlite.gz | head -1)       # or pick a date

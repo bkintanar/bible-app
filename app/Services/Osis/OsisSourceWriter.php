@@ -44,7 +44,7 @@ final class OsisSourceWriter
             return 'lock_failed';
         }
 
-        // Shared between artisan (often root) and PHP-FPM (www-data): whoever creates it first
+        // Shared between artisan (sometimes root) and the app user (PHP-FPM, queue): whoever creates it first
         // would otherwise lock the other out with its umask.
         @chmod($lockPath, 0664);
 
@@ -93,7 +93,7 @@ final class OsisSourceWriter
             $tmp = $path . '.tmp.' . getmypid();
 
             // rename() gives the new file the CREATING process's uid/gid and umask; restore the
-            // original's, or a write by root resets a root:www-data 664 source to root:root 644.
+            // original's, or a write by root resets a bible:bible 664 source to root:root 644.
             $original = @stat($path);
 
             if (@file_put_contents($tmp, $new) !== strlen($new)) {
