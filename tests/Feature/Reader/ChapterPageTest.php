@@ -116,7 +116,7 @@ it('names and describes its controls for assistive technology', function () {
         ->and($html)->toContain('aria-label="Toggle dark mode"')
         ->and($html)->toContain('aria-label="Smaller text"')
         ->and($html)->toContain('aria-label="Search the Bible"')
-        ->and($html)->toMatch('/class="page page-current[^"]*"[^>]*tabindex="0" role="region" aria-label="John 3"/')
+        ->and($html)->toMatch('/class="page-content [^"]*"\s*tabindex="0" role="region" aria-label="John 3"/')
         ->and($html)->toContain('x-trap.noscroll.inert="selector"')
         ->and($html)->toContain('viewport-fit=cover')
         ->and(substr_count($html, 'wire:key="v-3-'))->toBe(36); // one key per verse of John 3

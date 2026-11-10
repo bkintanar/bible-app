@@ -72,13 +72,14 @@
         </div>
 
         <!-- Current Chapter -->
-        <div class="page page-current absolute inset-0 h-full overflow-y-auto" style="z-index: 2;"
-             tabindex="0" role="region" aria-label="{{ ($currentBook['name'] ?? $bookOsisId) . ' ' . $chapterNumber }}">
+        <div class="page page-current absolute inset-0 h-full overflow-y-auto" style="z-index: 2;">
             <!-- Book spine shadow -->
             <div class="book-spine-shadow"></div>
 
             <!-- Main page content -->
-            <div class="page-content h-full overflow-y-auto bg-gray-50 dark:bg-gray-900">
+            {{-- The element that actually scrolls: focusable and named, so keyboard users can scroll it (axe: scrollable-region-focusable). --}}
+            <div class="page-content h-full overflow-y-auto bg-gray-50 dark:bg-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                 tabindex="0" role="region" aria-label="{{ ($currentBook['name'] ?? $bookOsisId) . ' ' . $chapterNumber }}">
                 @if($showSearchResults)
                     <!-- Dedicated Search Results Page -->
                     <div class="p-4 sm:p-8 pb-20">
