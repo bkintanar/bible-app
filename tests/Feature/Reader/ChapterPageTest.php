@@ -178,3 +178,15 @@ it('groups verses in paragraphs with headings between them, never inside', funct
     preg_match_all('/id="verse-(\d+)"/', $page, $all);
     expect(count($inside[1]))->toBe(count($all[1]));
 })->with([['Gen', 1], ['Ps', 3], ['Ps', 18], ['Ps', 23], ['Matt', 5], ['John', 3], ['1John', 4]]);
+
+it('sets supplied words inside Christ\'s words in italics with AA contrast (no faded red)', function (bool $strongs) {
+    $page = currentPage($this->withSession(['show_strongs_numbers' => $strongs])->get('/books/Matt/chapters/26')->getContent());
+    $verse = verseHtml($page, 2); // "Ye know that after two days is [the feast of] the passover ..."
+
+    // Plain view: italic red, the same red as the words around them (red-500 at 80% opacity was
+    // 4.34:1 on white). The Strong's view sets them in grey italics.
+    $class = $strongs ? 'text-gray-600 dark:text-gray-400 font-normal italic' : 'text-red-600 dark:text-red-300 font-normal italic';
+    expect($verse)->toContain('<em class="'.$class.'">the feast of</em>')
+        ->and($page)->not->toContain('opacity-80')
+        ->and($page)->not->toContain('text-red-500');
+})->with(['Strong\'s off' => false, 'Strong\'s on' => true]);

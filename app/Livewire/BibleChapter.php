@@ -597,10 +597,11 @@ class BibleChapter extends Component
      */
     private function applyRedLetterTranslatorChanges($text): string
     {
-        // Replace gray translator change styling with red italics for Jesus's words
+        // Replace gray translator change styling with red italics for Jesus's words (the same red
+        // as the words around them: red-500 at 80% opacity was 4.34:1 on white, under WCAG AA).
         $text = str_replace(
             'class="text-gray-600 dark:text-gray-400 font-normal italic"',
-            'class="text-red-500 dark:text-red-300 font-normal italic opacity-80"',
+            'class="text-red-600 dark:text-red-300 font-normal italic"',
             $text
         );
 

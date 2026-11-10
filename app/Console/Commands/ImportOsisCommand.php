@@ -1524,8 +1524,9 @@ class ImportOsisCommand extends Command
      */
     private function processJesusQuoteContent($jesusContent)
     {
-        // Replace transChange within Jesus quotes with red italics
-        $jesusContent = str_replace('<transChange type="added">', '<em class="text-red-500 dark:text-red-300 font-normal italic opacity-80">', $jesusContent);
+        // Replace transChange within Jesus quotes with red italics. Same red as the words around
+        // them (red-500 at 80% opacity measured 4.34:1 on white - under WCAG AA's 4.5:1).
+        $jesusContent = str_replace('<transChange type="added">', '<em class="text-red-600 dark:text-red-300 font-normal italic">', $jesusContent);
         $jesusContent = str_replace('</transChange>', '</em>', $jesusContent);
 
         return '<span class="text-red-600 dark:text-red-400 font-medium">'.$jesusContent.'</span>';
