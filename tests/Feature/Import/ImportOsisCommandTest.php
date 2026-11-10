@@ -72,8 +72,8 @@ it('keeps stored fragments well-formed and free of injected namespaces and miles
 
     foreach (['John.3.16', 'Matt.26.56', 'Matt.21.31', 'Matt.5.4', 'Matt.9.6'] as $osisId) {
         $verse = verseRow($osisId);
-        $doc = new DOMDocument();
-        expect(@$doc->loadXML('<x>' . $verse->original_xml . '</x>'))->toBeTrue("{$osisId} original_xml is not well-formed");
+        $doc = new DOMDocument;
+        expect(@$doc->loadXML('<x>'.$verse->original_xml.'</x>'))->toBeTrue("{$osisId} original_xml is not well-formed");
         expect($verse->formatted_text)->not->toContain('xmlns')->not->toContain('<milestone');
     }
 });
@@ -89,11 +89,11 @@ it('does not let Christ\'s red span in Matt 9:6 bleed into 9:7', function () {
 /** Plain text of everything rendered inside red-letter spans of a stored fragment. */
 function redText(?string $html): string
 {
-    $doc = new DOMDocument();
-    @$doc->loadHTML('<?xml encoding="UTF-8"><div>' . $html . '</div>');
+    $doc = new DOMDocument;
+    @$doc->loadHTML('<?xml encoding="UTF-8"><div>'.$html.'</div>');
     $text = '';
     foreach ((new DOMXPath($doc))->query('//*[contains(@class, "text-red-600")]') as $node) {
-        $text .= ' ' . $node->textContent;
+        $text .= ' '.$node->textContent;
     }
 
     return plain($text);
@@ -155,7 +155,7 @@ it('removes a verse that no longer exists in the source', function () {
     $src = file_get_contents(base_path('tests/Fixtures/mini-kjv.osis.xml'));
     $edited = preg_replace('#<verse osisID="Ps\.23\.6" sID="Ps\.23\.6"/>.*?<verse eID="Ps\.23\.6"/>#s', '', $src, 1, $n);
     expect($n)->toBe(1);
-    $tmp = tempnam(sys_get_temp_dir(), 'osis') . '.osis.xml';
+    $tmp = tempnam(sys_get_temp_dir(), 'osis').'.osis.xml';
     file_put_contents($tmp, $edited);
 
     importOsis($tmp, ['--chapter' => 'Ps.23']);
@@ -173,7 +173,7 @@ it('fails when no books are seeded instead of projecting nothing', function () {
 
 it('fails on a contained-format OSIS file instead of projecting nothing', function () {
     seedBooks();
-    $tmp = tempnam(sys_get_temp_dir(), 'osis') . '.osis.xml';
+    $tmp = tempnam(sys_get_temp_dir(), 'osis').'.osis.xml';
     file_put_contents($tmp, '<?xml version="1.0" encoding="UTF-8"?><osis xmlns="http://www.bibletechnologies.net/2003/OSIS/namespace"><osisText osisIDWork="MAO"><header><work osisWork="MAO"/></header><div type="book" osisID="Gen"><chapter osisID="Gen.1"><verse osisID="Gen.1.1">I te timatanga</verse></chapter></div></osisText></osis>');
 
     importOsis($tmp, [], 1);
@@ -221,7 +221,7 @@ it('runs under the publish job\'s lock when its parent job holds it', function (
     seedBooks();
     $held = \Illuminate\Support\Facades\Cache::lock(\App\Jobs\PublishChapterProjection::lockKey(), 60);
     $held->get();
-    putenv(\App\Jobs\PublishChapterProjection::LOCK_HELD_ENV . '=1');
+    putenv(\App\Jobs\PublishChapterProjection::LOCK_HELD_ENV.'=1');
 
     try {
         importOsis(base_path('tests/Fixtures/mini-kjv.osis.xml'), ['--lock-wait' => 0]);

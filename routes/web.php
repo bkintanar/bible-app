@@ -1,14 +1,14 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\BibleController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\BibleController;
 use App\Http\Controllers\BookController;
-use App\Http\Controllers\SearchController;
 use App\Http\Controllers\ChapterController;
 use App\Http\Controllers\LegacyRedirectController;
+use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Middleware\NoIndex;
+use Illuminate\Support\Facades\Route;
 
 // =======================================
 // MAIN APPLICATION ROUTES

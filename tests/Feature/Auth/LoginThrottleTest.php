@@ -38,7 +38,7 @@ it('spaces out attempts on an account attacked from many addresses, without lock
     Log::spy();
 
     foreach (range(1, 50) as $i) {
-        loginFrom('203.0.113.' . $i); // 50 addresses, one failure each: the email+IP limiter never trips
+        loginFrom('203.0.113.'.$i); // 50 addresses, one failure each: the email+IP limiter never trips
     }
 
     Log::shouldHaveReceived('alert')->once();
@@ -56,7 +56,7 @@ it('spaces out attempts on an account attacked from many addresses, without lock
 
 it('admin:unlock clears the per-account limits (and the email+IP lockout with --ip)', function () {
     foreach (range(1, 50) as $i) {
-        loginFrom('203.0.113.' . $i);
+        loginFrom('203.0.113.'.$i);
     }
     foreach (range(1, 5) as $i) {
         loginFrom('198.51.100.7');

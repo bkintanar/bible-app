@@ -9,9 +9,7 @@ use Illuminate\View\View;
 
 class ChapterController extends Controller
 {
-    public function __construct(private BibleService $bibleService)
-    {
-    }
+    public function __construct(private BibleService $bibleService) {}
 
     /**
      * GET /books/{bookOsisId}/chapters/{chapterNumber}
@@ -51,7 +49,7 @@ class ChapterController extends Controller
     {
         $book = $this->bibleService->getBooks()->firstWhere('osis_id', $bookOsisId);
         $translation = $this->bibleService->getCurrentTranslation()['name'] ?? 'King James Version';
-        $heading = ($book['name'] ?? $bookOsisId) . ' ' . $chapterNumber;
+        $heading = ($book['name'] ?? $bookOsisId).' '.$chapterNumber;
 
         $first = $this->bibleService->getVerses("{$bookOsisId}.{$chapterNumber}")->first();
         $text = trim(preg_replace('/\s+/', ' ', html_entity_decode(strip_tags((string) ($first['text'] ?? '')), ENT_QUOTES | ENT_HTML5)));
@@ -60,7 +58,7 @@ class ChapterController extends Controller
             'title' => "{$heading} — {$translation}",
             'description' => $text === '' ? "{$heading}, {$translation}." : \Illuminate\Support\Str::limit("{$heading}: {$text}", 155, '…'),
             // From APP_URL, like the sitemap: the canonical must not depend on how the request arrived.
-            'url' => rtrim((string) config('app.url'), '/') . route('chapters.show', ['bookOsisId' => $bookOsisId, 'chapterNumber' => $chapterNumber], false),
+            'url' => rtrim((string) config('app.url'), '/').route('chapters.show', ['bookOsisId' => $bookOsisId, 'chapterNumber' => $chapterNumber], false),
         ];
     }
 }

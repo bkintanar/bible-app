@@ -58,7 +58,8 @@ class SearchRequest extends FormRequest
 
     /**
      * Configure the validator instance.
-     * @param mixed $validator
+     *
+     * @param  mixed  $validator
      */
     public function withValidator($validator): void
     {

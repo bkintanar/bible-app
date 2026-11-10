@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Services\BibleService;
-use Illuminate\Http\JsonResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
+use App\Services\BibleService;
+use Illuminate\Http\JsonResponse;
 
 class ChapterController extends Controller
 {
@@ -43,6 +43,7 @@ class ChapterController extends Controller
             return $this->successResponse($data, 'Verses retrieved successfully');
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('API failure', ['route' => request()->path(), 'exception' => $e]);
+
             return $this->errorResponse('Failed to retrieve verses', 500);
         }
     }
@@ -70,6 +71,7 @@ class ChapterController extends Controller
             return $this->successResponse($verseDetails, 'Verse retrieved successfully');
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('API failure', ['route' => request()->path(), 'exception' => $e]);
+
             return $this->errorResponse('Failed to retrieve verse', 500);
         }
     }

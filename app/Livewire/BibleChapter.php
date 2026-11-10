@@ -2,14 +2,13 @@
 
 namespace App\Livewire;
 
+use App\Services\BibleService;
 use App\Support\ResumePosition;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
-use App\Services\BibleService;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\RateLimiter;
 
 class BibleChapter extends Component
 {
@@ -18,31 +17,43 @@ class BibleChapter extends Component
     // Only searchQuery is bound (wire:model). Actions may still change locked state server-side.
     #[Locked]
     public $bookOsisId;
+
     #[Locked]
     public $chapterNumber;
+
     #[Locked]
     public $currentBook;
+
     #[Locked]
     public $chapters = [];
+
     #[Locked]
     public $currentTranslation = null;
+
     #[Locked]
     public $availableTranslations = [];
+
     #[Locked]
     public $chapterTitle = null;
 
     // UI state
     public $searchQuery = '';
+
     #[Locked]
     public $searchResults = [];
+
     #[Locked]
     public $isSearching = false;
+
     #[Locked]
     public $searchStats = [];
+
     #[Locked]
     public $showSearchResults = false;
+
     #[Locked]
     public $returnToChapter = []; // Store chapter info to return to
+
     #[Locked]
     public $showStrongsNumbers = true; // OD-3 (interim): Strong's on by default; the reader's toggle is kept in the session
 
@@ -72,7 +83,7 @@ class BibleChapter extends Component
         $verses = $this->chapterVerses;
 
         // Create chapter OSIS reference for error messages
-        $chapterOsisRef = $this->bookOsisId . '.' . $this->chapterNumber;
+        $chapterOsisRef = $this->bookOsisId.'.'.$this->chapterNumber;
 
         if ($verses->isEmpty()) {
             abort(404, "Chapter not found: {$chapterOsisRef}");
@@ -123,7 +134,7 @@ class BibleChapter extends Component
      */
     private function chapterParagraphs(string $bookOsisId, int $chapterNumber)
     {
-        $chapterOsisRef = $bookOsisId . '.' . $chapterNumber;
+        $chapterOsisRef = $bookOsisId.'.'.$chapterNumber;
 
         if (strtolower($bookOsisId) === 'ps' && $chapterNumber === 119) {
             return $this->bibleService->getVerses($chapterOsisRef)->map(fn ($verse) => [
@@ -186,7 +197,7 @@ class BibleChapter extends Component
 
     public function toggleStrongsNumbers()
     {
-        $this->showStrongsNumbers = !$this->showStrongsNumbers;
+        $this->showStrongsNumbers = ! $this->showStrongsNumbers;
         session(['show_strongs_numbers' => $this->showStrongsNumbers]);
     }
 
@@ -196,7 +207,7 @@ class BibleChapter extends Component
             // The same budget as the search API (AppServiceProvider 'search' limiter), in its own
             // bucket: a Livewire round-trip runs the same FTS query.
             $limit = RateLimiter::limiter('search')(request());
-            $key = 'search-livewire:' . $limit->key;
+            $key = 'search-livewire:'.$limit->key;
 
             if (RateLimiter::tooManyAttempts($key, $limit->maxAttempts)) {
                 $this->searchResults = [];
@@ -263,14 +274,14 @@ class BibleChapter extends Component
     public function goToPreviousChapter()
     {
         if ($this->chapterNumber > 1) {
-            return redirect("/{$this->bookOsisId}/" . ($this->chapterNumber - 1));
+            return redirect("/{$this->bookOsisId}/".($this->chapterNumber - 1));
         }
     }
 
     public function goToNextChapter()
     {
         if ($this->chapterNumber < count($this->chapters)) {
-            return redirect("/{$this->bookOsisId}/" . ($this->chapterNumber + 1));
+            return redirect("/{$this->bookOsisId}/".($this->chapterNumber + 1));
         }
     }
 
@@ -314,7 +325,7 @@ class BibleChapter extends Component
 
         $target = fn (array $book, int $n) => [
             'url' => route('chapters.show', ['bookOsisId' => $book['osis_id'], 'chapterNumber' => $n], false),
-            'label' => ($book['name'] ?? $book['osis_id']) . ' ' . $n,
+            'label' => ($book['name'] ?? $book['osis_id']).' '.$n,
         ];
 
         $prev = null;
@@ -339,23 +350,25 @@ class BibleChapter extends Component
     /**
      * Parse the original XML markup and convert it to enhanced HTML with Strong's styling
      */
-        public function parseEnhancedVerseText($verse): string
+    public function parseEnhancedVerseText($verse): string
     {
         $osisId = $verse['osis_id'] ?? 'unknown';
         $verseNum = $verse['verse_number'] ?? 'unknown';
 
-                                // Let the XML processing handle red letters - don't override with manual mappings
+        // Let the XML processing handle red letters - don't override with manual mappings
 
         // If Strong's numbers are disabled, use regular text but still handle red letters
-        if (!$this->showStrongsNumbers) {
+        if (! $this->showStrongsNumbers) {
             $basicText = strip_tags($verse['text'], '<em><strong><sup><sub><span>');
+
             // Still need to handle red letters even when Strong's are disabled
             return $this->applyRedLetterFormatting($basicText, $verse);
         }
 
         // Fallback to regular text if no original_xml
-        if (!isset($verse['original_xml']) || empty($verse['original_xml'])) {
+        if (! isset($verse['original_xml']) || empty($verse['original_xml'])) {
             $basicText = strip_tags($verse['text'], '<em><strong><sup><sub><span>');
+
             return $this->applyRedLetterFormatting($basicText, $verse);
         }
 
@@ -398,11 +411,11 @@ class BibleChapter extends Component
                     $lemmas = $lemmaMatch[1];
                     if (strpos($lemmas, 'strong:') !== false) {
                         preg_match_all('/strong:([HG]\d+)/', $lemmas, $strongMatches);
-                        if (!empty($strongMatches[1])) {
+                        if (! empty($strongMatches[1])) {
                             $strongNumbers = $strongMatches[1];
                             $classes[] = 'has-strongs';
-                            $title = 'Strong\'s: ' . implode(', ', $strongNumbers);
-                            $dataAttrs = 'data-strongs="' . implode(',', $strongNumbers) . '"';
+                            $title = 'Strong\'s: '.implode(', ', $strongNumbers);
+                            $dataAttrs = 'data-strongs="'.implode(',', $strongNumbers).'"';
 
                             // Add different styling for Hebrew vs Greek
                             if (strpos($strongNumbers[0], 'H') === 0) {
@@ -420,13 +433,13 @@ class BibleChapter extends Component
                     if (strpos($morph, 'strongMorph:') !== false) {
                         $classes[] = 'has-morph';
                         $morphCode = str_replace('strongMorph:', '', $morph);
-                        $dataAttrs .= ' data-morph="' . $morphCode . '"';
-                        $title .= $title ? ' | Morph: ' . $morphCode : 'Morph: ' . $morphCode;
+                        $dataAttrs .= ' data-morph="'.$morphCode.'"';
+                        $title .= $title ? ' | Morph: '.$morphCode : 'Morph: '.$morphCode;
                     }
                 }
 
                 $classStr = implode(' ', $classes);
-                $titleAttr = $title ? 'title="' . htmlspecialchars($title) . '"' : '';
+                $titleAttr = $title ? 'title="'.htmlspecialchars($title).'"' : '';
 
                 return "<span class=\"{$classStr}\" {$titleAttr} {$dataAttrs}>{$text}</span>";
             },
@@ -508,11 +521,11 @@ class BibleChapter extends Component
                 // Check if this is opening or closing a red letter section
                 if (strpos($match[0], 'marker=""') !== false || strpos($match[0], 'sID=') !== false) {
                     // Opening marker
-                    if (!$redLetterOpen) {
+                    if (! $redLetterOpen) {
                         $result .= '<span class="text-red-600 dark:text-red-400 font-medium">';
                         $redLetterOpen = true;
                     }
-                } else if (strpos($match[0], 'eID=') !== false) {
+                } elseif (strpos($match[0], 'eID=') !== false) {
                     // Closing marker
                     if ($redLetterOpen) {
                         $result .= '</span>';
@@ -539,7 +552,7 @@ class BibleChapter extends Component
         return $result;
     }
 
-        /**
+    /**
      * Apply red letter formatting using the red_letter_text table data
      */
     private function applyRedLetterFormatting($text, $verse): string
@@ -550,7 +563,7 @@ class BibleChapter extends Component
         // Run: php artisan bible:fix-red-letters to populate missing red letter entries
 
         // Check if we have original XML with red letter markup first
-        if (isset($verse['original_xml']) && !empty($verse['original_xml'])) {
+        if (isset($verse['original_xml']) && ! empty($verse['original_xml'])) {
             $xml = $verse['original_xml'];
 
             // Check if XML contains Jesus speech markers
@@ -566,7 +579,7 @@ class BibleChapter extends Component
             if (isset($this->redLetterVerseIds()[$verseId])) {
                 // For verses with red letter entries, wrap the entire verse in red letter styling
                 // This handles cases where the verse text has HTML markup that doesn't match exactly
-                $text = '<span class="text-red-600 dark:text-red-400 font-medium">' . $text . '</span>';
+                $text = '<span class="text-red-600 dark:text-red-400 font-medium">'.$text.'</span>';
 
                 // Convert any gray translator changes to red italics for consistency
                 $text = $this->applyRedLetterTranslatorChanges($text);

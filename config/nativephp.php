@@ -66,7 +66,6 @@ return [
     */
     'deeplink_host' => env('NATIVEPHP_DEEPLINK_HOST'),
 
-
     /*
     |--------------------------------------------------------------------------
     | App Author
@@ -166,7 +165,7 @@ return [
             'resources',
             'routes',
             'config',
-            'database'
+            'database',
         ],
 
         'exclude_patterns' => [
@@ -178,7 +177,7 @@ return [
             '\.swp',
             '\.tmp',
             '~',
-            '\.log'
+            '\.log',
         ],
     ],
 
@@ -204,5 +203,5 @@ return [
         'nfc' => false,
 
         'push_notifications' => false,
-    ]
+    ],
 ];

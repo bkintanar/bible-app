@@ -25,13 +25,13 @@ class SitemapController extends Controller
 
             foreach ($bible->getBooks() as $book) {
                 foreach ($bible->getChapters($book['osis_id']) as $chapter) {
-                    $lines[] = '  <url><loc>' . e($base . route('chapters.show', ['bookOsisId' => $book['osis_id'], 'chapterNumber' => $chapter['chapter_number']], false)) . '</loc></url>';
+                    $lines[] = '  <url><loc>'.e($base.route('chapters.show', ['bookOsisId' => $book['osis_id'], 'chapterNumber' => $chapter['chapter_number']], false)).'</loc></url>';
                 }
             }
 
             $lines[] = '</urlset>';
 
-            return implode("\n", $lines) . "\n";
+            return implode("\n", $lines)."\n";
         });
 
         return response($xml, 200, ['Content-Type' => 'application/xml; charset=UTF-8']);

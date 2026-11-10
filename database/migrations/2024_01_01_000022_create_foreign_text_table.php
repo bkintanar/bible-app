@@ -24,7 +24,7 @@ return new class extends Migration
 
             $table->index(['verse_id']);
             $table->index(['language_code']);
- // For foreign text searches
+            // For foreign text searches
         });
     }
 

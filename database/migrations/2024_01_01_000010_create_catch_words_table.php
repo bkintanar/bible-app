@@ -23,7 +23,7 @@ return new class extends Migration
 
             $table->index(['verse_id']);
             $table->index(['note_id']);
- // For cross-reference searches
+            // For cross-reference searches
         });
     }
 

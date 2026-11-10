@@ -46,7 +46,7 @@ final class OsisSourcePath
             throw new InvalidArgumentException("Translation [{$key}] is not projected into the database; its source cannot be edited here.");
         }
 
-        return self::directory() . "/{$key}.osis.xml";
+        return self::directory()."/{$key}.osis.xml";
     }
 
     public static function isProjected(string $key): bool

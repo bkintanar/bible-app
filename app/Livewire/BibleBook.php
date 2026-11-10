@@ -2,33 +2,40 @@
 
 namespace App\Livewire;
 
+use App\Services\BibleService;
 use App\Support\ResumePosition;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
-use App\Services\BibleService;
-use Illuminate\Support\Facades\Cache;
 
 class BibleBook extends Component
 {
     #[Locked]
     public $bookOsisId;
+
     #[Locked]
     public $currentBook;
+
     #[Locked]
     public $chapters = [];
+
     #[Locked]
     public $books = [];
+
     #[Locked]
     public $testamentBooks = [];
+
     #[Locked]
     public $currentTranslation = null;
+
     #[Locked]
     public $availableTranslations = [];
+
     #[Locked]
     public $capabilities = [];
 
     // UI state
     public $searchQuery = '';
+
     #[Locked]
     public $showSearch = false;
 
@@ -125,7 +132,7 @@ class BibleBook extends Component
     public function getPopularChapters(): array
     {
         // Return popular chapters for specific books
-        return match($this->bookOsisId) {
+        return match ($this->bookOsisId) {
             'Ps' => [23, 91, 139, 1, 46, 121],
             'Prov' => [31, 3, 27, 16, 1, 8],
             'John' => [3, 14, 15, 1, 6, 17],

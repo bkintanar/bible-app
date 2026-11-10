@@ -23,7 +23,7 @@ return new class extends Migration
 
             $table->index(['verse_id']);
             $table->index(['original_name']);
- // For divine name searches
+            // For divine name searches
         });
     }
 

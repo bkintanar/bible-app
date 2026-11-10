@@ -27,7 +27,7 @@ return new class extends Migration
             $table->index(['verse_id', 'word_order']);
             $table->index(['strongs_number']);
             $table->index(['morphology_code']);
- // For word searches
+            // For word searches
         });
     }
 

@@ -1,8 +1,6 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
@@ -160,24 +158,24 @@ return new class extends Migration
         ");
 
         // Create FTS5 virtual table for Strong's numbers
-        DB::statement("
+        DB::statement('
             CREATE VIRTUAL TABLE strongs_fts USING fts5(
                 strongs_number UNINDEXED,
                 word_text,
                 morphology_code UNINDEXED,
                 verse_references UNINDEXED
             )
-        ");
+        ');
 
         // Create FTS5 virtual table for study notes
-        DB::statement("
+        DB::statement('
             CREATE VIRTUAL TABLE notes_fts USING fts5(
                 note_id UNINDEXED,
                 verse_id UNINDEXED,
                 note_type UNINDEXED,
                 note_text
             )
-        ");
+        ');
 
         // Create triggers to keep FTS tables in sync with main tables
         DB::statement("

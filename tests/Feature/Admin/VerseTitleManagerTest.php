@@ -14,16 +14,16 @@ use Livewire\Livewire;
 
 beforeEach(function () {
     projectFixture(); // a projected KJV, so the translation is editable
-    $this->dir = sys_get_temp_dir() . '/osis-editor-' . uniqid();
+    $this->dir = sys_get_temp_dir().'/osis-editor-'.uniqid();
     mkdir($this->dir);
-    copy(base_path('tests/Fixtures/mini-kjv.osis.xml'), $this->dir . '/kjv.osis.xml');
+    copy(base_path('tests/Fixtures/mini-kjv.osis.xml'), $this->dir.'/kjv.osis.xml');
     config(['bible.osis_directory' => $this->dir, 'bible.editor_enabled' => true]);
     Queue::fake();
     $this->actingAs(User::create(['name' => 'Admin', 'email' => 'admin@example.com', 'password' => 'correct-horse-battery']));
 });
 
 afterEach(function () {
-    array_map('unlink', glob($this->dir . '/*') ?: []);
+    array_map('unlink', glob($this->dir.'/*') ?: []);
     @rmdir($this->dir);
 });
 
@@ -41,7 +41,7 @@ it('saves a title with $ and & verbatim and queues the chapter for publishing', 
         ->call('saveTitle')
         ->assertSet('messageType', 'success');
 
-    $xml = file_get_contents($this->dir . '/kjv.osis.xml');
+    $xml = file_get_contents($this->dir.'/kjv.osis.xml');
     expect($xml)->toContain('<title type="verse" canonical="false">Costs $10 &amp; more</title><verse osisID="Gen.1.3"');
     expect(substr_count($xml, ' sID="Gen.1.3"'))->toBe(1);
     Queue::assertPushed(PublishChapterProjection::class, fn ($job) => $job->chapterRef === 'Gen.1' && $job->translationKey === 'kjv');
@@ -65,7 +65,7 @@ it('removes a title and queues a publish', function () {
 
     editorOn('Gen', 1, 3)->call('removeTitle')->assertSet('verseTitle', '')->assertSet('messageType', 'success');
 
-    expect(file_get_contents($this->dir . '/kjv.osis.xml'))->not->toContain('Temporary');
+    expect(file_get_contents($this->dir.'/kjv.osis.xml'))->not->toContain('Temporary');
 });
 
 it('rejects control characters in a title', function () {
@@ -85,7 +85,7 @@ it('refuses to switch to a translation that is not projected', function () {
 });
 
 it('writes an audit line per change', function () {
-    $file = storage_path('logs/audit-' . now()->format('Y-m-d') . '.log');
+    $file = storage_path('logs/audit-'.now()->format('Y-m-d').'.log');
     $before = file_exists($file) ? count(file($file)) : 0;
 
     editorOn('Gen', 1, 3)->set('verseTitle', 'Audited')->call('saveTitle');

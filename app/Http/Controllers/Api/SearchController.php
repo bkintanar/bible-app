@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Services\BibleService;
-use Illuminate\Http\JsonResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SearchRequest;
 use App\Http\Traits\ApiResponseTrait;
+use App\Services\BibleService;
+use Illuminate\Http\JsonResponse;
 
 class SearchController extends Controller
 {
@@ -79,6 +79,7 @@ class SearchController extends Controller
             return $this->errorResponse($e->getMessage(), 422);
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('API failure', ['route' => request()->path(), 'exception' => $e]);
+
             return $this->serverErrorResponse('Search failed');
         }
     }

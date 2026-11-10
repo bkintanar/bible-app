@@ -11,9 +11,9 @@ beforeEach(function () {
 });
 
 it('resolves a projected translation inside the configured OSIS directory', function () {
-    expect(OsisSourcePath::for('kjv'))->toBe(base_path('assets') . '/kjv.osis.xml');
-    expect(OsisSourcePath::for('KJV'))->toBe(base_path('assets') . '/kjv.osis.xml');
-    expect(OsisSourcePath::for(null))->toBe(base_path('assets') . '/kjv.osis.xml'); // default key
+    expect(OsisSourcePath::for('kjv'))->toBe(base_path('assets').'/kjv.osis.xml');
+    expect(OsisSourcePath::for('KJV'))->toBe(base_path('assets').'/kjv.osis.xml');
+    expect(OsisSourcePath::for(null))->toBe(base_path('assets').'/kjv.osis.xml'); // default key
 });
 
 it('honours an absolute osis_directory (tests point it at a temp copy)', function () {

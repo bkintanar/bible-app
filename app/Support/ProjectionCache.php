@@ -27,7 +27,7 @@ final class ProjectionCache
 
     public static function key(string $base): string
     {
-        return 'p' . self::version() . '_' . $base;
+        return 'p'.self::version().'_'.$base;
     }
 
     public static function version(): int

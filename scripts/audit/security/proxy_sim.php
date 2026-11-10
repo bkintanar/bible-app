@@ -1,12 +1,13 @@
 <?php
+
 // Read-only simulation of an app tree's trusted-proxy config against crafted forwarding headers.
 // Usage: php proxy_sim.php [app_root]   (default: the live tree)
 $root = rtrim($argv[1] ?? '/var/www/personal/bible-app', '/');
-require $root . '/vendor/autoload.php';
+require $root.'/vendor/autoload.php';
 
 use Illuminate\Http\Request;
 
-$proxies = (require $root . '/config/trustedproxy.php')['proxies'];
+$proxies = (require $root.'/config/trustedproxy.php')['proxies'];
 // Must match bootstrap/app.php's trustProxies(headers: ...).
 Request::setTrustedProxies($proxies, Request::HEADER_X_FORWARDED_FOR | Request::HEADER_X_FORWARDED_PROTO);
 

@@ -24,7 +24,7 @@ it('still 404s a chapter that does not exist', function () {
 });
 
 it('rejects control characters in an API search with 422', function () {
-    $this->get('/api/search?q=' . rawurlencode("x\0y"))->assertStatus(422)->assertJson(['success' => false]);
+    $this->get('/api/search?q='.rawurlencode("x\0y"))->assertStatus(422)->assertJson(['success' => false]);
 });
 
 it('shows a message instead of failing when the search page gets control characters', function () {
@@ -32,7 +32,7 @@ it('shows a message instead of failing when the search page gets control charact
         ->assertHasErrors('q')
         ->assertSet('results', []);
 
-    $this->get('/searches?q=' . rawurlencode("x\0y"))->assertOk()->assertSee('control characters');
+    $this->get('/searches?q='.rawurlencode("x\0y"))->assertOk()->assertSee('control characters');
 });
 
 it('shows a message for control characters in the in-chapter search', function () {

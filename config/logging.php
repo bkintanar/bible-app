@@ -67,7 +67,7 @@ return [
             // created first. The daily driver makes a NEW file each day, so without this a
             // root-created log breaks every subsequent web request.
             'permission' => 0664,
-],
+        ],
 
         // Who changed the OSIS source of truth, what, and whether it was published. Info level on
         // purpose: the default channel runs at LOG_LEVEL=warning, which used to drop these lines.
@@ -90,7 +90,7 @@ return [
             // created first. The daily driver makes a NEW file each day, so without this a
             // root-created log breaks every subsequent web request.
             'permission' => 0664,
-],
+        ],
 
         'slack' => [
             'driver' => 'slack',

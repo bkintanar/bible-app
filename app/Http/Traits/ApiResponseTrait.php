@@ -21,7 +21,8 @@ trait ApiResponseTrait
 
     /**
      * Return a standardized error response
-     * @param null|mixed $errors
+     *
+     * @param  null|mixed  $errors
      */
     protected function errorResponse(string $message, int $status = 400, $errors = null): JsonResponse
     {
@@ -53,5 +54,4 @@ trait ApiResponseTrait
     {
         return $this->errorResponse($message, 500);
     }
-
 }

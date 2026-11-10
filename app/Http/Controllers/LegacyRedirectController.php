@@ -14,9 +14,7 @@ use Illuminate\Http\RedirectResponse;
  */
 class LegacyRedirectController extends Controller
 {
-    public function __construct(private BibleService $bible)
-    {
-    }
+    public function __construct(private BibleService $bible) {}
 
     public function book(string $bookOsisId): RedirectResponse
     {

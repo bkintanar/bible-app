@@ -1,6 +1,5 @@
 <?php
 
-use App\Livewire\VerseTitleManager;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Queue;
@@ -13,16 +12,16 @@ use Illuminate\Support\Facades\Queue;
 beforeEach(function () {
     $this->withoutVite();
     projectFixture();
-    $this->dir = sys_get_temp_dir() . '/osis-session-' . uniqid();
+    $this->dir = sys_get_temp_dir().'/osis-session-'.uniqid();
     mkdir($this->dir);
-    copy(base_path('tests/Fixtures/mini-kjv.osis.xml'), $this->dir . '/kjv.osis.xml');
+    copy(base_path('tests/Fixtures/mini-kjv.osis.xml'), $this->dir.'/kjv.osis.xml');
     config(['bible.osis_directory' => $this->dir, 'bible.editor_enabled' => true]);
     Queue::fake();
     $this->user = User::create(['name' => 'Admin', 'email' => 'admin@example.com', 'password' => 'correct-horse-battery']);
 });
 
 afterEach(function () {
-    array_map('unlink', glob($this->dir . '/*') ?: []);
+    array_map('unlink', glob($this->dir.'/*') ?: []);
     @rmdir($this->dir);
 });
 
@@ -64,7 +63,7 @@ it('saves through /livewire/update for a current session', function () {
 
     saveTitleOverHttp($this->user, $current)->assertOk();
 
-    expect(file_get_contents($this->dir . '/kjv.osis.xml'))->toContain('>Replayed</title>');
+    expect(file_get_contents($this->dir.'/kjv.osis.xml'))->toContain('>Replayed</title>');
 });
 
 it('rejects a /livewire/update save from a session opened before the password changed', function () {
@@ -74,7 +73,7 @@ it('rejects a /livewire/update save from a session opened before the password ch
 
     saveTitleOverHttp($this->user->fresh(), $old)->assertUnauthorized();
 
-    expect(file_get_contents($this->dir . '/kjv.osis.xml'))->not->toContain('Replayed');
+    expect(file_get_contents($this->dir.'/kjv.osis.xml'))->not->toContain('Replayed');
 });
 
 it('admin:create rotates the remember token when it changes a password', function () {

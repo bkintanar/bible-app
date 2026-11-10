@@ -31,11 +31,11 @@ it('answers unknown things with a JSON 404', function (string $uri) {
 })->with(['/api/books/Nope', '/api/books/John/chapters/99/verses', '/api/nope']);
 
 it('rejects a NUL in a search with 422', function () {
-    $this->get('/api/search?q=' . rawurlencode("lo\0ve"))->assertStatus(422)->assertJson(['success' => false]);
+    $this->get('/api/search?q='.rawurlencode("lo\0ve"))->assertStatus(422)->assertJson(['success' => false]);
 });
 
 it('finds verses and reports their verse numbers', function () {
-    $results = $this->getJson('/api/search?q=' . rawurlencode('God is love'))->assertOk()->json('data.results');
+    $results = $this->getJson('/api/search?q='.rawurlencode('God is love'))->assertOk()->json('data.results');
 
     expect($results)->not->toBeEmpty()
         ->and(collect($results)->firstWhere('reference', '1 John 4:8')['verse'] ?? null)->toBe(8);

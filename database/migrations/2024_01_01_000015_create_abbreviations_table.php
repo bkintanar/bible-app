@@ -23,7 +23,7 @@ return new class extends Migration
 
             $table->index(['verse_id']);
             $table->index(['abbreviated_text']);
- // For abbreviation searches
+            // For abbreviation searches
         });
     }
 

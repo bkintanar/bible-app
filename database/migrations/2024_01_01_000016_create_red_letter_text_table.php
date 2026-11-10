@@ -25,7 +25,7 @@ return new class extends Migration
             $table->index(['verse_id', 'speaker']);
             $table->index(['verse_id', 'text_order']);
             $table->index(['speaker']);
- // For searching Jesus' words
+            // For searching Jesus' words
         });
     }
 

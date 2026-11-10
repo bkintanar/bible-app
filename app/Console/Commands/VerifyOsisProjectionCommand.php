@@ -52,7 +52,7 @@ class VerifyOsisProjectionCommand extends Command
         $book = $this->option('book');
         $content = (bool) $this->option('content');
 
-        $this->info("🔍 Verifying projection against {$file}" . ($book ? " (book: {$book})" : '') . ($content ? ' [content]' : ''));
+        $this->info("🔍 Verifying projection against {$file}".($book ? " (book: {$book})" : '').($content ? ' [content]' : ''));
 
         $source = $this->readSource($file, $book, $content);
         if ($source === null) {
@@ -74,7 +74,7 @@ class VerifyOsisProjectionCommand extends Command
 
         if ($failures > 0) {
             $this->error("❌ {$failures} check(s) do not match the source. The projection is stale or wrong.");
-            $this->line('   Re-project with: php artisan osis:import' . ($book ? " --book={$book}" : ''));
+            $this->line('   Re-project with: php artisan osis:import'.($book ? " --book={$book}" : ''));
 
             return self::FAILURE;
         }
@@ -118,7 +118,7 @@ class VerifyOsisProjectionCommand extends Command
 
         libxml_use_internal_errors(true);
         libxml_clear_errors();
-        $reader = new XMLReader();
+        $reader = new XMLReader;
         // LIBXML_NOENT: do not expand entities while streaming untrusted-shaped input.
         if (! @$reader->open($file, null, LIBXML_NOENT)) {
             $this->error("Cannot open {$file} as XML.");
@@ -260,7 +260,7 @@ class VerifyOsisProjectionCommand extends Command
 
         $fatal = array_filter(libxml_get_errors(), fn ($e) => $e->level === LIBXML_ERR_FATAL);
         if ($fatal !== []) {
-            $this->error('The source is not well-formed XML: ' . trim(reset($fatal)->message) . ' (line ' . reset($fatal)->line . ')');
+            $this->error('The source is not well-formed XML: '.trim(reset($fatal)->message).' (line '.reset($fatal)->line.')');
 
             return null;
         }
@@ -352,7 +352,7 @@ class VerifyOsisProjectionCommand extends Command
                 $problems['text differs'][] = $osisId;
             }
             if ((bool) $row->red !== $src['christ']) {
-                $problems['red letters differ'][] = $osisId . ($src['christ'] ? ' (should be red)' : ' (should not be red)');
+                $problems['red letters differ'][] = $osisId.($src['christ'] ? ' (should be red)' : ' (should not be red)');
             }
             $expectedPara = $src['para'] || (int) $row->verse_number === 1;
             if ((bool) $row->para !== $expectedPara) {
@@ -371,7 +371,7 @@ class VerifyOsisProjectionCommand extends Command
             $rows[] = [$kind, count($ids), implode(', ', array_slice($ids, 0, 20))];
             $failures += $ids === [] ? 0 : 1;
         }
-        $this->table(['per-verse check (' . count($this->sourceVerses) . ' verses)', 'differing', 'first 20'], $rows);
+        $this->table(['per-verse check ('.count($this->sourceVerses).' verses)', 'differing', 'first 20'], $rows);
 
         return $failures;
     }

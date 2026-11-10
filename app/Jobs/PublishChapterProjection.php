@@ -31,7 +31,7 @@ use RuntimeException;
  * projections never run at once. A manual `osis:import` takes the same lock itself; the job's own
  * subprocess is told (LOCK_HELD_ENV) that its parent already holds it, or it would wait on itself.
  */
-class PublishChapterProjection implements ShouldQueue, ShouldBeUniqueUntilProcessing
+class PublishChapterProjection implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -57,8 +57,7 @@ class PublishChapterProjection implements ShouldQueue, ShouldBeUniqueUntilProces
         public string $translationKey,
         public string $chapterRef,
         public ?int $userId = null,
-    ) {
-    }
+    ) {}
 
     public function retryUntil(): \DateTimeInterface
     {
@@ -67,7 +66,7 @@ class PublishChapterProjection implements ShouldQueue, ShouldBeUniqueUntilProces
 
     public function uniqueId(): string
     {
-        return $this->translationKey . '|' . $this->chapterRef;
+        return $this->translationKey.'|'.$this->chapterRef;
     }
 
     public function middleware(): array
@@ -93,14 +92,14 @@ class PublishChapterProjection implements ShouldQueue, ShouldBeUniqueUntilProces
         $result = Process::path(base_path())
             ->timeout(280)
             ->env([self::LOCK_HELD_ENV => '1'])
-            ->run([PHP_BINARY, 'artisan', 'osis:import', $file, '--chapter=' . $this->chapterRef, '--production']);
+            ->run([PHP_BINARY, 'artisan', 'osis:import', $file, '--chapter='.$this->chapterRef, '--production']);
 
         if ($result->failed()) {
             Log::error('Chapter publish failed', [
                 'chapter' => $this->chapterRef,
                 'translation' => $this->translationKey,
                 'exit_code' => $result->exitCode(),
-                'output' => mb_substr($result->output() . $result->errorOutput(), -4000),
+                'output' => mb_substr($result->output().$result->errorOutput(), -4000),
                 'attempt' => $this->attempts(),
             ]);
 

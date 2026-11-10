@@ -39,7 +39,7 @@ expect()->extend('toHaveKeys', function (array $keys, string $message = '') {
     $actualKeys = array_keys($this->value);
 
     foreach ($keys as $key) {
-        if (!in_array($key, $actualKeys)) {
+        if (! in_array($key, $actualKeys)) {
             $missingKey = $key;
             $actualKeysStr = implode(', ', $actualKeys);
             $expectedKeysStr = implode(', ', $keys);
@@ -94,7 +94,6 @@ function verseRow(string $osisId): ?object
 {
     return \Illuminate\Support\Facades\DB::table('verses')->where('osis_id', $osisId)->first();
 }
-
 
 function getTestTranslations(): array
 {

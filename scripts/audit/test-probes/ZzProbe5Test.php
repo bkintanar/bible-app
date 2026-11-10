@@ -1,9 +1,12 @@
 <?php
+
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+
 it('probe5: what a chapter-1 scoped reprojection deletes', function () {
-    $f = base_path('tests/Fixtures/mini-kjv.osis.xml'); $this->seed();
+    $f = base_path('tests/Fixtures/mini-kjv.osis.xml');
+    $this->seed();
     Artisan::call('osis:import', ['file' => $f]);
     $before = DB::table('titles')->pluck('title_text', 'id')->all();
     $this->app[Kernel::class]->setArtisan(null);

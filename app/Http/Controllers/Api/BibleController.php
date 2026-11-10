@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Services\BibleService;
-use Illuminate\Http\JsonResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
+use App\Services\BibleService;
+use Illuminate\Http\JsonResponse;
 
 class BibleController extends Controller
 {
@@ -30,6 +30,7 @@ class BibleController extends Controller
             return $this->successResponse($capabilities, 'Capabilities retrieved successfully');
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('API failure', ['route' => request()->path(), 'exception' => $e]);
+
             return $this->errorResponse('Failed to retrieve capabilities', 500);
         }
     }

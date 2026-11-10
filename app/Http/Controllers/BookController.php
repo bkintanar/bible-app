@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Support\ResumePosition;
 use App\Services\BibleService;
+use App\Support\ResumePosition;
 
 class BookController extends Controller
 {

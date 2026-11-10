@@ -3,8 +3,8 @@
 namespace App\Http\Requests;
 
 use App\Services\BibleService;
-use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class SwitchTranslationRequest extends FormRequest
 {
@@ -56,7 +56,8 @@ class SwitchTranslationRequest extends FormRequest
 
     /**
      * Configure the validator instance for additional checks.
-     * @param mixed $validator
+     *
+     * @param  mixed  $validator
      */
     public function withValidator($validator): void
     {

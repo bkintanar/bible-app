@@ -35,7 +35,7 @@ final class OsisSourceWriter
      */
     public function update(string $path, callable $transform, float $waitSeconds = 10.0): string
     {
-        $lockPath = $path . '.lock';
+        $lockPath = $path.'.lock';
         $lock = @fopen($lockPath, 'c');
 
         if ($lock === false) {
@@ -90,7 +90,7 @@ final class OsisSourceWriter
             }
 
             // Temp file must be a sibling so rename() stays within the filesystem.
-            $tmp = $path . '.tmp.' . getmypid();
+            $tmp = $path.'.tmp.'.getmypid();
 
             // rename() gives the new file the CREATING process's uid/gid and umask; restore the
             // original's, or a write by root resets a bible:bible 664 source to root:root 644.
@@ -146,7 +146,7 @@ final class OsisSourceWriter
         $previous = libxml_use_internal_errors(true);
         libxml_clear_errors();
 
-        $reader = new \XMLReader();
+        $reader = new \XMLReader;
 
         if (! @$reader->open($path)) {
             libxml_clear_errors();
@@ -178,7 +178,7 @@ final class OsisSourceWriter
     private static function existingTitlePattern(string $verseOsisId): string
     {
         return '/<title type="verse" canonical="(?:true|false)">([^<]*)<\/title>\s*(?=<verse osisID="'
-            . preg_quote($verseOsisId, '/') . '"[^>]*sID="[^"]*")/';
+            .preg_quote($verseOsisId, '/').'"[^>]*sID="[^"]*")/';
     }
 
     /**
@@ -196,11 +196,11 @@ final class OsisSourceWriter
             return null;
         }
 
-        $element = '<title type="verse" canonical="false">' . htmlspecialchars($title, ENT_XML1 | ENT_QUOTES, 'UTF-8') . '</title>';
+        $element = '<title type="verse" canonical="false">'.htmlspecialchars($title, ENT_XML1 | ENT_QUOTES, 'UTF-8').'</title>';
 
         return preg_replace_callback(
-            '/<verse osisID="' . preg_quote($verseOsisId, '/') . '"[^>]*sID="[^"]*"[^>]*>/',
-            fn (array $m) => $element . $m[0],
+            '/<verse osisID="'.preg_quote($verseOsisId, '/').'"[^>]*sID="[^"]*"[^>]*>/',
+            fn (array $m) => $element.$m[0],
             $xml,
             1
         );
@@ -223,6 +223,6 @@ final class OsisSourceWriter
     /** Does the source contain this verse's start marker at all? */
     public static function hasVerse(string $xml, string $verseOsisId): bool
     {
-        return str_contains($xml, ' sID="' . $verseOsisId . '"'); // leading space: "osisID" ends in "sID"
+        return str_contains($xml, ' sID="'.$verseOsisId.'"'); // leading space: "osisID" ends in "sID"
     }
 }

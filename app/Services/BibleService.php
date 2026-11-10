@@ -90,6 +90,7 @@ class BibleService
     public function bookExists(string $bookOsisId): bool
     {
         $books = $this->getBooks();
+
         return $books->contains('osis_id', $bookOsisId);
     }
 
@@ -103,6 +104,7 @@ class BibleService
         }
 
         $chapters = $this->getChapters($bookOsisId);
+
         return $chapters->contains('chapter_number', $chapterNumber);
     }
 
@@ -118,6 +120,7 @@ class BibleService
     {
         $books = $this->getBooks();
         $book = $books->firstWhere('osis_id', $bookOsisId);
+
         return $book ?: null;
     }
 

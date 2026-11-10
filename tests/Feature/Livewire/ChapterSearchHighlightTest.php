@@ -39,5 +39,5 @@ it('never renders the search text as markup (regression guard)', function () {
 });
 
 it('links each result to its verse', function () {
-    expect(chapterSearchHtml('God so loved'))->toContain(route('chapters.show', ['bookOsisId' => 'John', 'chapterNumber' => 3]) . '#verse-16');
+    expect(chapterSearchHtml('God so loved'))->toContain(route('chapters.show', ['bookOsisId' => 'John', 'chapterNumber' => 3]).'#verse-16');
 });

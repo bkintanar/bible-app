@@ -25,7 +25,7 @@ return new class extends Migration
             $table->index(['verse_id', 'structure_type']);
             $table->index(['verse_id', 'line_order']);
             $table->index(['structure_type', 'level']);
- // For poetry searches
+            // For poetry searches
         });
     }
 

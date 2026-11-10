@@ -24,7 +24,7 @@ return new class extends Migration
 
             $table->index(['verse_id', 'note_type']);
             $table->index(['note_type']);
- // For note searches
+            // For note searches
         });
     }
 

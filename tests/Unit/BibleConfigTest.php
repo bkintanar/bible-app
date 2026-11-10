@@ -43,7 +43,7 @@ describe('Bible Configuration', function () {
             foreach ($translations as $key => $translation) {
                 expect($translation)->toHaveKeys([
                     'name', 'short_name', 'language', 'year',
-                    'filename', 'description', 'is_default'
+                    'filename', 'description', 'is_default',
                 ], "Translation $key missing required keys");
 
                 expect($translation['name'])->toBeString();
@@ -58,7 +58,7 @@ describe('Bible Configuration', function () {
 
         it('has exactly one default translation', function () {
             $translations = $this->config['translations'];
-            $defaults = array_filter($translations, fn($t) => $t['is_default']);
+            $defaults = array_filter($translations, fn ($t) => $t['is_default']);
 
             expect($defaults)->toHaveCount(1);
             expect(array_keys($defaults)[0])->toBe($this->config['default_translation']);
@@ -80,7 +80,7 @@ describe('Bible Configuration', function () {
             $directory = $this->config['osis_directory'];
 
             foreach ($translations as $key => $translation) {
-                $filePath = base_path($directory . '/' . $translation['filename']);
+                $filePath = base_path($directory.'/'.$translation['filename']);
 
                 expect(file_exists($filePath))->toBeTrue(
                     "OSIS file not found for translation $key: {$translation['filename']}"
@@ -97,9 +97,9 @@ describe('Bible Configuration', function () {
             $directory = $this->config['osis_directory'];
 
             foreach ($translations as $key => $translation) {
-                $filePath = base_path($directory . '/' . $translation['filename']);
+                $filePath = base_path($directory.'/'.$translation['filename']);
 
-                $dom = new DOMDocument();
+                $dom = new DOMDocument;
                 $loadResult = @$dom->load($filePath);
 
                 expect($loadResult)->toBeTrue(

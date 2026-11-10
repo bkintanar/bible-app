@@ -2,36 +2,45 @@
 
 namespace App\Livewire;
 
-use App\Models\Book;
-use App\Models\Verse;
-use App\Models\Chapter;
-use Livewire\Attributes\Locked;
-use Livewire\Component;
 use App\Jobs\PublishChapterProjection;
+use App\Models\Book;
+use App\Models\Chapter;
+use App\Models\Verse;
+use App\Services\BibleService;
 use App\Services\Osis\OsisSourcePath;
 use App\Services\Osis\OsisSourceWriter;
-use App\Services\BibleService;
 use Illuminate\Support\Facades\Log;
+use Livewire\Attributes\Locked;
+use Livewire\Component;
 
 class VerseTitleManager extends Component
 {
     public $selectedBook = '';
+
     public $selectedChapter = '';
+
     public $selectedVerse = '';
+
     public $verseTitle = '';
+
     public $message = '';
+
     public $messageType = 'success';
 
     // Server-owned state. #[Locked]: a client cannot set these through /livewire/update -
     // currentTranslation['key'] used to reach the importer's file argument ("../x").
     #[Locked]
     public $books = [];
+
     #[Locked]
     public $chapters = [];
+
     #[Locked]
     public $verses = [];
+
     #[Locked]
     public $currentTranslation = null;
+
     #[Locked]
     public $availableTranslations = [];
 
@@ -149,7 +158,7 @@ class VerseTitleManager extends Component
 
     public function loadExistingTitle()
     {
-        $verseOsisId = $this->selectedBook . '.' . $this->selectedChapter . '.' . $this->selectedVerse;
+        $verseOsisId = $this->selectedBook.'.'.$this->selectedChapter.'.'.$this->selectedVerse;
 
         try {
             $xmlPath = app(BibleService::class)->getXmlPath($this->selectedBook);
@@ -204,7 +213,7 @@ class VerseTitleManager extends Component
     {
         PublishChapterProjection::dispatch(
             $this->currentTranslation['key'] ?? OsisSourcePath::defaultKey(),
-            $this->selectedBook . '.' . (int) $this->selectedChapter,
+            $this->selectedBook.'.'.(int) $this->selectedChapter,
             auth()->id(),
         );
     }
@@ -265,7 +274,7 @@ class VerseTitleManager extends Component
     public function saveTitle()
     {
         $this->validate();
-        $verseOsisId = $this->selectedBook . '.' . (int) $this->selectedChapter . '.' . (int) $this->selectedVerse;
+        $verseOsisId = $this->selectedBook.'.'.(int) $this->selectedChapter.'.'.(int) $this->selectedVerse;
 
         try {
             if ($this->writeTitle('set', $verseOsisId, fn (string $xml) => OsisSourceWriter::setVerseTitle($xml, $verseOsisId, $this->verseTitle))) {
@@ -285,7 +294,7 @@ class VerseTitleManager extends Component
             return;
         }
 
-        $verseOsisId = $this->selectedBook . '.' . (int) $this->selectedChapter . '.' . (int) $this->selectedVerse;
+        $verseOsisId = $this->selectedBook.'.'.(int) $this->selectedChapter.'.'.(int) $this->selectedVerse;
 
         try {
             if ($this->writeTitle('remove', $verseOsisId, fn (string $xml) => OsisSourceWriter::removeVerseTitle($xml, $verseOsisId))) {
@@ -352,12 +361,13 @@ class VerseTitleManager extends Component
             $this->loadChapters($this->selectedBook);
         }
 
-        $this->setMessage('Translation switched to ' . $this->currentTranslation['name'], 'success');
+        $this->setMessage('Translation switched to '.$this->currentTranslation['name'], 'success');
     }
 
     public function getBookName($osisId)
     {
         $book = collect($this->books)->firstWhere('osis_id', $osisId);
+
         return $book ? $book->name : $osisId;
     }
 

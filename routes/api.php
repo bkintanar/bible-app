@@ -1,10 +1,10 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\BookController;
 use App\Http\Controllers\Api\BibleController;
-use App\Http\Controllers\Api\SearchController;
+use App\Http\Controllers\Api\BookController;
 use App\Http\Controllers\Api\ChapterController;
+use App\Http\Controllers\Api\SearchController;
+use Illuminate\Support\Facades\Route;
 
 // =======================================
 // BIBLE API ROUTES

@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Services\BibleService;
-use App\Http\Traits\ApiResponseTrait;
 use App\Http\Controllers\Controller as BaseController;
+use App\Http\Traits\ApiResponseTrait;
+use App\Services\BibleService;
 
 class Controller extends BaseController
 {

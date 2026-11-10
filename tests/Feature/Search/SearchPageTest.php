@@ -14,7 +14,7 @@ it('shows real verses, linked to the verse, for ?q=', function () {
         ->assertOk()
         ->assertDontSee('mock search result')
         ->assertSee('1 John 4:8')
-        ->assertSee(route('chapters.show', ['bookOsisId' => '1John', 'chapterNumber' => 4]) . '#verse-8', false);
+        ->assertSee(route('chapters.show', ['bookOsisId' => '1John', 'chapterNumber' => 4]).'#verse-8', false);
 });
 
 it('accepts the old ?query= parameter', function () {
@@ -26,7 +26,7 @@ it('redirects /search permanently and keeps the query', function () {
 });
 
 it('survives malformed parameters', function (string $query) {
-    $this->get('/searches?' . $query)->assertOk();
+    $this->get('/searches?'.$query)->assertOk();
 })->with(['query=x&limit=abc', 'query[]=x', 'q[]=x', 'q=love&limit=-5', 'limit=99999999999999999999']);
 
 it('clamps the page size and stops loading more at the cap', function () {

@@ -35,7 +35,7 @@ it('fails when a verse has lost its red letters', function () {
 
 it('fails on an unreadable source instead of reporting counts of zero', function () {
     projectFixture();
-    $tmp = tempnam(sys_get_temp_dir(), 'osis') . '.osis.xml';
+    $tmp = tempnam(sys_get_temp_dir(), 'osis').'.osis.xml';
     file_put_contents($tmp, '<osis><osisText osisIDWork="KJV"><div type="book" osisID="Gen">');
 
     test()->artisan('osis:verify', ['file' => $tmp, '--content' => true])->assertExitCode(1);

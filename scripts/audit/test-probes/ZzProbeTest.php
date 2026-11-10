@@ -58,14 +58,15 @@ it('probe: real importer projects a tiny fixture into :memory:', function () {
         .' red_letter='.DB::table('red_letter_text')->count()
         .' translator_changes='.DB::table('translator_changes')->count()
         .' titles='.DB::table('titles')->count()
-        .' fts='.DB::selectOne("select count(*) c from verses_fts")->c."\n");
+        .' fts='.DB::selectOne('select count(*) c from verses_fts')->c."\n");
 
     // idempotency: second run must not duplicate
     $before = DB::table('verses')->count();
     $this->artisan('osis:import', ['file' => $fixture])->assertExitCode(0);
     expect(DB::table('verses')->count())->toBe($before);
 
-    $vc = \Illuminate\Support\Facades\Artisan::call('osis:verify', ['file' => $fixture]); fwrite(STDERR, 'VERIFY exit='.$vc."\n".substr(\Illuminate\Support\Facades\Artisan::output(),-1200)."\n");
+    $vc = \Illuminate\Support\Facades\Artisan::call('osis:verify', ['file' => $fixture]);
+    fwrite(STDERR, 'VERIFY exit='.$vc."\n".substr(\Illuminate\Support\Facades\Artisan::output(), -1200)."\n");
 
     $page = $this->get('/books/Gen/chapters/1');
     fwrite(STDERR, 'CHAPTER status='.$page->status().' bytes='.strlen($page->getContent())

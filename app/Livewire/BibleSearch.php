@@ -2,11 +2,11 @@
 
 namespace App\Livewire;
 
+use App\Services\BibleService;
 use App\Support\ResumePosition;
-use Livewire\Component;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
-use App\Services\BibleService;
+use Livewire\Component;
 
 class BibleSearch extends Component
 {
@@ -23,18 +23,25 @@ class BibleSearch extends Component
 
     #[Locked]
     public $results = [];
+
     #[Locked]
     public $searchInfo = [];
+
     #[Locked]
     public $hasMoreResults = false;
+
     #[Locked]
     public $books = [];
+
     #[Locked]
     public $testamentBooks = [];
+
     #[Locked]
     public $currentTranslation = null;
+
     #[Locked]
     public $availableTranslations = [];
+
     #[Locked]
     public $capabilities = [];
 
@@ -104,6 +111,7 @@ class BibleSearch extends Component
             $this->results = [];
             $this->searchInfo = [];
             $this->hasMoreResults = false;
+
             return;
         }
 

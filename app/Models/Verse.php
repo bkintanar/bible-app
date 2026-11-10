@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Verse extends Model
 {
@@ -33,7 +33,6 @@ class Verse extends Model
         return $this->belongsTo(Chapter::class);
     }
 
-
     /**
      * Get the titles for this verse
      */
@@ -41,10 +40,6 @@ class Verse extends Model
     {
         return $this->hasMany(Title::class)->orderBy('title_order');
     }
-
-
-
-
 
     /**
      * Get a formatted reference for this verse (e.g., "John 3:16")
@@ -64,6 +59,7 @@ class Verse extends Model
             $verseNum = $matches[3];
 
             $bookName = $this->getBookNameFromOsis($bookOsis);
+
             return "{$bookName} {$chapterNum}:{$verseNum}";
         }
 

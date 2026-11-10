@@ -22,7 +22,7 @@ return new class extends Migration
 
             $table->index(['note_id', 'element_order']);
             $table->index(['element_type']);
- // For embedded content searches
+            // For embedded content searches
         });
     }
 

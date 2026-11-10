@@ -27,7 +27,7 @@ return new class extends Migration
             $table->index(['chapter_id', 'title_type']);
             $table->index(['title_type']);
             $table->index(['canonical']);
- // For title searches
+            // For title searches
         });
     }
 

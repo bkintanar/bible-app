@@ -20,7 +20,7 @@ it('re-projects the chapter in a subprocess, with --production', function () {
         $cmd = implode(' ', (array) $process->command);
 
         return str_contains($cmd, 'artisan osis:import')
-            && str_contains($cmd, base_path('assets') . '/kjv.osis.xml')
+            && str_contains($cmd, base_path('assets').'/kjv.osis.xml')
             && str_contains($cmd, '--chapter=Gen.1')
             && str_contains($cmd, '--production')
             && ($process->environment[PublishChapterProjection::LOCK_HELD_ENV] ?? null) === '1';
@@ -43,5 +43,5 @@ it('is unique only until processing, and never overlaps another publish', functi
 });
 
 it('shares one lock key with osis:import', function () {
-    expect(PublishChapterProjection::lockKey())->toBe('laravel-queue-overlap:' . PublishChapterProjection::LOCK);
+    expect(PublishChapterProjection::lockKey())->toBe('laravel-queue-overlap:'.PublishChapterProjection::LOCK);
 });

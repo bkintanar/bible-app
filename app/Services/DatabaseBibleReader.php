@@ -2,19 +2,20 @@
 
 namespace App\Services;
 
+use App\Models\BibleVersion;
 use App\Models\Book;
-use App\Models\Verse;
 use App\Models\Chapter;
 use App\Models\Paragraph;
-use App\Models\BibleVersion;
+use App\Models\Verse;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class DatabaseBibleReader
 {
     private string $versionKey;
+
     private ?BibleVersion $bibleVersion = null;
 
     /**
@@ -147,7 +148,7 @@ class DatabaseBibleReader
 
             foreach ($verse->titles as $title) {
                 if ($title->placement === 'before') {
-                    $titleClass = match($title->title_type) {
+                    $titleClass = match ($title->title_type) {
                         'psalm' => 'psalm-title text-center text-sm font-medium text-gray-700 dark:text-gray-300 italic mb-3 border-b border-gray-200 dark:border-gray-600 pb-2',
                         'main' => 'main-title text-center text-xl font-bold text-gray-900 dark:text-gray-100 mb-4',
                         'acrostic' => 'acrostic-title text-center text-lg font-semibold text-blue-700 dark:text-blue-400 mb-2',
@@ -164,7 +165,7 @@ class DatabaseBibleReader
                         'psalm' => 'p',
                         default => 'div',
                     };
-                    $html = '<' . $element . ' class="' . $titleClass . '">' . $title->title_text . '</' . $element . '>';
+                    $html = '<'.$element.' class="'.$titleClass.'">'.$title->title_text.'</'.$element.'>';
 
                     // Separate verse titles from chapter titles
                     if ($title->title_type === 'verse') {
@@ -264,7 +265,7 @@ class DatabaseBibleReader
                 $versesWithTitles = $paragraphVerses->filter(function ($verse) use ($firstVerseNumber) {
                     return $verse['verse_number'] > $firstVerseNumber
                            && isset($verse['verse_titles'])
-                           && !empty($verse['verse_titles']);
+                           && ! empty($verse['verse_titles']);
                 });
 
                 if ($versesWithTitles->isNotEmpty()) {
@@ -297,11 +298,11 @@ class DatabaseBibleReader
         $currentParagraphVerses = collect();
 
         foreach ($paragraphVerses as $verse) {
-            $hasVerseTitle = isset($verse['verse_titles']) && !empty($verse['verse_titles']);
+            $hasVerseTitle = isset($verse['verse_titles']) && ! empty($verse['verse_titles']);
             $isFirstVerse = $currentParagraphVerses->isEmpty();
 
             // If this verse has a title and it's not the first verse of the current sub-paragraph
-            if ($hasVerseTitle && !$isFirstVerse) {
+            if ($hasVerseTitle && ! $isFirstVerse) {
                 // Finish the current sub-paragraph
                 if ($currentParagraphVerses->isNotEmpty()) {
                     $combinedText = $currentParagraphVerses->pluck('text')->implode(' ');
@@ -366,11 +367,11 @@ class DatabaseBibleReader
 
                 // Start new paragraph
                 $currentParagraph = [$verse];
-                $currentText = $verse['text'] . ' ';
+                $currentText = $verse['text'].' ';
             } else {
                 // Add to current paragraph
                 $currentParagraph[] = $verse;
-                $currentText .= $verse['text'] . ' ';
+                $currentText .= $verse['text'].' ';
             }
         }
 
@@ -393,7 +394,7 @@ class DatabaseBibleReader
     private function hasNewParagraphMarker(array $verse): bool
     {
         // Look for OSIS paragraph markers in the verse text or titles
-        $textToCheck = $verse['text'] . ' ' . ($verse['chapter_titles'] ?? '');
+        $textToCheck = $verse['text'].' '.($verse['chapter_titles'] ?? '');
 
         // Check for common paragraph indicators:
         // 1. ¶ symbol (pilcrow)
@@ -415,7 +416,7 @@ class DatabaseBibleReader
         }
 
         // Check if this verse has a verse title (non-first verse with verse title should start new paragraph)
-        if ($verse['verse_number'] > 1 && isset($verse['verse_titles']) && !empty($verse['verse_titles'])) {
+        if ($verse['verse_number'] > 1 && isset($verse['verse_titles']) && ! empty($verse['verse_titles'])) {
             return true;
         }
 
@@ -434,7 +435,7 @@ class DatabaseBibleReader
 
         foreach ($verses as $verse) {
             $currentParagraph[] = $verse;
-            $currentText .= $verse['text'] . ' ';
+            $currentText .= $verse['text'].' ';
             $verseCount++;
 
             // Create a new paragraph every 3-5 verses or at specific verse patterns
@@ -480,7 +481,7 @@ class DatabaseBibleReader
 
         $verse = DB::table('verses')
             ->join('chapters', 'chapters.id', '=', 'verses.chapter_id')
-            ->where('verses.osis_id', $book . '.' . $parts[1])
+            ->where('verses.osis_id', $book.'.'.$parts[1])
             ->where('chapters.version_id', $this->bibleVersion->id)
             ->first(['verses.formatted_text', 'verses.osis_id']);
 
@@ -502,7 +503,7 @@ class DatabaseBibleReader
         // A search term FTS5 still cannot parse is the caller's input, not a server fault: say so
         // (InvalidArgumentException -> 422 / a message), log only its length (never the text).
         try {
-        $results = DB::select("
+            $results = DB::select("
             SELECT
                 v.osis_id,
                 v.verse_number,
@@ -594,7 +595,7 @@ class DatabaseBibleReader
 
         $book = $this->canonicalBookOsisId($parts[0]);
 
-        return $book === null ? null : $book . '.' . (int) $parts[1];
+        return $book === null ? null : $book.'.'.(int) $parts[1];
     }
 
     private function canonicalBookOsisId(string $bookOsisId): ?string
@@ -618,7 +619,7 @@ class DatabaseBibleReader
         // Quoting only *some* terms let bare operators (AND, OR, NOT, NEAR, parens, *)
         // reach FTS5 raw, which turned a search for the word "or" into a 500 and let a
         // caller run prefix scans the app never offered. Always quote.
-        return '"' . str_replace('"', '""', trim($searchTerm)) . '"';
+        return '"'.str_replace('"', '""', trim($searchTerm)).'"';
     }
 
     /**
@@ -684,6 +685,7 @@ class DatabaseBibleReader
                             'type' => 'verse',
                         ];
                     }
+
                     return [
                         'book_osis_id' => $osisId,
                         'chapter' => $chapter,
@@ -702,7 +704,7 @@ class DatabaseBibleReader
      */
     public function getVerseByReference(string $bookOsisId, int $chapter, int $verse): ?array
     {
-        $verseOsisId = $bookOsisId . '.' . $chapter . '.' . $verse;
+        $verseOsisId = $bookOsisId.'.'.$chapter.'.'.$verse;
         $verseText = $this->getVerseText($verseOsisId);
 
         if (empty($verseText)) {
@@ -955,7 +957,7 @@ class DatabaseBibleReader
 
             foreach ($titles as $title) {
                 if ($title['placement'] === 'before') {
-                    $titleClass = match($title['type']) {
+                    $titleClass = match ($title['type']) {
                         'psalm' => 'psalm-title text-center text-sm font-medium text-gray-700 dark:text-gray-300 italic mb-3 border-b border-gray-200 dark:border-gray-600 pb-2',
                         'main' => 'main-title text-center text-xl font-bold text-gray-900 dark:text-gray-100 mb-4',
                         'acrostic' => 'acrostic-title text-center text-lg font-semibold text-blue-700 dark:text-blue-400 mb-2',
@@ -964,12 +966,12 @@ class DatabaseBibleReader
                         'verse' => 'verse-title uppercase ml-8 text-xs font-medium text-blue-600 dark:text-blue-400',
                         default => 'title text-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'
                     };
-                    $titleHtml .= '<div class="' . $titleClass . '">' . $title['text'] . '</div>';
+                    $titleHtml .= '<div class="'.$titleClass.'">'.$title['text'].'</div>';
                 }
             }
 
             if ($titleHtml) {
-                $enhancedText = $titleHtml . $enhancedText;
+                $enhancedText = $titleHtml.$enhancedText;
             }
         }
 
@@ -1038,6 +1040,7 @@ class DatabaseBibleReader
     {
         // Break paragraphs at certain verse numbers that typically start new thoughts
         $breakVerses = [1, 10, 20, 30]; // Common paragraph break points
+
         return in_array($verse['verse_number'], $breakVerses);
     }
 

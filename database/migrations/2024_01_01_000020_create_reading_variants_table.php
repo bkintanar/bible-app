@@ -24,7 +24,7 @@ return new class extends Migration
 
             $table->index(['verse_id', 'variant_type']);
             $table->index(['variant_type']);
- // For variant searches
+            // For variant searches
         });
     }
 

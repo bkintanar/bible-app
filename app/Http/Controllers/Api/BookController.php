@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Services\BibleService;
-use Illuminate\Http\JsonResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
+use App\Services\BibleService;
+use Illuminate\Http\JsonResponse;
 
 class BookController extends Controller
 {
@@ -30,6 +30,7 @@ class BookController extends Controller
             return $this->successResponse($books->toArray(), 'Books retrieved successfully');
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('API failure', ['route' => request()->path(), 'exception' => $e]);
+
             return $this->errorResponse('Failed to retrieve books', 500);
         }
     }
@@ -57,6 +58,7 @@ class BookController extends Controller
             return $this->successResponse($data, 'Book retrieved successfully');
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('API failure', ['route' => request()->path(), 'exception' => $e]);
+
             return $this->errorResponse('Failed to retrieve book', 500);
         }
     }
@@ -77,6 +79,7 @@ class BookController extends Controller
             return $this->successResponse($chapters->toArray(), 'Chapters retrieved successfully');
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('API failure', ['route' => request()->path(), 'exception' => $e]);
+
             return $this->errorResponse('Failed to retrieve chapters', 500);
         }
     }

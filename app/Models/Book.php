@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Book extends Model
 {
@@ -54,7 +54,8 @@ class Book extends Model
 
     /**
      * Scope to get only canonical books
-     * @param mixed $query
+     *
+     * @param  mixed  $query
      */
     public function scopeCanonical($query)
     {
@@ -63,7 +64,8 @@ class Book extends Model
 
     /**
      * Scope to order by book order
-     * @param mixed $query
+     *
+     * @param  mixed  $query
      */
     public function scopeOrdered($query)
     {
