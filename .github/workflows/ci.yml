@@ -44,3 +44,45 @@ jobs:
 
       - name: Lint (Pint)
         run: composer lint
+
+  # Accessibility (plan 8.2): axe-core on the reader, projected from the test fixture.
+  # Fails on serious/critical violations (scripts/audit/a11y/axe_gate.py).
+  a11y:
+    runs-on: ubuntu-latest
+    needs: test
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: dom, xmlreader, intl, mbstring, pdo_sqlite, sqlite3
+          coverage: none
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Build the app with the fixture projection
+        run: |
+          composer install --no-interaction --prefer-dist --no-progress
+          npm ci --no-audit --no-fund && npm run build
+          cp .env.example .env && php artisan key:generate --ansi
+          touch database/bible_app.sqlite database/runtime.sqlite
+          php artisan migrate --force
+          php artisan db:seed --force
+          php artisan osis:import tests/Fixtures/mini-kjv.osis.xml
+
+      - name: axe-core
+        run: |
+          php artisan serve --port=8000 > /dev/null 2>&1 &
+          sleep 3
+          B=http://127.0.0.1:8000
+          npx --yes @axe-core/cli@4.10.1 $B/books/Gen/chapters/1 $B/books/Ps/chapters/23 $B/books/John/chapters/3 \
+            $B/books/Matt/chapters/26 $B/books/John "$B/searches?q=love" $B/searches $B/login $B/books/Nope/chapters/1 \
+            --chromedriver-path "$CHROMEWEBDRIVER/chromedriver" \
+            --chrome-options="no-sandbox,headless=new,disable-gpu,disable-dev-shm-usage" \
+            --tags wcag2a,wcag2aa,wcag21a,wcag21aa --save axe.json --dir .
+          python3 scripts/audit/a11y/axe_gate.py axe.json
