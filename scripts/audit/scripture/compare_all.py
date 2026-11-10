@@ -96,7 +96,12 @@ for osis, t in truth.items():
     ti = len(t["italic"])
     oi = len(on["italic"])
     R["italic"]["truth_segments"] += t["tc"]
-    R["italic"]["on_segments"] += oi
+    R["italic"]["on_segments"] += oi  # text RUNS: a supplied "the LORD" is one <em> but two runs
+    # The real criterion: one <em> per supplied phrase (transChange), verse by verse.
+    ems = len(re.findall(r"<em\b", s["on"]))
+    R["italic"]["on_em_elements"] += ems
+    if ems != t["tc"]:
+        add(R["italic"], R["ex"], "em_ne_supplied", osis, f"supplied={t['tc']} em={ems}")
     if t["tc"] and not oi:
         R["italic"]["on_verse_missing_all"] += 1
         if len(R["ex"]["italic_missing"]) < 8:
