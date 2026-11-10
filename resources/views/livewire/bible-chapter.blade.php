@@ -25,9 +25,9 @@
                         <div class="max-w-4xl mx-auto">
                             <div class="bg-white dark:bg-gray-900 dark:border-gray-700 p-4 sm:p-8">
                                 <div class="prose prose-lg max-w-none dark:prose-invert">
-                                    @if(isset($previousChapterVerses) && !empty($previousChapterVerses))
+                                    @if($this->previousChapterVerses->isNotEmpty())
                                         @include('livewire.partials.chapter-verses', [
-                                            'verses' => $previousChapterVerses,
+                                            'verses' => $this->previousChapterVerses,
                                             'chapterNumber' => $chapterNumber - 1,
                                             'getFontSizeClass' => function() { return $this->getFontSizeClass(); },
                                             'emitIds' => false,
@@ -171,9 +171,9 @@
                         <div class="max-w-4xl mx-auto">
                             <div class="bg-white dark:bg-gray-900 dark:border-gray-700 p-4 sm:p-8">
                                 <div class="prose prose-lg max-w-none dark:prose-invert">
-                                    @if(isset($nextChapterVerses) && !empty($nextChapterVerses))
+                                    @if($this->nextChapterVerses->isNotEmpty())
                                         @include('livewire.partials.chapter-verses', [
-                                            'verses' => $nextChapterVerses,
+                                            'verses' => $this->nextChapterVerses,
                                             'chapterNumber' => $chapterNumber + 1,
                                             'getFontSizeClass' => function() { return $this->getFontSizeClass(); },
                                             'emitIds' => false,
@@ -218,28 +218,28 @@
     <!-- Floating Previous Chapter Button (Left Side) -->
     @if($nav['prev'])
         <div class="fixed left-0 top-1/2 transform -translate-y-1/2 z-40">
-            <button onclick="navigateToChapter(@js($nav['prev']['url']))"
+            <a href="{{ $nav['prev']['url'] }}"
                class="bg-blue-600 hover:bg-blue-700 dark:bg-gray-700 dark:hover:bg-gray-600 text-white w-[44px] h-[60px] shadow-lg dark:shadow-gray-900 transition-all duration-200 hover:scale-110 flex items-center justify-center group"
                title="Previous: {{ $nav['prev']['label'] }}"
                aria-label="Previous chapter: {{ $nav['prev']['label'] }}">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                 </svg>
-            </button>
+            </a>
         </div>
     @endif
 
     <!-- Floating Next Chapter Button (Right Side) -->
     @if($nav['next'])
         <div class="fixed right-0 top-1/2 transform -translate-y-1/2 z-40">
-            <button onclick="navigateToChapter(@js($nav['next']['url']))"
+            <a href="{{ $nav['next']['url'] }}"
                class="bg-blue-600 hover:bg-blue-700 dark:bg-gray-700 dark:hover:bg-gray-600 text-white w-[44px] h-[60px] shadow-lg dark:shadow-gray-900 transition-all duration-200 hover:scale-110 flex items-center justify-center group"
                title="Next: {{ $nav['next']['label'] }}"
                aria-label="Next chapter: {{ $nav['next']['label'] }}">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                 </svg>
-            </button>
+            </a>
         </div>
     @endif
 
@@ -320,12 +320,13 @@
                             <div class="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-3">
                                 @if(isset($selectedBookForChapters['chapters']))
                                     @foreach($selectedBookForChapters['chapters'] as $chapter)
-                                        <button wire:click="goToChapter('{{ $selectedBookForChapters['osis_id'] }}', {{ $chapter['chapter_number'] }})"
+                                        <a href="{{ route('chapters.show', ['bookOsisId' => $selectedBookForChapters['osis_id'], 'chapterNumber' => $chapter['chapter_number']]) }}"
+                                                @if($chapter['chapter_number'] == $chapterNumber && $selectedBookForChapters['osis_id'] === $bookOsisId) aria-current="page" @endif
                                                 class="aspect-square p-2 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-center hover:bg-blue-50 dark:hover:bg-gray-700 hover:border-blue-200 dark:hover:border-gray-600 transition-colors {{ $chapter['chapter_number'] == $chapterNumber && $selectedBookForChapters['osis_id'] === $bookOsisId ? 'bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-600' : '' }}">
                                             <span class="font-medium text-gray-900 dark:text-white font-serif text-sm">
                                                 {{ $chapter['chapter_number'] }}
                                             </span>
-                                        </button>
+                                        </a>
                                     @endforeach
                                 @endif
                             </div>

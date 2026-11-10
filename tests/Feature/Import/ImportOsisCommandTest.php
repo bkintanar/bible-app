@@ -185,12 +185,12 @@ it('fails on a contained-format OSIS file instead of projecting nothing', functi
 it('invalidates every projection-derived cache entry after an import', function () {
     seedBooks();
     $before = \App\Support\ProjectionCache::version();
-    $key = \App\Support\ProjectionCache::key('chapter_verses_Gen_1');
+    $key = \App\Support\ProjectionCache::key('example_payload');
 
     importOsis(base_path('tests/Fixtures/mini-kjv.osis.xml'), ['--chapter' => 'Gen.1']);
 
     expect(\App\Support\ProjectionCache::version())->toBe($before + 1);
-    expect(\App\Support\ProjectionCache::key('chapter_verses_Gen_1'))->not->toBe($key);
+    expect(\App\Support\ProjectionCache::key('example_payload'))->not->toBe($key);
 });
 
 it('refuses to write the database in production without --production', function () {

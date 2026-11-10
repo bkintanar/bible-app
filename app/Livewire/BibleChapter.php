@@ -3,14 +3,13 @@
 namespace App\Livewire;
 
 use App\Support\ResumePosition;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 use App\Services\BibleService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
-use App\Http\Controllers\ChapterController;
-use App\Jobs\CacheAdjacentChaptersJob;
 
 class BibleChapter extends Component
 {
@@ -42,11 +41,6 @@ class BibleChapter extends Component
     #[Locked]
     public $paragraphs = [];
 
-    // Adjacent chapter preloading for book flip effect
-    #[Locked]
-    public $previousChapterVerses = [];
-    #[Locked]
-    public $nextChapterVerses = [];
 
     // UI state
     #[Locked]
@@ -82,10 +76,6 @@ class BibleChapter extends Component
 
     public function mount($bookOsisId, $chapterNumber)
     {
-        // Initialize collections first
-        $this->previousChapterVerses = collect();
-        $this->nextChapterVerses = collect();
-
         $this->bookOsisId = $bookOsisId;
         $this->chapterNumber = (int) $chapterNumber;
 
@@ -102,8 +92,7 @@ class BibleChapter extends Component
         // Get chapters and verses - check cache first
         $this->chapters = $this->bibleService->getChapters($bookOsisId);
 
-        // Try to load current chapter from cache first
-        $this->verses = $this->loadChapterVerses($bookOsisId, $chapterNumber);
+        $this->verses = $this->chapterParagraphs($bookOsisId, (int) $chapterNumber);
 
 
         // Create chapter OSIS reference for error messages
@@ -141,92 +130,45 @@ class BibleChapter extends Component
         // Load paragraphs for the current chapter
         $this->paragraphs = $this->bibleService->getChapterParagraphs($chapterOsisRef);
 
-        // Preload adjacent chapters for book flip effect
-        $this->loadAdjacentChapters($bookOsisId, $chapterNumber);
     }
 
     /**
-     * Load adjacent chapters for book flip preloading
-     * Uses cached data when available, dispatches background job for missing cache
-     * @param mixed $bookOsisId
-     * @param mixed $chapterNumber
+     * The neighbouring chapters, rendered (hidden, inert) for the page-peel effect (OD-2: kept).
+     *
+     * Computed, not public state: they are rendered into the DOM but never serialised into
+     * wire:snapshot - as public properties they were 136 KB of Matt 5's 430 KB snapshot, and
+     * needed a cache plus a background job to be cheap. These are indexed reads (~0.02 ms).
      */
-    private function loadAdjacentChapters($bookOsisId, $chapterNumber)
+    #[Computed]
+    public function previousChapterVerses()
     {
+        return $this->chapterNumber > 1
+            ? $this->chapterParagraphs($this->bookOsisId, $this->chapterNumber - 1)
+            : collect();
+    }
 
-        // Try to load cached adjacent chapters
-        $loadedFromCache = $this->loadCachedAdjacentChapters($bookOsisId, $chapterNumber);
+    #[Computed]
+    public function nextChapterVerses()
+    {
+        $last = collect($this->chapters)->max('chapter_number') ?? 0;
 
-        // If not fully cached, dispatch background job to cache them
-        if (! $loadedFromCache) {
-            CacheAdjacentChaptersJob::dispatch($bookOsisId, $chapterNumber);
-        }
-
+        return $this->chapterNumber < $last
+            ? $this->chapterParagraphs($this->bookOsisId, $this->chapterNumber + 1)
+            : collect();
     }
 
     /**
-     * Try to load adjacent chapters from cache
-     * @param string $bookOsisId
-     * @param int $chapterNumber
-     * @return bool True if both adjacent chapters were loaded from cache
+     * A chapter's verses grouped for display (paragraphs; Psalm 119 verse by verse so its
+     * acrostic titles show).
+     *
+     * No catch: a database failure here used to be logged and turned into an EMPTY chapter, which
+     * the caller then reported as 404 "Chapter not found" - an outage disguised as a missing page.
      */
-    private function loadCachedAdjacentChapters($bookOsisId, $chapterNumber): bool
+    private function chapterParagraphs(string $bookOsisId, int $chapterNumber)
     {
-        $bothCached = true;
-
-        // Try to load previous chapter from cache
-        if ($chapterNumber > 1) {
-            $cached = ChapterController::getCachedChapterVerses($bookOsisId, $chapterNumber - 1);
-            if ($cached && isset($cached['verses'])) {
-                $this->previousChapterVerses = $cached['verses'];
-            } else {
-                $this->previousChapterVerses = collect();
-                $bothCached = false;
-            }
-        } else {
-            $this->previousChapterVerses = collect();
-        }
-
-        // Try to load next chapter from cache
-        $maxChapterNumber = $this->chapters->max('chapter_number') ?? 0;
-        if ($chapterNumber < $maxChapterNumber) {
-            $cached = ChapterController::getCachedChapterVerses($bookOsisId, $chapterNumber + 1);
-            if ($cached && isset($cached['verses'])) {
-                $this->nextChapterVerses = $cached['verses'];
-            } else {
-                $this->nextChapterVerses = collect();
-                $bothCached = false;
-            }
-        } else {
-            $this->nextChapterVerses = collect();
-        }
-
-        return $bothCached;
-    }
-
-    /**
-     * Load chapter verses, checking cache first, then falling back to database
-     * @param mixed $bookOsisId
-     * @param mixed $chapterNumber
-     */
-    private function loadChapterVerses($bookOsisId, $chapterNumber)
-    {
-        // Try to get from cache first
-        $cached = ChapterController::getCachedChapterVerses($bookOsisId, $chapterNumber);
-
-        if ($cached && isset($cached['verses'])) {
-            return $cached['verses'];
-        }
-
-        // Cache miss - load from database
-
         $chapterOsisRef = $bookOsisId . '.' . $chapterNumber;
 
-        // No catch: a database failure here used to be logged and turned into an EMPTY chapter,
-        // which the caller then reported as 404 "Chapter not found" - an outage disguised as a
-        // missing page. It now surfaces as a 500 (and the real error is logged by the handler).
-        if (strtolower($bookOsisId) === 'ps' && $chapterNumber == 119) {
-            // Individual verses, so Psalm 119's acrostic titles show
+        if (strtolower($bookOsisId) === 'ps' && $chapterNumber === 119) {
             return $this->bibleService->getVerses($chapterOsisRef)->map(fn ($verse) => [
                 'verses' => [$verse],
                 'type' => 'individual_verse',
@@ -283,8 +225,6 @@ class BibleChapter extends Component
         // Emit an event to notify other components of the translation change
         $this->dispatch('translation-changed', $translationKey);
 
-        // Reload adjacent chapters with new translation
-        $this->loadAdjacentChapters($this->bookOsisId, $this->chapterNumber);
     }
 
     public function setFontSize($size)

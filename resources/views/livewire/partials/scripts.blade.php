@@ -180,6 +180,9 @@
     }
 
     // Interactive page peel functions
+    // Readers who ask for less motion get the same swipe navigation without the page-peel animation.
+    const REDUCED_MOTION = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
     function startPagePeel(direction) {
         const currentPage = document.querySelector('.page-current');
         const bookContainer = document.querySelector('.book-container');
@@ -188,6 +191,8 @@
 
         isPeeling = true;
         peelDirection = direction;
+
+        if (REDUCED_MOTION) return;
 
         // Add peel classes
         currentPage.classList.add('peeling', `peel-${direction}`);
@@ -206,6 +211,7 @@
     }
 
     function updatePagePeel(distance) {
+        if (REDUCED_MOTION) return;
         const bookContainer = document.querySelector('.book-container');
 
         if (!bookContainer || !isPeeling) return;
