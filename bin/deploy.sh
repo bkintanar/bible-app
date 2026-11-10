@@ -10,7 +10,8 @@
 #  - Artisan runs as the app user, never root (root-owned -wal/-shm/cache files lock the app out).
 #  - No restrictive umask: composer/npm run as root and their output must stay world-readable
 #    for PHP-FPM and nginx. Only bootstrap/cache/*.php (config.php holds APP_KEY) is tightened.
-#  - Dev dependencies are kept until CI exists (plan Task 7.4); tests never run in this tree.
+#  - Production install (--no-dev): tests run in CI (.github/workflows/ci.yml) and the dev
+#    worktree, never in this tree.
 set -euo pipefail
 
 REF=${1:?usage: deploy.sh <ref>}
@@ -27,7 +28,7 @@ git merge --ff-only "$REF"
 chown "$APPUSER:$APPUSER" assets/kjv.osis.xml && chmod 664 assets/kjv.osis.xml
 chown "root:$APPUSER" assets/asv.osis.xml assets/mao.osis.xml && chmod 644 assets/asv.osis.xml assets/mao.osis.xml
 
-composer install --no-interaction -o
+composer install --no-dev --no-interaction -o
 npm ci --no-audit --no-fund
 npm run build
 
