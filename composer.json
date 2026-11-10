@@ -17,10 +17,8 @@
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
-        "friendsofphp/php-cs-fixer": "^3.75",
         "laravel/pail": "^1.2.2",
         "laravel/pint": "^1.13",
-        "laravel/sail": "^1.41",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.6",
         "pestphp/pest": "^3.8",
@@ -55,6 +53,12 @@
         "post-create-project-cmd": [
             "@php artisan key:generate --ansi",
             "@php artisan storage:link --ansi"
+        ],
+        "test": "@php vendor/bin/pest --parallel",
+        "lint": "@php vendor/bin/pint --test",
+        "check": [
+            "@lint",
+            "@test"
         ]
     },
     "extra": {
