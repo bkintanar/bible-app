@@ -121,3 +121,20 @@ it('names and describes its controls for assistive technology', function () {
         ->and($html)->toContain('viewport-fit=cover')
         ->and(substr_count($html, 'wire:key="v-3-'))->toBe(36); // one key per verse of John 3
 });
+
+it('groups verses in paragraphs with headings between them, never inside', function (string $book, int $chapter) {
+    $page = currentPage($this->get("/books/{$book}/chapters/{$chapter}")->getContent());
+
+    preg_match_all('/<p\b[^>]*verse-content[^>]*>(.*?)<\/p>/s', $page, $paragraphs);
+    expect($paragraphs[0])->not->toBeEmpty();
+
+    foreach ($paragraphs[1] as $inner) {
+        // A block element here would make the browser close the <p> early.
+        expect($inner)->not->toMatch('/<(div|p|h[1-6]|ul|ol|table|section|blockquote)\b/i');
+    }
+
+    // Every verse anchor is inside a paragraph.
+    preg_match_all('/id="verse-(\d+)"/', implode('', $paragraphs[1]), $inside);
+    preg_match_all('/id="verse-(\d+)"/', $page, $all);
+    expect(count($inside[1]))->toBe(count($all[1]));
+})->with([['Gen', 1], ['Ps', 3], ['Ps', 18], ['Ps', 23], ['Matt', 5], ['John', 3], ['1John', 4]]);
