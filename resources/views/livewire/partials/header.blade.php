@@ -37,10 +37,11 @@
             </div>
         @else
           {{-- Opening/closing the search box is client-side; only the search itself is a request. --}}
-          {{-- Focus the box once x-show has revealed it: a $nextTick from the click ran before that,
-               so focus stayed on <body> (found by a headless-Chrome check). --}}
+          {{-- Focus follows the box: into it when it opens, back to the search button when it closes.
+               (The input used to be its own Alpine component, so this scope could not see its
+               x-ref, and its one-off x-init focus ran at page load on a hidden element.) --}}
           <div x-data="{ searching: false }"
-               x-init="$watch('searching', open => open && setTimeout(() => $refs.chapterSearch.focus()))">
+               x-init="$watch('searching', open => setTimeout(() => open ? $refs.chapterSearch.focus() : $refs.searchToggle.focus()))">
             <!-- Normal Chapter Header -->
             <div x-show="!searching" class="flex items-center justify-between">
                 <div class="flex flex-col space-y-1">
@@ -105,7 +106,7 @@
                     </div>
 
                     <!-- Search Toggle -->
-                    <button type="button" @click="searching = true" aria-label="Search"
+                    <button type="button" x-ref="searchToggle" @click="searching = true" aria-label="Search"
 
                             class="min-w-[44px] min-h-[44px] flex items-center justify-center p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -147,23 +148,6 @@
                         type="text"
                         placeholder="Search verses, words, or references..."
                         class="w-full h-9 border border-gray-400 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500 dark:placeholder-gray-400 transition-all duration-300"
-                        x-data="{ mounted: false }"
-                        x-init="
-                            if (!mounted) {
-                                mounted = true;
-                                // Simple expand animation
-                                $el.style.transform = 'scaleX(0.3)';
-                                $el.style.transformOrigin = 'right center';
-                                $el.style.opacity = '0.5';
-
-                                setTimeout(() => {
-                                    $el.style.transition = 'all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-                                    $el.style.transform = 'scaleX(1)';
-                                    $el.style.opacity = '1';
-                                    setTimeout(() => $el.focus(), 100);
-                                }, 50);
-                            }
-                        "
                     >
                     <div class="absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
                         <svg class="h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
