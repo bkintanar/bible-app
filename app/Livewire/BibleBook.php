@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Support\ResumePosition;
 use Livewire\Component;
 use App\Services\BibleService;
 use Illuminate\Support\Facades\Cache;
@@ -41,9 +42,6 @@ class BibleBook extends Component
         if (! $this->currentBook) {
             abort(404, "Book not found: {$bookOsisId}");
         }
-
-        // Store this page as the last visited
-        $this->storeLastVisitedPage();
 
         // Get chapters for this book
         $this->chapters = $this->bibleService->getChapters($bookOsisId);
@@ -95,25 +93,7 @@ class BibleBook extends Component
 
     public function clearLastVisited()
     {
-        session()->forget('last_visited');
-    }
-
-    private function storeLastVisitedPage(): void
-    {
-        $sessionId = session()->getId();
-        $cacheKey = "last_visited_page_{$sessionId}";
-
-        $pageData = [
-            'route' => 'books.show',
-            'parameters' => [
-                'bookOsisId' => $this->bookOsisId,
-            ],
-            'url' => request()->url(),
-            'timestamp' => now(),
-        ];
-
-        // Store for 30 days
-        Cache::put($cacheKey, $pageData, now()->addDays(30));
+        ResumePosition::forget();
     }
 
     private function getTestamentBooks($books): array

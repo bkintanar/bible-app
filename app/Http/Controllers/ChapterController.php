@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\ResumePosition;
 use App\Services\BibleService;
 use Illuminate\Support\Facades\Cache;
 
@@ -25,10 +26,7 @@ class ChapterController extends Controller
             abort(404, "Chapter not found: {$bookOsisId} {$chapterNumber}");
         }
 
-        UserSessionController::storeLastVisitedPage('chapters.show', [
-            'bookOsisId' => $bookOsisId,
-            'chapterNumber' => $chapterNumber,
-        ]);
+        ResumePosition::remember($bookOsisId, $chapterNumber);
 
         // Cache the current chapter data
         $this->cacheChapterData($bookOsisId, $chapterNumber);

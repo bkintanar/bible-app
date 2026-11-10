@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\ResumePosition;
 use App\Services\BibleService;
 
 class BookController extends Controller
@@ -34,9 +35,7 @@ class BookController extends Controller
             abort(404, "Book not found: {$bookOsisId}");
         }
 
-        UserSessionController::storeLastVisitedPage('books.show', [
-            'bookOsisId' => $bookOsisId,
-        ]);
+        ResumePosition::remember($bookOsisId);
 
         return view('livewire-book', compact('bookOsisId'));
     }

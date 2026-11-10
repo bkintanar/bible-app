@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Support\ResumePosition;
 use Livewire\Component;
 use Livewire\Attributes\Url;
 use App\Services\BibleService;
@@ -109,7 +110,7 @@ class BibleSearch extends Component
 
     public function clearLastVisited()
     {
-        session()->forget('last_visited');
+        ResumePosition::forget();
     }
 
     private function getTestamentBooks($books): array

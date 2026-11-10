@@ -3,8 +3,9 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Cache;
+use App\Support\ResumePosition;
 
+/** Legacy - routes and controller are removed in plan Task 5.2. */
 class UserSessionController extends Controller
 {
     /**
@@ -13,7 +14,7 @@ class UserSessionController extends Controller
      */
     public function show()
     {
-        $lastVisited = self::getLastVisitedPage();
+        $lastVisited = ResumePosition::get();
 
         return view('user-session.show', compact('lastVisited'));
     }
@@ -34,40 +35,8 @@ class UserSessionController extends Controller
      */
     public function destroy(): RedirectResponse
     {
-        $sessionId = session()->getId();
-        $cacheKey = "last_visited_page_{$sessionId}";
-
-        Cache::forget($cacheKey);
+        ResumePosition::forget();
 
         return redirect()->route('bible.index')->with('success', 'Session data cleared');
-    }
-
-    /**
-     * Store the last visited page in cache
-     */
-    public static function storeLastVisitedPage(string $route, array $parameters = []): void
-    {
-        $sessionId = session()->getId();
-        $cacheKey = "last_visited_page_{$sessionId}";
-
-        $pageData = [
-            'route' => $route,
-            'parameters' => $parameters,
-            'url' => request()->url(),
-            'timestamp' => now(),
-        ];
-
-        Cache::put($cacheKey, $pageData, now()->addDays(30));
-    }
-
-    /**
-     * Get the last visited page from cache
-     */
-    public static function getLastVisitedPage(): ?array
-    {
-        $sessionId = session()->getId();
-        $cacheKey = "last_visited_page_{$sessionId}";
-
-        return Cache::get($cacheKey);
     }
 }

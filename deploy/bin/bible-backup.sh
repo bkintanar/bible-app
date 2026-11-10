@@ -26,6 +26,15 @@ tar czf "$D/osis-$S.tgz" -C "$APP" assets/kjv.osis.xml assets/asv.osis.xml asset
 
 find "$D" -maxdepth 1 -type f -mtime +14 -delete
 
+# Runtime state (cache, queue) is not backed up - nothing in it is irreplaceable - but expired
+# cache rows are never deleted by the database cache store itself, so prune them here.
+RT="$APP/database/runtime.sqlite"
+if [ -f "$RT" ]; then
+    PRUNED=$(sqlite3 -cmd '.timeout 10000' "$RT" "DELETE FROM cache WHERE expiration < CAST(strftime('%s','now') AS INTEGER); SELECT changes();")
+else
+    PRUNED=0
+fi
+
 # Off-host copy: not configured yet (owner to provide a target). Until then this is an
 # on-disk backup only, which does not survive loss of this host.
-echo "bible-backup $S ok: verses=$VERSES (on-disk only; no off-host target configured)"
+echo "bible-backup $S ok: verses=$VERSES, expired cache rows pruned=$PRUNED (on-disk only; no off-host target configured)"

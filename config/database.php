@@ -52,6 +52,22 @@ return [
             'transaction_mode' => 'IMMEDIATE',
         ],
 
+        // Runtime state - cache, rate limiter, queue, failed jobs. Written on almost every request,
+        // so it lives in its own file: a page view must never write the scripture projection
+        // (bible_app.sqlite), whose writers are the importer and nothing else. It holds nothing
+        // that cannot be lost (the backup prunes expired cache rows; it is not backed up).
+        'runtime' => [
+            'driver' => 'sqlite',
+            'url' => null,
+            'database' => env('DB_RUNTIME_DATABASE', database_path('runtime.sqlite')),
+            'prefix' => '',
+            'foreign_key_constraints' => true,
+            'busy_timeout' => 10000,
+            'journal_mode' => 'WAL',
+            'synchronous' => 'NORMAL',
+            'transaction_mode' => 'IMMEDIATE',
+        ],
+
         'mysql' => [
             'driver' => 'mysql',
             'url' => env('DB_URL'),

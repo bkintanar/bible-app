@@ -2,37 +2,28 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Services\BibleService;
+use App\Support\ResumePosition;
+use Illuminate\Http\RedirectResponse;
 
 class BibleController extends Controller
 {
     /**
-     * Redirect to appropriate chapter
-     * GET /
+     * GET / - back to where the reader left off (session, then the `resume` cookie), else Genesis 1.
+     * The remembered position is client-controlled, so it is only followed when it exists.
      */
-    public function index(Request $request)
+    public function index(BibleService $bible): RedirectResponse
     {
-        $lastPage = UserSessionController::getLastVisitedPage();
+        $position = ResumePosition::get();
 
-        // If we have a last visited page, redirect there
-        if ($lastPage && isset($lastPage['route'])) {
-            try {
-                if ($lastPage['route'] === 'chapters.show' && isset($lastPage['parameters']['bookOsisId'], $lastPage['parameters']['chapterNumber'])) {
-                    return redirect()->route('chapters.show', [
-                        'bookOsisId' => $lastPage['parameters']['bookOsisId'],
-                        'chapterNumber' => $lastPage['parameters']['chapterNumber'],
-                    ]);
-                } elseif ($lastPage['route'] === 'books.show' && isset($lastPage['parameters']['bookOsisId'])) {
-                    return redirect()->route('books.show', [
-                        'bookOsisId' => $lastPage['parameters']['bookOsisId'],
-                    ]);
-                }
-            } catch (\Exception $e) {
-                // Fall through to default
-            }
+        if ($position !== null && $position['chapter'] !== null && $bible->chapterExists($position['book'], $position['chapter'])) {
+            return redirect()->route('chapters.show', ['bookOsisId' => $position['book'], 'chapterNumber' => $position['chapter']]);
         }
 
-        // Default: redirect to Genesis 1
+        if ($position !== null && $position['chapter'] === null && $bible->bookExists($position['book'])) {
+            return redirect()->route('books.show', ['bookOsisId' => $position['book']]);
+        }
+
         return redirect()->route('chapters.show', ['bookOsisId' => 'Gen', 'chapterNumber' => 1]);
     }
 }

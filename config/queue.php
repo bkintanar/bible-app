@@ -36,7 +36,7 @@ return [
 
         'database' => [
             'driver' => 'database',
-            'connection' => env('DB_QUEUE_CONNECTION'),
+            'connection' => env('DB_QUEUE_CONNECTION', 'runtime'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
             // Must exceed the longest job timeout (PublishChapterProjection: 300s), or a running job is
@@ -88,7 +88,7 @@ return [
     */
 
     'batching' => [
-        'database' => env('DB_CONNECTION', 'sqlite'),
+        'database' => env('DB_QUEUE_BATCHING_CONNECTION', 'runtime'),
         'table' => 'job_batches',
     ],
 
@@ -107,7 +107,7 @@ return [
 
     'failed' => [
         'driver' => env('QUEUE_FAILED_DRIVER', 'database-uuids'),
-        'database' => env('DB_CONNECTION', 'sqlite'),
+        'database' => env('DB_QUEUE_FAILED_CONNECTION', 'runtime'),
         'table' => 'failed_jobs',
     ],
 
