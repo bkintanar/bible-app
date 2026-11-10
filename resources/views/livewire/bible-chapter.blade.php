@@ -110,18 +110,16 @@
                                         <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 hover:border-blue-300 dark:hover:border-blue-600 transition-colors">
                                             <div class="flex items-start justify-between">
                                                 <div class="flex-1">
-                                                    <a href="/{{ $result['book_osis_id'] }}/{{ $result['chapter'] }}"
+                                                    <a href="{{ route('chapters.show', ['bookOsisId' => $result['book_osis_id'], 'chapterNumber' => $result['chapter']]) }}#verse-{{ $result['verse'] }}"
                                                        class="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-semibold font-serif text-lg mb-3 block">
                                                         {{ $result['reference'] ?? ($result['book_osis_id'] . ' ' . $result['chapter'] . ':' . $result['verse']) }}
                                                     </a>
                                                     <div class="text-gray-900 dark:text-gray-100 leading-relaxed text-lg font-serif" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.7;">
-                                                        @php
-                                                            $text = strip_tags($result['text'], '<em><strong><sup><sub><span><mark>');
-                                                            if (!empty($searchQuery)) {
-                                                                $text = str_ireplace($searchQuery, '<mark>' . $searchQuery . '</mark>', $text);
-                                                            }
-                                                        @endphp
-                                                        {!! $text !!}
+                                                        {{-- FTS5's snippet() already wraps each match in <mark>, in the scripture's own
+                                                             casing. Escape everything, then re-admit only those tags (as the search page
+                                                             does). Splicing the query into the HTML broke markup (a search for "em"
+                                                             matched inside <em>) and replaced the scripture's casing with the reader's. --}}
+                                                        {!! str_replace(['&lt;mark&gt;', '&lt;/mark&gt;'], ['<mark>', '</mark>'], e($result['text'])) !!}
                                                     </div>
                                                 </div>
                                             </div>
