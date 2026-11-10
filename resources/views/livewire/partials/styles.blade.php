@@ -4,6 +4,13 @@
 <style>
     [x-cloak] { display: none !important; }
 
+    /* Strong's popover (resources/js/reader.js): shown on tap/click of a tagged word. */
+    .strongs-popover { position: fixed; z-index: 45; max-width: min(22rem, calc(100vw - 16px)); padding: 0.4rem 0.65rem;
+        border-radius: 0.5rem; background: #111827; color: #f9fafb; font: 500 0.8125rem/1.35 system-ui, sans-serif;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25); pointer-events: none; }
+    .dark .strongs-popover { background: #f9fafb; color: #111827; }
+    .strong-word[data-strongs] { cursor: pointer; }
+
     /* Reader text size, set by A-/A+ (html[data-font-size], localStorage) - no server round-trip.
        Sizes match the old server-side classes: sm=text-lg, base=text-xl ... 2xl=text-4xl. */
     .reader-text { font-size: 1.25rem; }

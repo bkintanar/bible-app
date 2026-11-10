@@ -352,4 +352,53 @@ function handleKeyboardNavigation(e) {
 
 document.addEventListener('keydown', handleKeyboardNavigation);
 
+// Strong's details on tap/click. The words carry them in title="", which touch screens never show,
+// so mobile readers could not see a Strong's number at all. One delegated listener and one popover
+// (appended to <body>, outside Livewire's morphing). Words are deliberately not made focusable: a
+// chapter has ~700 of them, which would be ~700 tab stops.
+const strongsPopover = (() => {
+    let el = null;
+
+    function ensure() {
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'strongs-popover';
+            el.className = 'strongs-popover';
+            el.setAttribute('role', 'status');
+            el.hidden = true;
+            document.body.appendChild(el);
+        }
+        return el;
+    }
+
+    function show(word) {
+        const pop = ensure();
+        const numbers = (word.dataset.strongs || '').split(',').filter(Boolean).join(', ');
+        pop.textContent = `${word.textContent.trim()} \u2014 Strong's ${numbers}` + (word.dataset.morph ? ` \u00b7 ${word.dataset.morph}` : '');
+        pop.hidden = false;
+        const rect = word.getBoundingClientRect();
+        const left = Math.max(8, Math.min(window.innerWidth - pop.offsetWidth - 8, rect.left));
+        const below = rect.bottom + 6 + pop.offsetHeight < window.innerHeight;
+        pop.style.left = `${left}px`;
+        pop.style.top = `${below ? rect.bottom + 6 : rect.top - pop.offsetHeight - 6}px`;
+    }
+
+    function hide() {
+        if (el) el.hidden = true;
+    }
+
+    return { show, hide };
+})();
+
+document.addEventListener('click', (e) => {
+    const word = e.target.closest('.strong-word[data-strongs]');
+    if (word) {
+        strongsPopover.show(word);
+    } else if (!e.target.closest('#strongs-popover')) {
+        strongsPopover.hide();
+    }
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') strongsPopover.hide(); });
+document.addEventListener('scroll', () => strongsPopover.hide(), true);
+
 Object.assign(window, { readerFontSize }); // toggleDarkMode lives in partials/dark-mode-head
