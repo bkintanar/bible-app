@@ -28,7 +28,7 @@
                            @error('email') aria-invalid="true" aria-describedby="login-error" @enderror
                            autocomplete="username"
                            value="{{ old('email') }}"
-                           class="w-full px-3 py-3 rounded-md border border-gray-300 dark:border-gray-600
+                           class="w-full px-3 py-3 rounded-md border border-gray-400 dark:border-gray-600
                                   bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
                                   focus:outline-none focus:ring-2 focus:ring-blue-600">
                 </div>
@@ -39,14 +39,14 @@
                     </label>
                     <input id="password" name="password" type="password" required
                            autocomplete="current-password"
-                           class="w-full px-3 py-3 rounded-md border border-gray-300 dark:border-gray-600
+                           class="w-full px-3 py-3 rounded-md border border-gray-400 dark:border-gray-600
                                   bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
                                   focus:outline-none focus:ring-2 focus:ring-blue-600">
                 </div>
 
                 <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                     <input type="checkbox" name="remember" value="1"
-                           class="rounded border-gray-300 dark:border-gray-600">
+                           class="rounded border-gray-400 dark:border-gray-600">
                     Remember me
                 </label>
 

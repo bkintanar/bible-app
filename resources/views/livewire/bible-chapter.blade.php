@@ -42,7 +42,7 @@
                                             <div class="text-gray-600 dark:text-gray-400 font-serif text-lg mb-4">
                                                 {{ $currentBook['name'] ?? $bookOsisId }} {{ $chapterNumber - 1 }}
                                             </div>
-                                            <div class="text-gray-500 dark:text-gray-500 font-serif">
+                                            <div class="text-gray-500 dark:text-gray-400 font-serif">
                                                 Previous chapter content loading...
                                             </div>
                                         </div>
@@ -57,10 +57,10 @@
                         <div class="max-w-4xl mx-auto">
                             <div class="bg-white dark:bg-gray-900 dark:border-gray-700 p-4 sm:p-8">
                                 <div class="text-center py-16">
-                                    <div class="text-gray-400 dark:text-gray-600 font-serif text-xl mb-4">
+                                    <div class="text-gray-500 dark:text-gray-400 font-serif text-xl mb-4">
                                         Beginning of {{ $currentBook['name'] ?? $bookOsisId }}
                                     </div>
-                                    <div class="text-gray-500 dark:text-gray-500 font-serif">
+                                    <div class="text-gray-500 dark:text-gray-400 font-serif">
                                         This is the first chapter
                                     </div>
                                 </div>
@@ -135,7 +135,7 @@
                                 <!-- No Results -->
                                 <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
                                     <div class="text-center py-12">
-                                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg class="mx-auto h-12 w-12 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                                         </svg>
                                         <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-white">No results found</h3>
@@ -187,7 +187,7 @@
                                             <div class="text-gray-600 dark:text-gray-400 font-serif text-lg mb-4">
                                                 {{ $currentBook['name'] ?? $bookOsisId }} {{ $chapterNumber + 1 }}
                                             </div>
-                                            <div class="text-gray-500 dark:text-gray-500 font-serif">
+                                            <div class="text-gray-500 dark:text-gray-400 font-serif">
                                                 Next chapter content loading...
                                             </div>
                                         </div>
@@ -202,10 +202,10 @@
                         <div class="max-w-4xl mx-auto">
                             <div class="bg-white dark:bg-gray-900 dark:border-gray-700 p-4 sm:p-8">
                                 <div class="text-center py-16">
-                                    <div class="text-gray-400 dark:text-gray-600 font-serif text-xl mb-4">
+                                    <div class="text-gray-500 dark:text-gray-400 font-serif text-xl mb-4">
                                         End of {{ $currentBook['name'] ?? $bookOsisId }}
                                     </div>
-                                    <div class="text-gray-500 dark:text-gray-500 font-serif">
+                                    <div class="text-gray-500 dark:text-gray-400 font-serif">
                                         This is the last chapter
                                     </div>
                                 </div>

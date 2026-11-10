@@ -18,7 +18,7 @@
 @else
     <!-- No verses available -->
     <div class="text-center py-12">
-        <div class="text-gray-500 dark:text-gray-500 font-serif">
+        <div class="text-gray-500 dark:text-gray-400 font-serif">
             Chapter content loading...
         </div>
     </div>

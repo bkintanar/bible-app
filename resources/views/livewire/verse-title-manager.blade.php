@@ -100,7 +100,7 @@
                         <select
                             wire:model.live="selectedBook"
                             id="book"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            class="w-full px-3 py-2 border border-gray-400 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
                             <option value="">Select a book...</option>
                             @foreach($books as $book)
@@ -120,7 +120,7 @@
                         <select
                             wire:model.live="selectedChapter"
                             id="chapter"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {{ empty($selectedBook) ? 'bg-gray-100 cursor-not-allowed' : '' }}"
+                            class="w-full px-3 py-2 border border-gray-400 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {{ empty($selectedBook) ? 'bg-gray-100 cursor-not-allowed' : '' }}"
                             {{ empty($selectedBook) ? 'disabled' : '' }}
                         >
                             <option value="">{{ empty($selectedBook) ? 'Select a book first...' : 'Select a chapter...' }}</option>
@@ -141,7 +141,7 @@
                         <select
                             wire:model.live="selectedVerse"
                             id="verse"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {{ empty($selectedChapter) ? 'bg-gray-100 cursor-not-allowed' : '' }}"
+                            class="w-full px-3 py-2 border border-gray-400 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {{ empty($selectedChapter) ? 'bg-gray-100 cursor-not-allowed' : '' }}"
                             {{ empty($selectedChapter) ? 'disabled' : '' }}
                         >
                             <option value="">{{ empty($selectedChapter) ? 'Select a chapter first...' : 'Select a verse...' }}</option>
@@ -175,7 +175,7 @@
                         wire:model="verseTitle"
                         id="title"
                         placeholder="Enter a title for this verse..."
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        class="w-full px-3 py-2 border border-gray-400 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         maxlength="255"
                     />
                     @error('verseTitle')
