@@ -102,18 +102,4 @@ return [
     |
     */
     'editor_enabled' => (bool) env('BIBLE_EDITOR_ENABLED', true),
-
-    /*
-    |--------------------------------------------------------------------------
-    | Database Configuration
-    |--------------------------------------------------------------------------
-    |
-    | Settings for database-based Bible reader
-    |
-    */
-    'database' => [
-        'cache_duration' => env('BIBLE_CACHE_DURATION', 3600), // 1 hour
-        'fts_enabled' => env('BIBLE_FTS_ENABLED', true),
-        'enhanced_features' => env('BIBLE_ENHANCED_FEATURES', true),
-    ],
 ];
