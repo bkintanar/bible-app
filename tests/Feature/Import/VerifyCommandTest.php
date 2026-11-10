@@ -33,6 +33,14 @@ it('fails when a verse has lost its red letters', function () {
     verifyFixture()->expectsOutputToContain('John.3.16 (should be red)')->assertExitCode(1);
 });
 
+it('fails when a colophon is missing or altered', function (string $how) {
+    projectFixture();
+    $colophon = DB::table('titles')->where('title_type', 'colophon');
+    $how === 'missing' ? $colophon->delete() : $colophon->update(['title_text' => 'Written from Rome.']);
+
+    verifyFixture()->expectsOutputToContain('Phlm')->assertExitCode(1);
+})->with(['missing', 'altered']);
+
 it('fails on an unreadable source instead of reporting counts of zero', function () {
     projectFixture();
     $tmp = tempnam(sys_get_temp_dir(), 'osis').'.osis.xml';

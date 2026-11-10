@@ -129,6 +129,12 @@ class BibleService
         return $this->getCurrentReader()->getChapters($bookOsisId);
     }
 
+    /** @return array{title: ?string, colophon: ?string} */
+    public function getBookFrame(string $bookOsisId): array
+    {
+        return $this->getCurrentReader()->getBookFrame($bookOsisId);
+    }
+
     public function getVerses(string $chapterOsisRef): Collection
     {
         return $this->getCurrentReader()->getVerses($chapterOsisRef);

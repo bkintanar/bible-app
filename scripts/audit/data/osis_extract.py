@@ -11,6 +11,7 @@ Tables:
            anchor_verse, prev_verse, parent, text)
   x_chapters(osis_id, book, chap)
   x_q(seq, verse, who, kind, sid, eid, text)  -- every <q> start
+  x_colophons(book, text)  -- an epistle's <div type="colophon"> (not scripture; OD-9)
 """
 import sqlite3
 import sys
@@ -37,6 +38,8 @@ class H(xml.sax.ContentHandler):
         self.qs = []
         self.tseq = 0
         self.qseq = 0
+        self.colophon = None  # the open <div type="colophon">: {'book', 'text'}
+        self.colophons = []
 
     def _v(self):
         return self.verses[self.verse]
@@ -51,6 +54,8 @@ class H(xml.sax.ContentHandler):
         self.stack.append(name)
         if name == 'div' and attrs.get('type') == 'book':
             self.book = attrs.get('osisID')
+        elif name == 'div' and attrs.get('type') == 'colophon':
+            self.colophon = {'book': self.book, 'text': []}
         elif name == 'chapter' and attrs.get('osisID'):
             self.chapter = attrs.get('osisID')
             self.chapters.append((self.chapter, self.book, int(self.chapter.split('.')[1])))
@@ -117,7 +122,10 @@ class H(xml.sax.ContentHandler):
 
     def endElement(self, name):
         self.stack.pop()
-        if name == 'title':
+        if name == 'div' and self.colophon is not None:  # a colophon holds no nested div
+            self.colophons.append((self.colophon['book'], norm(''.join(self.colophon['text']))))
+            self.colophon = None
+        elif name == 'title':
             t = self.title_stack.pop()
             t['text'] = ''.join(t['text'])
             self.titles.append(t)
@@ -133,6 +141,10 @@ class H(xml.sax.ContentHandler):
             self.pending_titles = []
 
     def characters(self, content):
+        if self.colophon is not None:
+            if not self.note_depth:
+                self.colophon['text'].append(content)
+            return
         if self.title_stack:
             if not self.note_depth:
                 for t in self.title_stack:
@@ -164,6 +176,8 @@ def main(src, out):
     db = sqlite3.connect(out)
     db.executescript('''
     drop table if exists x_verses; drop table if exists x_titles; drop table if exists x_chapters; drop table if exists x_q;
+    drop table if exists x_colophons;
+    create table x_colophons(book text primary key, text text);
     create table x_verses(osis_id text primary key, book text, chap int, vnum int, text text, note_text text,
       jesus_text text, n_q_jesus_start int, n_q_jesus_ms int, n_trans int, n_divine int, n_divine_in_note int,
       n_note int, n_w_strong int, n_pilcrow int, n_title_inside int);
@@ -186,8 +200,9 @@ def main(src, out):
     db.executemany('insert or ignore into x_chapters values (?,?,?)', h.chapters)
     db.executemany('insert into x_q values (?,?,?,?,?,?)', [
         (q['seq'], q['verse'], q['who'], q['kind'], q['sid'], q['eid']) for q in h.qs])
+    db.executemany('insert into x_colophons values (?,?)', h.colophons)
     db.commit()
-    print('verses', len(h.order), 'titles', len(h.titles), 'chapters', len(h.chapters), 'q', len(h.qs))
+    print('verses', len(h.order), 'titles', len(h.titles), 'chapters', len(h.chapters), 'q', len(h.qs), 'colophons', len(h.colophons))
 
 
 if __name__ == '__main__':

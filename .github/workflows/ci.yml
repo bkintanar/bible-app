@@ -81,7 +81,7 @@ jobs:
           sleep 3
           B=http://127.0.0.1:8000
           npx --yes @axe-core/cli@4.10.1 $B/books/Gen/chapters/1 $B/books/Ps/chapters/23 $B/books/John/chapters/3 \
-            $B/books/Matt/chapters/26 $B/books/John "$B/searches?q=love" $B/searches $B/login $B/books/Nope/chapters/1 \
+            $B/books/Matt/chapters/26 $B/books/Phlm/chapters/1 $B/books/John "$B/searches?q=love" $B/searches $B/login $B/books/Nope/chapters/1 \
             --chromedriver-path "$CHROMEWEBDRIVER/chromedriver" \
             --chrome-options="no-sandbox,headless=new,disable-gpu,disable-dev-shm-usage" \
             --tags wcag2a,wcag2aa,wcag21a,wcag21aa --save axe.json --dir .

@@ -64,6 +64,7 @@ try:
         ("titles missing from db", r"missing from db:\s*(\d+)"),
         ("titles extra in db", r"extra in db\s*:\s*(\d+)"),
         ("titles with wrong canonical flag", r"wrong canonical flag:\s*(\d+)"),
+        ("colophons differing from the source", r"colophons differing \(xml vs db\):\s*(\d+)"),
         ("chapters whose verse count differs", r"chapters whose verse count differs xml vs db:\s*(\d+)"),
         ("red_letter_text false-positive verses", r"FALSE POSITIVE verses \(db rows, no words of Christ in xml\):\s*(\d+)"),
     ]:

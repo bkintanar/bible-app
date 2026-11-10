@@ -8,7 +8,8 @@ except for the reader's own localStorage in a throwaway browser profile.
     python3 scripts/audit/browser/reader_check.py /tmp/cd/chromedriver/linux-$V/chromedriver-linux64/chromedriver /tmp/out
 
 Covers: selector open/pick/Escape/focus return, arrow keys (also blocked while the selector is
-open), A-/A+ and persistence, dark mode, Strong's popover, in-chapter search focus and results,
+open), A-/A+ and persistence, dark mode, Strong's off by default + toggle + popover, book title and
+colophon, in-chapter search focus and results,
 touch swipes, and printing (WebDriver Print -> PDF page count). Screenshots land in <out>.
 """
 import base64, json, subprocess, sys, time, urllib.request
@@ -82,6 +83,13 @@ try:
     shot('03-gen1-dark')
     click('button[aria-label="Toggle dark mode"]'); time.sleep(0.3)
 
+    # Strong's numbers: off for a new visitor (OD-3); the toggle turns them on (a Livewire round-trip)
+    off = js("return document.querySelectorAll('.page-current .strong-word').length")
+    pressed = js('return document.querySelector(\'button[aria-label^="Strong"]\').getAttribute("aria-pressed")')
+    check("Strong's numbers are off for a new visitor", off == 0 and pressed == 'false', f'{off} words, aria-pressed={pressed}')
+    click('button[aria-label^="Strong"]'); wait("document.querySelectorAll('.page-current .strong-word').length > 0", 10)
+    check("the Strong's toggle turns them on", js("return document.querySelectorAll('.page-current .strong-word').length") > 0)
+
     # Strong's popover
     js("document.querySelector('.page-current .strong-word[data-strongs]').click()"); time.sleep(0.3)
     pop = js("const p = document.getElementById('strongs-popover'); return p && !p.hidden ? p.textContent : null")
@@ -130,9 +138,20 @@ try:
     pages = pdf.count(b'/Type /Page') - pdf.count(b'/Type /Pages')
     check('printing Matt 5 gives the whole chapter (several pages)', pages >= 3, f'{pages} pages')
 
+    # Book title and colophon (OD-9): shown, and outside every verse
+    go('/books/Phlm/chapters/1'); time.sleep(1.5)
+    check("Philemon 1 shows the book's title above verse 1", js(
+        "const t = document.querySelector('.page-current .book-title'), v = document.getElementById('verse-1');"
+        " return !!t && t.getClientRects().length > 0 && !!(t.compareDocumentPosition(v) & Node.DOCUMENT_POSITION_FOLLOWING)"))
+    check('and its colophon after the last verse, outside it, in italic', js(
+        "const c = document.querySelector('.page-current .colophon'), v = document.getElementById('verse-25');"
+        " return !!c && c.getClientRects().length > 0 && !v.contains(c)"
+        " && !!(v.compareDocumentPosition(c) & Node.DOCUMENT_POSITION_FOLLOWING) && getComputedStyle(c).fontStyle === 'italic'"))
+    js("document.querySelector('.page-current .colophon').scrollIntoView()"); time.sleep(0.3); shot('07-phlm-colophon')
+
     # Phone width (375 px): nothing may scroll sideways
     call('POST', f'{S}/window/rect', {'width': 375, 'height': 812})
-    for path in ('/books/Gen/chapters/1', '/books/Ps/chapters/119', '/searches?q=love', '/login', '/books/Nope/chapters/1'):
+    for path in ('/books/Gen/chapters/1', '/books/Phlm/chapters/1', '/books/Ps/chapters/119', '/searches?q=love', '/login', '/books/Nope/chapters/1'):
         go(path); time.sleep(1.2)
         w = js('return [document.documentElement.scrollWidth, document.documentElement.clientWidth]')
         check(f'no horizontal scroll at 375 px: {path}', w[0] <= w[1], f'{w[0]} > {w[1]}' if w[0] > w[1] else '')

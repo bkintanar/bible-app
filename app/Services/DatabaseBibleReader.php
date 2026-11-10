@@ -122,6 +122,37 @@ class DatabaseBibleReader
     }
 
     /**
+     * The text that frames a book but is not scripture (OD-9): its main title ("THE FIRST BOOK OF
+     * MOSES CALLED GENESIS"), shown above chapter 1, and - for 14 epistles - its colophon ("Written
+     * to the Romans from Corinthus, ..."), shown after the last verse. HTML as the importer stores
+     * it; null when the book has none.
+     *
+     * @return array{title: ?string, colophon: ?string}
+     */
+    public function getBookFrame(string $bookOsisId): array
+    {
+        $canonical = $this->bibleVersion ? $this->canonicalBookOsisId($bookOsisId) : null;
+        if ($canonical === null) {
+            return ['title' => null, 'colophon' => null];
+        }
+
+        $cacheKey = \App\Support\ProjectionCache::key("book_frame_{$canonical}_{$this->versionKey}");
+
+        return $this->memo[$cacheKey] ??= Cache::remember($cacheKey, 3600, function () use ($canonical) {
+            $rows = DB::table('titles')
+                ->join('chapters', 'chapters.id', '=', 'titles.chapter_id')
+                ->join('books', 'books.id', '=', 'chapters.book_id')
+                ->where('books.osis_id', $canonical)
+                ->where('chapters.version_id', $this->bibleVersion->id)
+                ->whereNull('titles.verse_id')
+                ->whereIn('titles.title_type', ['main', 'colophon'])
+                ->pluck('titles.title_text', 'titles.title_type');
+
+            return ['title' => $rows->get('main'), 'colophon' => $rows->get('colophon')];
+        });
+    }
+
+    /**
      * Get verses for a specific chapter
      */
     public function getVerses(string $chapterOsisRef): Collection

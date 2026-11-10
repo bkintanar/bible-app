@@ -143,11 +143,52 @@ it('is idempotent when called twice in the same process without a fresh command 
 
 it('keeps the book\'s main title when re-projecting chapter 1 only', function () {
     projectFixture();
-    expect(DB::table('titles')->where('title_type', 'main')->count())->toBe(6);
+    expect(DB::table('titles')->where('title_type', 'main')->count())->toBe(7);
 
     importOsis(base_path('tests/Fixtures/mini-kjv.osis.xml'), ['--chapter' => 'Gen.1']);
 
-    expect(DB::table('titles')->where('title_type', 'main')->count())->toBe(6);
+    expect(DB::table('titles')->where('title_type', 'main')->count())->toBe(7);
+});
+
+// --- book titles and colophons (OD-9) --------------------------------------------------------
+
+function colophonRow(string $book): ?object
+{
+    return DB::table('titles')
+        ->join('chapters', 'chapters.id', '=', 'titles.chapter_id')
+        ->join('books', 'books.id', '=', 'chapters.book_id')
+        ->where('books.osis_id', $book)->where('titles.title_type', 'colophon')
+        ->first(['titles.*', 'chapters.chapter_number']);
+}
+
+it('stores an epistle\'s colophon on its last chapter, as non-canonical text after the verses', function () {
+    projectFixture();
+
+    $row = colophonRow('Phlm');
+    expect($row)->not->toBeNull()
+        ->and(plain($row->title_text))->toBe('Written from Rome to Philemon, by Onesimus a servant.')
+        ->and($row->verse_id)->toBeNull()
+        ->and((int) $row->chapter_number)->toBe(1)
+        ->and($row->placement)->toBe('after')
+        ->and((bool) $row->canonical)->toBeFalse();
+    expect(DB::table('titles')->where('title_type', 'colophon')->count())->toBe(1);
+});
+
+it('keeps the colophon and main title when the last chapter alone is re-projected (an editor publish)', function () {
+    projectFixture();
+
+    importOsis(base_path('tests/Fixtures/mini-kjv.osis.xml'), ['--chapter' => 'Phlm.1']);
+
+    expect(colophonRow('Phlm'))->not->toBeNull();
+    expect(DB::table('titles')->where('title_type', 'colophon')->count())->toBe(1)
+        ->and(DB::table('titles')->where('title_type', 'main')->count())->toBe(7);
+});
+
+it('replaces, not duplicates, the colophon on a second full projection', function () {
+    projectFixture();
+    importOsis(base_path('tests/Fixtures/mini-kjv.osis.xml'));
+
+    expect(DB::table('titles')->where('title_type', 'colophon')->count())->toBe(1);
 });
 
 it('removes a verse that no longer exists in the source', function () {

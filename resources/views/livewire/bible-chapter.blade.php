@@ -14,6 +14,12 @@
     {{-- Prev/next cross book boundaries (Mal 4 -> Matt 1) and point at the canonical chapter URL,
          so a page turn is one request instead of a /Book/N -> /books/Book/chapters/N redirect. --}}
     @php $nav = $this->getNavigationTargets(); @endphp
+    {{-- The book's title and colophon (OD-9). The chapter-verses partial inherits these, so the
+         page-peel previews show them too. --}}
+    @php
+        $frame = $this->bookFrame;
+        $lastChapter = (int) ($chapters->max('chapter_number') ?? 0);
+    @endphp
     <!-- Main Content - Scrollable -->
     <main id="main" tabindex="-1" class="flex-1 overflow-hidden book-container focus:outline-none"
          data-prev-url="{{ $nav['prev']['url'] ?? '' }}"

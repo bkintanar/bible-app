@@ -120,6 +120,8 @@ db_titles = q('''select t.id, t.title_type, t.canonical, t.title_text, v.osis_id
 dkey = Counter()
 dmap = defaultdict(list)
 for tid, tt, can, txt, vo, co, order in db_titles:
+    if tt == 'colophon':  # not a <title>: compared on its own below (OD-9)
+        continue
     anchor = vo or co
     k = (tt, anchor, strip(txt))
     dkey[k] += 1
@@ -144,6 +146,15 @@ print('  extra in db    :', sum(extra.values()), list(extra.items())[:8])
 wrong_can = [(k, xcan[k], [c for _, c in dmap[k]]) for k in xkey if k in dmap and any(c != xcan[k] for _, c in dmap[k])]
 print('  wrong canonical flag:', len(wrong_can), wrong_can[:5])
 print('  by type xml:', Counter(k[0] for k in xkey.elements()), ' db:', Counter(k[0] for k in dkey.elements()))
+
+print('\n== 4b. Colophons (OD-9: stored as non-canonical titles of type colophon)')
+x_col = {b: tight(t) for b, t in q('select book, text from x_colophons').fetchall()}
+db_col = {b: tight(strip(t)) for b, t in q(
+    "select b.osis_id, t.title_text from db.titles t join db.chapters c on c.id=t.chapter_id "
+    "join db.books b on b.id=c.book_id where t.title_type='colophon' and c.version_id=?", (version_id,)).fetchall()}
+col_diff = sorted(b for b in set(x_col) | set(db_col) if x_col.get(b) != db_col.get(b))
+print('  xml colophons:', len(x_col), ' db colophons:', len(db_col))
+print('  colophons differing (xml vs db):', len(col_diff), col_diff[:8])
 
 print('\n== 5. Red letters')
 x_q = dict(q('select osis_id, n_q_jesus_start from x_verses where n_q_jesus_start>0').fetchall())

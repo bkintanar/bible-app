@@ -1,7 +1,8 @@
 <?php
 
 /*
- * What a reader sees, rendered from the fixture projection (mini-kjv.osis.xml) with Strong's on.
+ * What a reader sees, rendered from the fixture projection (mini-kjv.osis.xml). A new visitor sees
+ * the plain text (Strong's off, OD-3); tests of the Strong's view turn it on in the session.
  */
 
 beforeEach(function () {
@@ -35,7 +36,7 @@ it('serves every fixture chapter, numbered books included', function (string $bo
 })->with([
     ['Gen', 1], ['Gen', 2], ['Ps', 3], ['Ps', 18], ['Ps', 23], ['Matt', 5], ['Matt', 6], ['Matt', 9],
     ['Matt', 15], ['Matt', 16], ['Matt', 17], ['Matt', 19], ['Matt', 20], ['Matt', 21], ['Matt', 22],
-    ['Matt', 26], ['Matt', 28], ['Mark', 2], ['John', 3], ['1John', 4],
+    ['Matt', 26], ['Matt', 28], ['Mark', 2], ['John', 3], ['1John', 4], ['Phlm', 1],
 ]);
 
 it('shows Matt 26:56 complete, with the narration after Christ\'s words not in red', function () {
@@ -59,11 +60,50 @@ it('renders John 3:16 inside the words of Christ', function () {
 });
 
 it('does not italicise Gen 1:1 "created" (morphology is not a translator addition)', function () {
-    $html = $this->get('/books/Gen/chapters/1')->getContent();
+    $html = $this->withSession(['show_strongs_numbers' => true])->get('/books/Gen/chapters/1')->getContent();
     $verse = verseHtml(currentPage($html), 1);
 
     expect($verse)->toContain('>created</span>')->not->toContain('<em');
     expect($html)->not->toMatch('/\.has-morph\s*\{[^}]*italic/');
+
+    $plain = verseHtml(currentPage($this->get('/books/Gen/chapters/1')->getContent()), 1);
+    expect(visibleText($plain))->toContain('In the beginning God created the heaven and the earth.')
+        ->and($plain)->not->toContain('<em');
+});
+
+it('shows plain text to a new visitor and Strong\'s numbers once the reader turns them on', function () {
+    $plain = currentPage($this->get('/books/John/chapters/3')->getContent());
+    $strongs = currentPage($this->withSession(['show_strongs_numbers' => true])->get('/books/John/chapters/3')->getContent());
+
+    expect($plain)->not->toContain('strong-word')
+        ->and($strongs)->toContain('class="strong-word')
+        ->and(visibleText(verseHtml($plain, 16)))->toBe(visibleText(verseHtml($strongs, 16)));
+});
+
+it('shows the book\'s title above chapter 1 only', function () {
+    $gen1 = currentPage($this->get('/books/Gen/chapters/1')->getContent());
+    $gen2 = currentPage($this->get('/books/Gen/chapters/2')->getContent());
+
+    expect($gen1)->toMatch('/<h2 class="book-title[^"]*"><span class="book-title-text">THE FIRST BOOK OF MOSES CALLED GENESIS<\/span><\/h2>/')
+        ->and(strpos($gen1, 'book-title'))->toBeLessThan(strpos($gen1, 'id="verse-1"'))
+        ->and($gen2)->not->toContain('book-title');
+});
+
+it('shows an epistle\'s colophon after its last verse, outside the verse, marked as not scripture', function () {
+    $page = currentPage($this->get('/books/Phlm/chapters/1')->getContent());
+
+    expect($page)->toContain('THE EPISTLE OF PAUL THE APOSTLE TO PHILEMON')
+        ->and($page)->toMatch('/<p class="colophon[^"]*"><span class="sr-only">Colophon: <\/span><span class="colophon-text">Written from Rome to Philemon, by Onesimus a servant\.<\/span><\/p>/')
+        ->and(strpos($page, 'class="colophon'))->toBeGreaterThan(strpos($page, 'id="verse-25"'));
+    // The last verse ends where its own element ends: the colophon is not part of its text.
+    $dom = new DOMDocument;
+    @$dom->loadHTML('<?xml encoding="UTF-8">'.$page);
+    expect(trim($dom->getElementById('verse-25')->textContent))
+        ->toStartWith('25The grace of our Lord Jesus Christ')->not->toContain('Written from Rome');
+});
+
+it('shows no colophon on a book that has none', function () {
+    expect(currentPage($this->get('/books/John/chapters/3')->getContent()))->not->toContain('class="colophon');
 });
 
 it('renders Ps 23:1 with LORD in small capitals and the supplied "is" in italics', function () {
@@ -112,7 +152,7 @@ it('marks editorial titles as headings and psalm titles as text', function () {
 it('names and describes its controls for assistive technology', function () {
     $html = $this->get('/books/John/chapters/3')->getContent();
 
-    expect($html)->toContain('aria-label="Strong\'s numbers" aria-pressed="true"')
+    expect($html)->toContain('aria-label="Strong\'s numbers" aria-pressed="false"')
         ->and($html)->toContain('aria-label="Toggle dark mode"')
         ->and($html)->toContain('aria-label="Smaller text"')
         ->and($html)->toContain('aria-label="Search the Bible"')

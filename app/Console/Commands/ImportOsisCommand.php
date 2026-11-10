@@ -703,6 +703,9 @@ class ImportOsisCommand extends Command
         'titles',
     ];
 
+    /** Chapter-scoped titles that only the book pass (processAllBookTitles) rebuilds. */
+    private const BOOK_LEVEL_TITLE_TYPES = ['main', 'colophon'];
+
     /** Chapter ids already purged during this run, so repeated titles in one chapter accumulate normally. */
     private array $purgedChapters = [];
 
@@ -753,11 +756,12 @@ class ImportOsisCommand extends Command
      */
     private function purgeChapterProjection(int $chapterId): void
     {
-        // The book's main title also lives on chapter 1 with verse_id = NULL, but only the book
-        // pass rebuilds it - a chapter-scoped run (every editor save) used to delete it for good.
+        // The book's main title (chapter 1) and colophon (last chapter) also live here with
+        // verse_id = NULL, but only the book pass rebuilds them - a chapter-scoped run (every
+        // editor save) used to delete the main title for good.
         foreach (self::CHAPTER_PROJECTION_TABLES as $table) {
             DB::table($table)->where('chapter_id', $chapterId)->whereNull('verse_id')
-                ->where(fn ($q) => $q->whereNull('title_type')->orWhere('title_type', '<>', 'main'))
+                ->where(fn ($q) => $q->whereNull('title_type')->orWhereNotIn('title_type', self::BOOK_LEVEL_TITLE_TYPES))
                 ->delete();
         }
     }
@@ -1845,6 +1849,8 @@ class ImportOsisCommand extends Command
                     if ($titleType === 'main') {
                         $this->importBookTitle($child, $bookId);
                     }
+                } elseif ($nodeName === 'div' && $child->getAttribute('type') === 'colophon') {
+                    $this->importColophon($child, $bookId);
                 }
             }
         }
@@ -1904,6 +1910,50 @@ class ImportOsisCommand extends Command
 
         DB::table('titles')->insert($titleData);
         $this->titleCount++;
+    }
+
+    /**
+     * An epistle's colophon (OD-9), e.g. Rom.c "Written to the Romans from Corinthus, and sent by
+     * Phebe ...": printed after the last verse in the KJV, but not scripture.
+     *
+     * Stored like the book's main title - a chapter-scoped title (verse_id NULL) - on the book's
+     * LAST chapter, as type 'colophon', placement 'after', non-canonical. Its supplied words keep
+     * their italics (formatToHTML). Only the book pass rebuilds it, so the chapter purge keeps it.
+     *
+     * @param  \DOMElement  $element  the <div type="colophon">
+     */
+    private function importColophon($element, int $bookId): void
+    {
+        $lastChapterId = DB::table('chapters')
+            ->where('book_id', $bookId)
+            ->where('version_id', $this->versionId)
+            ->orderByDesc('chapter_number')
+            ->value('id');
+
+        if (! $lastChapterId) {
+            return;
+        }
+
+        $innerContent = '';
+        foreach ($element->childNodes as $child) {
+            $innerContent .= $this->doc->saveXML($child);
+        }
+
+        $this->purgeChapterProjectionOnce((int) $lastChapterId);
+        DB::table('titles')->where('chapter_id', $lastChapterId)->whereNull('verse_id')->where('title_type', 'colophon')->delete();
+
+        DB::table('titles')->insert([
+            'verse_id' => null,
+            'chapter_id' => $lastChapterId,
+            'title_type' => 'colophon',
+            'title_text' => trim($this->formatToHTML($innerContent)),
+            'canonical' => false,
+            'placement' => 'after',
+            'title_order' => 1,
+            'attributes' => json_encode($this->getElementAttributes($element)),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 
     /**

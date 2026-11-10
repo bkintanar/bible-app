@@ -37,6 +37,9 @@ class VerifyOsisProjectionCommand extends Command
     /** @var array<string, array{text: string, christ: bool, para: bool}> per-verse source facts (--content) */
     private array $sourceVerses = [];
 
+    /** @var array<string, string> book osisID => colophon text, normalised (--content) */
+    private array $sourceColophons = [];
+
     private ?string $work = null;
 
     public function handle(): int
@@ -104,6 +107,7 @@ class VerifyOsisProjectionCommand extends Command
             'verses' => 0,
             'chapters' => 0,
             'titles' => 0,
+            'colophons' => 0,
             'transChange (translator_changes)' => 0,
             'divineName (divine_names)' => 0,
             'verses with words of Christ (red letter)' => 0,
@@ -136,6 +140,8 @@ class VerifyOsisProjectionCommand extends Command
         $text = '';
         $christ = false;
         $para = false;
+        $colophonBook = null; // the book whose <div type="colophon"> is open (it holds no nested div)
+        $colophonText = '';
 
         while (@$reader->read()) {
             $type = $reader->nodeType;
@@ -172,6 +178,23 @@ class VerifyOsisProjectionCommand extends Command
                 $currentBook = $reader->getAttribute('osisID');
             }
             $inScope = $book === null || $currentBook === $book;
+
+            // An epistle's colophon (OD-9): stored as a non-canonical 'colophon' title.
+            if ($type === XMLReader::ELEMENT && $name === 'div' && $reader->getAttribute('type') === 'colophon' && ! $reader->isEmptyElement) {
+                $colophonBook = $currentBook;
+                $colophonText = '';
+            } elseif ($type === XMLReader::END_ELEMENT && $name === 'div' && $colophonBook !== null) {
+                if ($content && $inScope) {
+                    $this->sourceColophons[$colophonBook] = self::normalise($colophonText);
+                }
+                $colophonBook = null;
+            } elseif ($colophonBook !== null && $noteDepth === 0) {
+                if (in_array($type, [XMLReader::TEXT, XMLReader::WHITESPACE, XMLReader::SIGNIFICANT_WHITESPACE, XMLReader::CDATA], true)) {
+                    $colophonText .= $reader->value;
+                } elseif ($type === XMLReader::ELEMENT && $name === 'w' && $reader->isEmptyElement) {
+                    $colophonText .= ' ';
+                }
+            }
 
             // Milestone verses: <verse sID="Gen.1.1"/> ... <verse eID="Gen.1.1"/>.
             if ($type === XMLReader::ELEMENT && $name === 'verse') {
@@ -225,6 +248,12 @@ class VerifyOsisProjectionCommand extends Command
                 case 'title':
                     if ($headerDepth === 0) { // the <work><title> in the header is metadata, not a title row
                         $counts['titles']++;
+                    }
+                    break;
+
+                case 'div':
+                    if ($reader->getAttribute('type') === 'colophon') {
+                        $counts['colophons']++;
                     }
                     break;
 
@@ -300,7 +329,8 @@ class VerifyOsisProjectionCommand extends Command
         return [
             'verses' => $verseIds->count(),
             'chapters' => $chapterIds->count(),
-            'titles' => $count('titles') + DB::table('titles')->whereNull('verse_id')->whereIn('chapter_id', $chapterIds)->count(),
+            'titles' => $count('titles') + DB::table('titles')->whereNull('verse_id')->whereIn('chapter_id', $chapterIds)->where('title_type', '<>', 'colophon')->count(),
+            'colophons' => DB::table('titles')->whereNull('verse_id')->whereIn('chapter_id', $chapterIds)->where('title_type', 'colophon')->count(),
             'transChange (translator_changes)' => $count('translator_changes'),
             'divineName (divine_names)' => $count('divine_names'),
             'verses with words of Christ (red letter)' => $distinct('red_letter_text'),
@@ -373,6 +403,31 @@ class VerifyOsisProjectionCommand extends Command
         }
         $this->table(['per-verse check ('.count($this->sourceVerses).' verses)', 'differing', 'first 20'], $rows);
 
-        return $failures;
+        return $failures + $this->compareColophons($book, $versionId);
+    }
+
+    /** Each book's colophon text, as stored (HTML with supplied words in <em>), against the source. */
+    private function compareColophons(?string $book, int $versionId): int
+    {
+        $db = DB::table('titles')
+            ->join('chapters', 'chapters.id', '=', 'titles.chapter_id')
+            ->join('books', 'books.id', '=', 'chapters.book_id')
+            ->where('titles.title_type', 'colophon')
+            ->whereNull('titles.verse_id')
+            ->where('chapters.version_id', $versionId)
+            ->when($book !== null, fn ($q) => $q->where('books.osis_id', $book))
+            ->pluck('titles.title_text', 'books.osis_id')
+            ->map(fn ($html) => self::normalise(html_entity_decode(strip_tags((string) $html), ENT_QUOTES | ENT_HTML5, 'UTF-8')));
+
+        $differing = [];
+        foreach ($this->sourceColophons + $db->all() as $osisId => $_) {
+            if (($this->sourceColophons[$osisId] ?? null) !== $db->get($osisId)) {
+                $differing[] = $osisId;
+            }
+        }
+
+        $this->table(['colophon check ('.count($this->sourceColophons).' books)', 'differing', 'books'], [['text differs or missing', count($differing), implode(', ', $differing)]]);
+
+        return $differing === [] ? 0 : 1;
     }
 }

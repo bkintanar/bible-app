@@ -78,7 +78,8 @@ for ch in chaps:
             cs["text_" + k] += 1
             if len(EX["text_" + k]) < 10:
                 EX["text_" + k].append(f"{osis}: {'; '.join(lst)[:150]}")
-        # sim agreement (does the live page match the simulated default path?)
+        # sim agreement: the live page (Strong's off by default, OD-3) against the simulated Strong's-ON
+        # render - text and red letters are the same on both paths (run_all checks db/on/off)
         from frag import parse_fragment
         sv = parse_fragment(sim[osis]["on"])
         if sv["text"] != v["text"] or sv["red"] != v["red"]:

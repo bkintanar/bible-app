@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Simulate BibleChapter::parseEnhancedVerseText (Strong's-ON default path) for every verse, read-only.
+ * Simulate BibleChapter::parseEnhancedVerseText (the Strong's-ON path) for every verse, read-only.
  * Uses the real class via composer autoload + reflection (no Laravel boot, no DB writes).
  * The Strong's-OFF path needs \DB (red_letter_text) so it is approximated: text column = enhanceVerseText(formatted_text)
  * emulated by calling DatabaseBibleReader::cleanOsisMarkup via reflection.

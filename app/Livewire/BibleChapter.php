@@ -58,7 +58,7 @@ class BibleChapter extends Component
     public $returnToChapter = []; // Store chapter info to return to
 
     #[Locked]
-    public $showStrongsNumbers = true; // OD-3 (interim): Strong's on by default; the reader's toggle is kept in the session
+    public $showStrongsNumbers = false; // OD-3 (owner, 2026-11-11): plain text by default; the reader's toggle is kept in the session
 
     protected $bibleService;
 
@@ -97,7 +97,7 @@ class BibleChapter extends Component
         $this->availableTranslations = $this->bibleService->getAvailableTranslations();
 
         // Load Strong's numbers setting from session
-        $this->showStrongsNumbers = session('show_strongs_numbers', true);
+        $this->showStrongsNumbers = (bool) session('show_strongs_numbers', false);
 
         $this->chapterTitle = $this->extractChapterTitle($verses);
 
@@ -157,6 +157,18 @@ class BibleChapter extends Component
     public function chapterVerses()
     {
         return $this->chapterParagraphs($this->bookOsisId, (int) $this->chapterNumber);
+    }
+
+    /**
+     * The book's title (shown above chapter 1) and colophon (after the last chapter's last verse)
+     * - OD-9. Not scripture; one cached lookup per book. Computed, so never serialised.
+     *
+     * @return array{title: ?string, colophon: ?string}
+     */
+    #[Computed]
+    public function bookFrame(): array
+    {
+        return $this->bibleService->getBookFrame($this->bookOsisId);
     }
 
     /** All books (cached by the reader). For lookups and the book selector; not serialised. */
@@ -426,8 +438,8 @@ class BibleChapter extends Component
         // Convert KJV translator-supplied words (rendered in italics by convention) and
         // divine names (small caps LORD, distinguishing YHWH from Adonai).
         //
-        // parseEnhancedVerseText is the DEFAULT render path - showStrongsNumbers resolves to
-        // true via session('show_strongs_numbers', true) - but it previously handled only
+        // parseEnhancedVerseText is the Strong's-ON render path (the default until OD-3 turned it
+        // off for new visitors in 2026-11) - but it previously handled only
         // <note>, <milestone>, <w> and <q>. <transChange> (14,233 verses) and <divineName>
         // (5,828 verses) fell through untouched and reached the browser as raw OSIS tags.
         // Browsers render unknown inline elements as their text content, so Ps 23:1 read
