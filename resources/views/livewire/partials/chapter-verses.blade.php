@@ -3,7 +3,6 @@
     Parameters:
     - $verses: Collection of verse paragraphs
     - $chapterNumber: Chapter number (for drop cap)
-    - $getFontSizeClass: Method to get font size class
 --}}
 
 @if(isset($verses) && !empty($verses))
@@ -11,7 +10,6 @@
         @include('livewire.partials.verse-paragraph', [
             'paragraph' => $paragraph,
             'chapterNumber' => $chapterNumber,
-            'getFontSizeClass' => $getFontSizeClass,
             'loop' => $loop,
             'emitIds' => $emitIds ?? true,
         ])

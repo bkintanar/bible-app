@@ -11,11 +11,28 @@
         if (stored === 'true' || (stored === null && prefersDark)) {
             document.documentElement.classList.add('dark');
         }
+        // Reader text size (A-/A+): a client-side preference, applied before the first paint.
+        try {
+            var size = localStorage.getItem('fontSize');
+            if (['sm', 'base', 'lg', 'xl', '2xl'].indexOf(size) !== -1) {
+                document.documentElement.setAttribute('data-font-size', size);
+            }
+        } catch (e) {}
     })();
 </script>
 
 <!-- Page Peel Effect Styles -->
 <style>
+    [x-cloak] { display: none !important; }
+
+    /* Reader text size, set by A-/A+ (html[data-font-size], localStorage) - no server round-trip.
+       Sizes match the old server-side classes: sm=text-lg, base=text-xl ... 2xl=text-4xl. */
+    .reader-text { font-size: 1.25rem; }
+    html[data-font-size="sm"] .reader-text { font-size: 1.125rem; }
+    html[data-font-size="lg"] .reader-text { font-size: 1.5rem; }
+    html[data-font-size="xl"] .reader-text { font-size: 1.875rem; }
+    html[data-font-size="2xl"] .reader-text { font-size: 2.25rem; }
+
     .book-container {
         perspective: 1000px;
         transform-style: preserve-3d;

@@ -1,4 +1,7 @@
-<div class="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
+{{-- UI-only state lives in Alpine (no server round-trip): the book/chapter selector. --}}
+<div class="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col"
+     x-data="{ selector: false, mode: 'books', book: null }"
+     @keydown.escape.window="selector = false">
     {{-- STYLES & DARK MODE INITIALIZATION --}}
     @include('livewire.partials.styles')
 
@@ -29,7 +32,6 @@
                                         @include('livewire.partials.chapter-verses', [
                                             'verses' => $this->previousChapterVerses,
                                             'chapterNumber' => $chapterNumber - 1,
-                                            'getFontSizeClass' => function() { return $this->getFontSizeClass(); },
                                             'emitIds' => false,
                                         ])
                                     @else
@@ -150,8 +152,7 @@
                                     <!-- Display verses grouped by paragraphs -->
                                     @include('livewire.partials.chapter-verses', [
                                         'verses' => $this->chapterVerses,
-                                        'chapterNumber' => $chapterNumber,
-                                        'getFontSizeClass' => function() { return $this->getFontSizeClass(); }
+                                        'chapterNumber' => $chapterNumber
                                     ])
                                 </div>
                             </div>
@@ -175,7 +176,6 @@
                                         @include('livewire.partials.chapter-verses', [
                                             'verses' => $this->nextChapterVerses,
                                             'chapterNumber' => $chapterNumber + 1,
-                                            'getFontSizeClass' => function() { return $this->getFontSizeClass(); },
                                             'emitIds' => false,
                                         ])
                                     @else
@@ -243,99 +243,87 @@
         </div>
     @endif
 
-    {{-- BOOK/CHAPTER SELECTOR POPUP --}}
-    <!-- Full-Screen Book/Chapter Selector Popup -->
-    @if($showBookSelector)
-        <div class="fixed inset-0 z-50 bg-white dark:bg-gray-900">
-            <!-- Header -->
-            <div class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
-                <div class="px-4 sm:px-6 py-4">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-4">
-                            @if($selectorMode === 'chapters' && $selectedBookForChapters)
-                                <button wire:click="backToBooks" class="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-                                    </svg>
-                                </button>
-                                <h2 class="text-xl font-semibold text-gray-900 dark:text-white font-serif">
-                                    {{ $selectedBookForChapters['name'] }} - Select Chapter
-                                </h2>
-                            @else
-                                <h2 class="text-xl font-semibold text-gray-900 dark:text-white font-serif">
-                                    Select Book
-                                </h2>
-                            @endif
-                        </div>
-                        <button wire:click="hideBookSelector" class="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+    {{-- BOOK/CHAPTER SELECTOR - client-side (Alpine). Opening it, picking a book and going back
+         used to be four server round-trips; chapters are plain links built from each book's
+         chapter_count and the named route. --}}
+    @php
+        $chapterUrlTemplate = route('chapters.show', ['bookOsisId' => '__BOOK__', 'chapterNumber' => 999999], false);
+    @endphp
+    <div x-show="selector" x-cloak
+         class="fixed inset-0 z-50 bg-white dark:bg-gray-900"
+         role="dialog" aria-modal="true" aria-labelledby="book-selector-title"
+         x-data="{ chapterUrl(id, n) { return @js($chapterUrlTemplate).replace('__BOOK__', id).replace('999999', n) } }">
+        <div class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
+            <div class="px-4 sm:px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <button type="button" x-show="mode === 'chapters'" @click="mode = 'books'"
+                                class="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                aria-label="Back to books">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                             </svg>
                         </button>
+                        <h2 id="book-selector-title" class="text-xl font-semibold text-gray-900 dark:text-white font-serif"
+                            x-text="mode === 'chapters' && book ? book.name + ' - Select Chapter' : 'Select Book'">Select Book</h2>
+                    </div>
+                    <button type="button" @click="selector = false"
+                            class="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                            aria-label="Close">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="h-full overflow-y-auto pb-20">
+            <div x-show="mode === 'books'" class="p-4 sm:p-6">
+                <div class="max-w-4xl mx-auto">
+                    <div class="mb-8">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 font-serif">Old Testament</h3>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                            @foreach($this->testamentBooks['oldTestament'] as $book)
+                                <button type="button"
+                                        @click="book = @js(['id' => $book['osis_id'], 'name' => $book['name'], 'count' => $book['chapter_count'] ?? 0]); mode = 'chapters'"
+                                        class="p-3 text-left bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-blue-50 dark:hover:bg-gray-700 hover:border-blue-200 dark:hover:border-gray-600 transition-colors {{ $book['osis_id'] === $bookOsisId ? 'bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-600' : '' }}">
+                                    <span class="font-medium text-gray-900 dark:text-white font-serif text-sm">{{ $book['name'] }}</span>
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
+                    <div class="mb-8">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 font-serif">New Testament</h3>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                            @foreach($this->testamentBooks['newTestament'] as $book)
+                                <button type="button"
+                                        @click="book = @js(['id' => $book['osis_id'], 'name' => $book['name'], 'count' => $book['chapter_count'] ?? 0]); mode = 'chapters'"
+                                        class="p-3 text-left bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-blue-50 dark:hover:bg-gray-700 hover:border-blue-200 dark:hover:border-gray-600 transition-colors {{ $book['osis_id'] === $bookOsisId ? 'bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-600' : '' }}">
+                                    <span class="font-medium text-gray-900 dark:text-white font-serif text-sm">{{ $book['name'] }}</span>
+                                </button>
+                            @endforeach
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Content -->
-            <div class="h-full overflow-y-auto pb-20">
-                @if($selectorMode === 'books')
-                    <!-- Books List -->
-                    <div class="p-4 sm:p-6">
-                        <div class="max-w-4xl mx-auto">
-                            <!-- Old Testament -->
-                            <div class="mb-8">
-                                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 font-serif">Old Testament</h3>
-                                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                                    @foreach($this->testamentBooks['oldTestament'] as $book)
-                                        <button wire:click="selectBookForChapters('{{ $book['osis_id'] }}')"
-                                                class="p-3 text-left bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-blue-50 dark:hover:bg-gray-700 hover:border-blue-200 dark:hover:border-gray-600 transition-colors {{ $book['osis_id'] === $bookOsisId ? 'bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-600' : '' }}">
-                                            <div class="font-medium text-gray-900 dark:text-white font-serif text-sm">
-                                                {{ $book['name'] }}
-                                            </div>
-                                        </button>
-                                    @endforeach
-                                </div>
-                            </div>
-
-                            <!-- New Testament -->
-                            <div class="mb-8">
-                                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 font-serif">New Testament</h3>
-                                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                                    @foreach($this->testamentBooks['newTestament'] as $book)
-                                        <button wire:click="selectBookForChapters('{{ $book['osis_id'] }}')"
-                                                class="p-3 text-left bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-blue-50 dark:hover:bg-gray-700 hover:border-blue-200 dark:hover:border-gray-600 transition-colors {{ $book['osis_id'] === $bookOsisId ? 'bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-600' : '' }}">
-                                            <div class="font-medium text-gray-900 dark:text-white font-serif text-sm">
-                                                {{ $book['name'] }}
-                                            </div>
-                                        </button>
-                                    @endforeach
-                                </div>
-                            </div>
-                        </div>
+            <div x-show="mode === 'chapters' && book" class="p-4 sm:p-6">
+                <div class="max-w-7xl mx-auto">
+                    <div class="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-3">
+                        <template x-for="n in (book ? book.count : 0)" :key="n">
+                            <a :href="chapterUrl(book.id, n)"
+                               :aria-current="book.id === @js($bookOsisId) && n === {{ (int) $chapterNumber }} ? 'page' : null"
+                               class="aspect-square p-2 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-center hover:bg-blue-50 dark:hover:bg-gray-700 hover:border-blue-200 dark:hover:border-gray-600 transition-colors"
+                               :class="book.id === @js($bookOsisId) && n === {{ (int) $chapterNumber }} ? 'bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-600' : ''">
+                                <span class="font-medium text-gray-900 dark:text-white font-serif text-sm" x-text="n"></span>
+                            </a>
+                        </template>
                     </div>
-                @elseif($selectorMode === 'chapters' && $selectedBookForChapters)
-                    <!-- Chapters List -->
-                    <div class="p-4 sm:p-6">
-                        <div class="max-w-7xl mx-auto">
-                            <div class="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-3">
-                                @if(isset($selectedBookForChapters['chapters']))
-                                    @foreach($selectedBookForChapters['chapters'] as $chapter)
-                                        <a href="{{ route('chapters.show', ['bookOsisId' => $selectedBookForChapters['osis_id'], 'chapterNumber' => $chapter['chapter_number']]) }}"
-                                                @if($chapter['chapter_number'] == $chapterNumber && $selectedBookForChapters['osis_id'] === $bookOsisId) aria-current="page" @endif
-                                                class="aspect-square p-2 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-center hover:bg-blue-50 dark:hover:bg-gray-700 hover:border-blue-200 dark:hover:border-gray-600 transition-colors {{ $chapter['chapter_number'] == $chapterNumber && $selectedBookForChapters['osis_id'] === $bookOsisId ? 'bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-600' : '' }}">
-                                            <span class="font-medium text-gray-900 dark:text-white font-serif text-sm">
-                                                {{ $chapter['chapter_number'] }}
-                                            </span>
-                                        </a>
-                                    @endforeach
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-                @endif
+                </div>
             </div>
         </div>
-    @endif
+    </div>
 
     {{-- JAVASCRIPT FUNCTIONS --}}
     @include('livewire.partials.scripts')

@@ -33,13 +33,20 @@ it('still lets the reader type a search', function () {
         ->assertSet('searchQuery', 'love');
 });
 
-it('only navigates to a chapter that exists', function () {
-    $c = Livewire::test(BibleChapter::class, ['bookOsisId' => 'John', 'chapterNumber' => 3]);
+it('renders the book selector client-side, with real chapter links', function () {
+    $html = $this->get('/books/John/chapters/3')->assertOk()->getContent();
 
-    $c->call('goToChapter', '/evil.example', 1)->assertNoRedirect();
-    $c->call('goToChapter', 'John', 999)->assertNoRedirect();
-    $c->call('goToChapter', 'Matt', 5)->assertRedirect(route('chapters.show', ['bookOsisId' => 'Matt', 'chapterNumber' => 5]));
+    // The dialog is in the page (x-show), each book carries its chapter count, and chapter
+    // URLs come from the named route - no server round-trip to open it or pick a book.
+    expect($html)->toContain('role="dialog"')
+        ->and($html)->toContain('x-show="selector"')
+        ->and($html)->toContain('\/books\/__BOOK__\/chapters\/999999')   // @js() escapes slashes
+        ->and($html)->toContain('\u0022id\u0022:\u0022John\u0022,\u0022name\u0022:\u0022John\u0022,\u0022count\u0022:1}');  // fixture: John 3 only
 });
+
+it('has no server actions for UI-only toggles', function (string $method) {
+    expect(method_exists(BibleChapter::class, $method))->toBeFalse();
+})->with(['openBookSelector', 'hideBookSelector', 'selectBookForChapters', 'backToBooks', 'toggleSearch', 'setFontSize', 'goToChapter']);
 
 it('throttles the in-chapter search like the search API', function () {
     $c = Livewire::test(BibleChapter::class, ['bookOsisId' => 'John', 'chapterNumber' => 3])->set('searchQuery', 'love');

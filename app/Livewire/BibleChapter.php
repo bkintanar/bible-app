@@ -31,19 +31,8 @@ class BibleChapter extends Component
     #[Locked]
     public $chapterTitle = null;
 
-
     // UI state
-    #[Locked]
-    public $fontSize = 'base'; // sm, base, lg, xl, 2xl
     public $searchQuery = '';
-    #[Locked]
-    public $showSearch = false;
-    #[Locked]
-    public $showBookSelector = false;
-    #[Locked]
-    public $selectedBookForChapters = null;
-    #[Locked]
-    public $selectorMode = 'books'; // 'books' or 'chapters'
     #[Locked]
     public $searchResults = [];
     #[Locked]
@@ -82,7 +71,6 @@ class BibleChapter extends Component
 
         $verses = $this->chapterVerses;
 
-
         // Create chapter OSIS reference for error messages
         $chapterOsisRef = $this->bookOsisId . '.' . $this->chapterNumber;
 
@@ -93,9 +81,6 @@ class BibleChapter extends Component
         // Get current translation from session
         $this->currentTranslation = $this->bibleService->getCurrentTranslation();
         $this->availableTranslations = $this->bibleService->getAvailableTranslations();
-
-        // Load font size from session or default
-        $this->fontSize = session('font_size', 'base');
 
         // Load Strong's numbers setting from session
         $this->showStrongsNumbers = session('show_strongs_numbers', true);
@@ -201,31 +186,10 @@ class BibleChapter extends Component
         return null;
     }
 
-    public function setFontSize($size)
-    {
-        $validSizes = ['sm', 'base', 'lg', 'xl', '2xl'];
-        if (in_array($size, $validSizes)) {
-            $this->fontSize = $size;
-            session(['font_size' => $size]);
-        }
-    }
-
     public function toggleStrongsNumbers()
     {
         $this->showStrongsNumbers = !$this->showStrongsNumbers;
         session(['show_strongs_numbers' => $this->showStrongsNumbers]);
-    }
-
-    public function toggleSearch()
-    {
-        $this->showSearch = ! $this->showSearch;
-        if (! $this->showSearch) {
-            $this->searchQuery = '';
-            $this->searchResults = [];
-            $this->searchStats = [];
-            $this->isSearching = false;
-            $this->showSearchResults = false;
-        }
     }
 
     public function search()
@@ -240,7 +204,6 @@ class BibleChapter extends Component
                 $this->searchResults = [];
                 $this->searchStats = ['total_found' => 0, 'search_time_ms' => 0, 'query' => $this->searchQuery, 'throttled' => true];
                 $this->showSearchResults = true;
-                $this->showSearch = false;
 
                 return;
             }
@@ -273,7 +236,6 @@ class BibleChapter extends Component
                 $this->searchResults = [];
                 $this->searchStats = ['total_found' => 0, 'search_time_ms' => 0, 'query' => (string) $this->searchQuery, 'invalid' => $invalid];
                 $this->showSearchResults = true;
-                $this->showSearch = false;
 
                 return;
             }
@@ -289,7 +251,6 @@ class BibleChapter extends Component
 
             // Switch to search results view
             $this->showSearchResults = true;
-            $this->showSearch = false;
         }
     }
 
@@ -318,56 +279,6 @@ class BibleChapter extends Component
     public function clearLastVisited()
     {
         ResumePosition::forget();
-    }
-
-    public function openBookSelector()
-    {
-        $this->showBookSelector = true;
-        $this->selectorMode = 'books';
-        $this->selectedBookForChapters = null;
-    }
-
-    public function hideBookSelector()
-    {
-        $this->showBookSelector = false;
-        $this->selectorMode = 'books';
-        $this->selectedBookForChapters = null;
-    }
-
-    public function selectBookForChapters($bookOsisId)
-    {
-        $this->selectedBookForChapters = $this->books->first(function ($book) use ($bookOsisId) {
-            return strtolower($book['osis_id']) === strtolower($bookOsisId);
-        });
-        $this->selectorMode = 'chapters';
-
-        // Load chapters for the selected book
-        if ($this->selectedBookForChapters) {
-            $this->selectedBookForChapters['chapters'] = $this->bibleService->getChapters($bookOsisId);
-        }
-    }
-
-    public function goToChapter($bookOsisId, $chapterNumber)
-    {
-        $this->hideBookSelector();
-
-        // Both arguments come from the browser: only a real book and chapter (a raw
-        // "/{$bookOsisId}/..." with bookOsisId "/evil.example" was a protocol-relative redirect).
-        $book = is_string($bookOsisId)
-            ? $this->books->first(fn ($b) => strtolower($b['osis_id']) === strtolower($bookOsisId))
-            : null;
-
-        if (! $book || ! is_numeric($chapterNumber) || ! $this->bibleService->chapterExists($book['osis_id'], (int) $chapterNumber)) {
-            return null;
-        }
-
-        return redirect()->route('chapters.show', ['bookOsisId' => $book['osis_id'], 'chapterNumber' => (int) $chapterNumber]);
-    }
-
-    public function backToBooks()
-    {
-        $this->selectorMode = 'books';
-        $this->selectedBookForChapters = null;
     }
 
     private function getTestamentBooks($books): array
@@ -425,19 +336,6 @@ class BibleChapter extends Component
         }
 
         return ['prev' => $prev, 'next' => $next];
-    }
-
-    public function getFontSizeClass(): string
-    {
-        $sizeMap = [
-            'sm' => 'text-lg',
-            'base' => 'text-xl',
-            'lg' => 'text-2xl',
-            'xl' => 'text-3xl',
-            '2xl' => 'text-4xl',
-        ];
-
-        return $sizeMap[$this->fontSize] ?? 'text-xl';
     }
 
     /**
@@ -672,7 +570,6 @@ class BibleChapter extends Component
                 ->orderBy('text_order')
                 ->get();
 
-
             if ($redLetterEntries->count() > 0) {
                 // For verses with red letter entries, wrap the entire verse in red letter styling
                 // This handles cases where the verse text has HTML markup that doesn't match exactly
@@ -686,8 +583,6 @@ class BibleChapter extends Component
 
         return $text;
     }
-
-
 
     /**
      * Convert gray translator changes to red italics for red letter verses

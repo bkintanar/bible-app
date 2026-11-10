@@ -1,5 +1,15 @@
 <!-- JavaScript Functions -->
 <script>
+    // Reader text size: A-/A+ in the header. Client-side only (it used to be a Livewire round-trip).
+    const READER_FONT_SIZES = ['sm', 'base', 'lg', 'xl', '2xl'];
+    function readerFontSize(step) {
+        const root = document.documentElement;
+        const current = READER_FONT_SIZES.indexOf(root.getAttribute('data-font-size') || 'base');
+        const next = READER_FONT_SIZES[Math.min(READER_FONT_SIZES.length - 1, Math.max(0, (current < 0 ? 1 : current) + step))];
+        root.setAttribute('data-font-size', next);
+        try { localStorage.setItem('fontSize', next); } catch (e) {}
+    }
+
     function toggleDarkMode() {
         document.documentElement.classList.toggle('dark');
         localStorage.setItem('darkMode', document.documentElement.classList.contains('dark'));

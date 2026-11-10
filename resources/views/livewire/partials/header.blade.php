@@ -35,11 +35,13 @@
                     </button>
                 </div>
             </div>
-        @elseif(!$showSearch)
+        @else
+          {{-- Opening/closing the search box is client-side; only the search itself is a request. --}}
+          <div x-data="{ searching: false }">
             <!-- Normal Chapter Header -->
-            <div class="flex items-center justify-between">
+            <div x-show="!searching" class="flex items-center justify-between">
                 <div class="flex flex-col space-y-1">
-                    <button wire:click="openBookSelector" class="text-xl font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-serif text-left" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif;">
+                    <button type="button" @click="selector = true; mode = 'books'; book = null" class="text-xl font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-serif text-left" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif;">
                         {{ $currentBook['name'] ?? $bookOsisId }} {{ $chapterNumber }}
                     </button>
                     <!-- Translation Selector - Click to show dropdown -->
@@ -85,8 +87,17 @@
                 </div>
 
                 <div class="flex items-center space-x-2">
+                    <!-- Text size (client-side, remembered in localStorage) -->
+                    <div class="flex items-center" role="group" aria-label="Text size">
+                        <button type="button" onclick="readerFontSize(-1)" title="Smaller text" aria-label="Smaller text"
+                                class="px-2 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-serif text-sm">A&minus;</button>
+                        <button type="button" onclick="readerFontSize(1)" title="Larger text" aria-label="Larger text"
+                                class="px-2 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-serif text-lg">A+</button>
+                    </div>
+
                     <!-- Search Toggle -->
-                    <button wire:click="toggleSearch"
+                    <button type="button" @click="searching = true; $nextTick(() => $refs.chapterSearch.focus())" aria-label="Search"
+
                             class="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -114,12 +125,13 @@
                     </button>
                 </div>
             </div>
-        @else
             <!-- Search Input Header -->
-            <div class="flex items-center justify-between h-[38px]">
+            <div x-show="searching" x-cloak class="flex items-center justify-between h-[38px]">
                 <!-- Search Input -->
                 <div class="relative flex-1 mr-2">
                     <input
+                        x-ref="chapterSearch"
+                        @keydown.escape="searching = false"
                         wire:model="searchQuery"
                         wire:keydown.enter="search"
                         type="text"
@@ -151,13 +163,14 @@
                 </div>
 
                 <!-- Cancel Button -->
-                <button
-                    wire:click="toggleSearch"
+                <button type="button"
+                    @click="searching = false"
                     class="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium py-2 px-3 transition-colors whitespace-nowrap"
                 >
                     Cancel
                 </button>
             </div>
+          </div>
         @endif
     </div>
 </nav>

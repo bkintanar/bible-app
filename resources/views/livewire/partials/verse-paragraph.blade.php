@@ -4,7 +4,6 @@
     - $paragraph: The paragraph data
     - $chapterNumber: Current chapter number (for drop cap)
     - $loop: Loop data from parent foreach
-    - $getFontSizeClass: Method to get font size class
     - $emitIds: (bool, default true) emit id="verse-N" anchors. False for the preloaded previous/next
       chapters, which share the page with the current one - duplicate ids broke #verse-N links.
 
@@ -37,7 +36,7 @@
                     @endif
 
                     <!-- Proper drop cap implementation -->
-                    <div class="mb-2 text-gray-900 dark:text-gray-100 leading-relaxed {{ $getFontSizeClass() }} font-serif verse-content" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.7; letter-spacing: 0.01em;">
+                    <div class="mb-2 text-gray-900 dark:text-gray-100 leading-relaxed reader-text font-serif verse-content" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.7; letter-spacing: 0.01em;">
                         <span class="text-gray-700 dark:text-gray-300 font-serif" style="float: left; font-size: 4rem; line-height: 3.2rem; margin-right: 0.5rem; margin-top: 0rem; font-weight: bold;">{{ $chapterNumber }}</span><span class="inline" @if($emitIds) id="verse-{{ $verse['verse_number'] }}" @endif>{!! $this->parseEnhancedVerseText($verse) !!}</span>
                     </div>
                 @else
@@ -48,7 +47,7 @@
                         </div>
                     @endif
 
-                    <div class="mb-2 text-gray-900 dark:text-gray-100 leading-relaxed {{ $getFontSizeClass() }} font-serif verse-content" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.7; letter-spacing: 0.01em;" @if($emitIds) id="verse-{{ $verse['verse_number'] }}" @endif>
+                    <div class="mb-2 text-gray-900 dark:text-gray-100 leading-relaxed reader-text font-serif verse-content" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.7; letter-spacing: 0.01em;" @if($emitIds) id="verse-{{ $verse['verse_number'] }}" @endif>
                         <!-- Regular verse number for other verses -->
                         <span class="verse-number text-xs font-medium text-gray-600 dark:text-gray-400 align-super font-serif">{{ $verse['verse_number'] }}</span>{!! $this->parseEnhancedVerseText($verse) !!}
                     </div>
@@ -56,7 +55,7 @@
             @endforeach
         @else
             <!-- Bible-style paragraph formatting -->
-            <div class="mb-6 text-gray-900 dark:text-gray-100 leading-relaxed {{ $getFontSizeClass() }} text-justify font-serif {{ $loop->first ? '' : 'first-line:indent-8' }} after:content-[''] after:table after:clear-both verse-content" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.8; letter-spacing: 0.01em;">
+            <div class="mb-6 text-gray-900 dark:text-gray-100 leading-relaxed reader-text text-justify font-serif {{ $loop->first ? '' : 'first-line:indent-8' }} after:content-[''] after:table after:clear-both verse-content" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.8; letter-spacing: 0.01em;">
                 @php $titlesDisplayed = false; @endphp
                 @foreach($paragraph['verses'] as $verse)
                     <!-- Display titles only once per paragraph (from first verse) -->
@@ -95,7 +94,7 @@
         @endif
     @elseif(isset($paragraph['combined_text']))
         <!-- Combined paragraph text (fallback) -->
-        <div class="mb-6 text-gray-900 dark:text-gray-100 leading-relaxed {{ $getFontSizeClass() }} text-justify font-serif {{ $loop->first ? '' : 'first-line:indent-8' }} verse-content" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.8; letter-spacing: 0.01em;">
+        <div class="mb-6 text-gray-900 dark:text-gray-100 leading-relaxed reader-text text-justify font-serif {{ $loop->first ? '' : 'first-line:indent-8' }} verse-content" style="font-family: 'Charter', 'Source Serif Pro', 'Crimson Text', 'Libre Baskerville', 'PT Serif', 'Georgia', 'Times New Roman', serif; line-height: 1.8; letter-spacing: 0.01em;">
             {!! strip_tags($paragraph['combined_text'], '<em><strong><sup><sub><span>') !!}
         </div>
     @endif
