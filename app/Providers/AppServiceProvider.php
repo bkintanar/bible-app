@@ -7,7 +7,9 @@ use App\Services\TranslationService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -34,13 +36,20 @@ class AppServiceProvider extends ServiceProvider
         // Laravel 12's slim skeleton ships 'throttle:api' COMMENTED OUT, so the eight public
         // API routes were entirely unthrottled - and this origin is now internet-facing.
         //
-        // Keyed on the real client IP, which requires the Cloudflare proxy ranges in
-        // config/trustedproxy.php; without those every request would key on a Cloudflare
-        // edge address and a handful of clients would share one bucket.
+        // Keyed on the real client IP, which requires the tunnel peer (10.0.10.31) to be a
+        // trusted proxy (config/trustedproxy.php); otherwise every public request would key on
+        // the tunnel's address and all readers would share one bucket.
         RateLimiter::for('api', fn (Request $request) => Limit::perMinute(120)->by($request->ip()));
 
         // Search is the expensive endpoint (FTS5 over 31,102 verses, limit up to 500),
         // so it gets a tighter bucket of its own.
         RateLimiter::for('search', fn (Request $request) => Limit::perMinute(30)->by($request->ip()));
+
+        // Every Livewire round-trip (actions, wire:model updates) goes through one endpoint that
+        // the web middleware alone left unthrottled. 120/min/IP is far above what reading needs.
+        RateLimiter::for('livewire', fn (Request $request) => Limit::perMinute(120)->by($request->ip()));
+
+        Livewire::setUpdateRoute(fn ($handle) => Route::post('/livewire/update', $handle)
+            ->middleware(['web', 'throttle:livewire']));
     }
 }

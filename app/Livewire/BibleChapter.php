@@ -3,44 +3,74 @@
 namespace App\Livewire;
 
 use App\Support\ResumePosition;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use App\Services\BibleService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 use App\Http\Controllers\ChapterController;
 use App\Jobs\CacheAdjacentChaptersJob;
 
 class BibleChapter extends Component
 {
+    // Every property the browser never edits is #[Locked]: Livewire accepts a client-side update
+    // to any unlocked public property, and these feed cache keys, redirects and rendered markup.
+    // Only searchQuery is bound (wire:model). Actions may still change locked state server-side.
+    #[Locked]
     public $bookOsisId;
+    #[Locked]
     public $chapterNumber;
+    #[Locked]
     public $currentBook;
+    #[Locked]
     public $verses = [];
+    #[Locked]
     public $chapters = [];
+    #[Locked]
     public $books = [];
+    #[Locked]
     public $testamentBooks = [];
+    #[Locked]
     public $currentTranslation = null;
+    #[Locked]
     public $availableTranslations = [];
+    #[Locked]
     public $capabilities = [];
+    #[Locked]
     public $chapterTitle = null;
+    #[Locked]
     public $paragraphs = [];
 
     // Adjacent chapter preloading for book flip effect
+    #[Locked]
     public $previousChapterVerses = [];
+    #[Locked]
     public $nextChapterVerses = [];
 
     // UI state
+    #[Locked]
     public $fontSize = 'base'; // sm, base, lg, xl, 2xl
     public $searchQuery = '';
+    #[Locked]
     public $showSearch = false;
+    #[Locked]
     public $showBookSelector = false;
+    #[Locked]
     public $selectedBookForChapters = null;
+    #[Locked]
     public $selectorMode = 'books'; // 'books' or 'chapters'
+    #[Locked]
     public $searchResults = [];
+    #[Locked]
     public $isSearching = false;
+    #[Locked]
     public $searchStats = [];
+    #[Locked]
     public $showSearchResults = false;
+    #[Locked]
     public $returnToChapter = []; // Store chapter info to return to
+    #[Locked]
     public $showStrongsNumbers = false; // Enable/disable Strong's numbers display
 
     protected $bibleService;
@@ -323,6 +353,22 @@ class BibleChapter extends Component
     public function search()
     {
         if (! empty($this->searchQuery)) {
+            // The same budget as the search API (AppServiceProvider 'search' limiter), in its own
+            // bucket: a Livewire round-trip runs the same FTS query.
+            $limit = RateLimiter::limiter('search')(request());
+            $key = 'search-livewire:' . $limit->key;
+
+            if (RateLimiter::tooManyAttempts($key, $limit->maxAttempts)) {
+                $this->searchResults = [];
+                $this->searchStats = ['total_found' => 0, 'search_time_ms' => 0, 'query' => $this->searchQuery, 'throttled' => true];
+                $this->showSearchResults = true;
+                $this->showSearch = false;
+
+                return;
+            }
+
+            RateLimiter::hit($key, $limit->decaySeconds);
+
             $this->isSearching = true;
 
             // Store current chapter info for returning
@@ -407,7 +453,18 @@ class BibleChapter extends Component
     public function goToChapter($bookOsisId, $chapterNumber)
     {
         $this->hideBookSelector();
-        return redirect("/{$bookOsisId}/{$chapterNumber}");
+
+        // Both arguments come from the browser: only a real book and chapter (a raw
+        // "/{$bookOsisId}/..." with bookOsisId "/evil.example" was a protocol-relative redirect).
+        $book = is_string($bookOsisId)
+            ? $this->books->first(fn ($b) => strtolower($b['osis_id']) === strtolower($bookOsisId))
+            : null;
+
+        if (! $book || ! is_numeric($chapterNumber) || ! $this->bibleService->chapterExists($book['osis_id'], (int) $chapterNumber)) {
+            return null;
+        }
+
+        return redirect()->route('chapters.show', ['bookOsisId' => $book['osis_id'], 'chapterNumber' => (int) $chapterNumber]);
     }
 
     public function backToBooks()

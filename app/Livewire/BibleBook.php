@@ -3,23 +3,33 @@
 namespace App\Livewire;
 
 use App\Support\ResumePosition;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use App\Services\BibleService;
 use Illuminate\Support\Facades\Cache;
 
 class BibleBook extends Component
 {
+    #[Locked]
     public $bookOsisId;
+    #[Locked]
     public $currentBook;
+    #[Locked]
     public $chapters = [];
+    #[Locked]
     public $books = [];
+    #[Locked]
     public $testamentBooks = [];
+    #[Locked]
     public $currentTranslation = null;
+    #[Locked]
     public $availableTranslations = [];
+    #[Locked]
     public $capabilities = [];
 
     // UI state
     public $searchQuery = '';
+    #[Locked]
     public $showSearch = false;
 
     protected $bibleService;

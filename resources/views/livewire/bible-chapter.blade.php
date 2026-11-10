@@ -79,7 +79,11 @@
                     <div class="p-4 sm:p-8 pb-20">
                         <div class="max-w-4xl mx-auto">
                             <!-- Search Stats -->
-                            @if(!empty($searchStats))
+                            @if(!empty($searchStats['throttled']))
+                                <div class="text-amber-700 dark:text-amber-400 mb-6" role="status">
+                                    Too many searches in the last minute. Please wait a moment and try again.
+                                </div>
+                            @elseif(!empty($searchStats))
                                 <div class="text-gray-600 dark:text-gray-400 mb-6">
                                     Found {{ $searchStats['total_found'] }} results for "<strong>{{ $searchStats['query'] }}</strong>"
                                     <span class="text-gray-500">({{ $searchStats['search_time_ms'] }}ms)</span>
