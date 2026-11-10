@@ -17,10 +17,15 @@ it('does not let the browser change server-owned reader state', function (string
 })->with([
     'chapter book' => [BibleChapter::class, ['bookOsisId' => 'John', 'chapterNumber' => 3], 'bookOsisId', 'x'],
     'chapter number' => [BibleChapter::class, ['bookOsisId' => 'John', 'chapterNumber' => 3], 'chapterNumber', 99],
-    'chapter verses' => [BibleChapter::class, ['bookOsisId' => 'John', 'chapterNumber' => 3], 'verses', ['<script>']],
+    'chapter title' => [BibleChapter::class, ['bookOsisId' => 'John', 'chapterNumber' => 3], 'chapterTitle', ['title_text' => '<script>']],
     'chapter translation' => [BibleChapter::class, ['bookOsisId' => 'John', 'chapterNumber' => 3], 'currentTranslation', ['key' => 'x']],
     'book id' => [BibleBook::class, ['bookOsisId' => 'John'], 'bookOsisId', '../x'],
 ]);
+
+it('keeps the verses out of client state entirely (computed, not public)', function () {
+    expect(fn () => Livewire::test(BibleChapter::class, ['bookOsisId' => 'John', 'chapterNumber' => 3])->set('verses', ['<script>']))
+        ->toThrow(\Livewire\Exceptions\PublicPropertyNotFoundException::class);
+});
 
 it('still lets the reader type a search', function () {
     Livewire::test(BibleChapter::class, ['bookOsisId' => 'John', 'chapterNumber' => 3])

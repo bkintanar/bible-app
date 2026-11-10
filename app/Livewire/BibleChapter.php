@@ -23,23 +23,13 @@ class BibleChapter extends Component
     #[Locked]
     public $currentBook;
     #[Locked]
-    public $verses = [];
-    #[Locked]
     public $chapters = [];
-    #[Locked]
-    public $books = [];
-    #[Locked]
-    public $testamentBooks = [];
     #[Locked]
     public $currentTranslation = null;
     #[Locked]
     public $availableTranslations = [];
     #[Locked]
-    public $capabilities = [];
-    #[Locked]
     public $chapterTitle = null;
-    #[Locked]
-    public $paragraphs = [];
 
 
     // UI state
@@ -65,7 +55,7 @@ class BibleChapter extends Component
     #[Locked]
     public $returnToChapter = []; // Store chapter info to return to
     #[Locked]
-    public $showStrongsNumbers = false; // Enable/disable Strong's numbers display
+    public $showStrongsNumbers = true; // OD-3 (interim): Strong's on by default; the reader's toggle is kept in the session
 
     protected $bibleService;
 
@@ -79,8 +69,6 @@ class BibleChapter extends Component
         $this->bookOsisId = $bookOsisId;
         $this->chapterNumber = (int) $chapterNumber;
 
-        // Get Bible data using the service
-        $this->books = $this->bibleService->getBooks();
         $this->currentBook = $this->books->first(function ($book) use ($bookOsisId) {
             return strtolower($book['osis_id']) === strtolower($bookOsisId);
         });
@@ -92,18 +80,15 @@ class BibleChapter extends Component
         // Get chapters and verses - check cache first
         $this->chapters = $this->bibleService->getChapters($bookOsisId);
 
-        $this->verses = $this->chapterParagraphs($bookOsisId, (int) $chapterNumber);
+        $verses = $this->chapterVerses;
 
 
         // Create chapter OSIS reference for error messages
         $chapterOsisRef = $this->bookOsisId . '.' . $this->chapterNumber;
 
-        if ($this->verses->isEmpty()) {
+        if ($verses->isEmpty()) {
             abort(404, "Chapter not found: {$chapterOsisRef}");
         }
-
-        $this->testamentBooks = $this->getTestamentBooks($this->books);
-        $this->capabilities = $this->bibleService->getCapabilities();
 
         // Get current translation from session
         $this->currentTranslation = $this->bibleService->getCurrentTranslation();
@@ -115,20 +100,7 @@ class BibleChapter extends Component
         // Load Strong's numbers setting from session
         $this->showStrongsNumbers = session('show_strongs_numbers', true);
 
-        // Extract chapter title from first paragraph's first verse if available
-        $firstParagraph = $this->verses->first();
-        if ($firstParagraph && isset($firstParagraph['verses']) && ! empty($firstParagraph['verses'])) {
-            $firstVerse = $firstParagraph['verses'][0];
-            if (isset($firstVerse['chapter_titles']) && ! empty($firstVerse['chapter_titles'])) {
-                // Extract the title text from the HTML
-                if (preg_match('/<div[^>]*>(.*?)<\/div>/', $firstVerse['chapter_titles'], $matches)) {
-                    $this->chapterTitle = ['title_text' => $matches[1]];
-                }
-            }
-        }
-
-        // Load paragraphs for the current chapter
-        $this->paragraphs = $this->bibleService->getChapterParagraphs($chapterOsisRef);
+        $this->chapterTitle = $this->extractChapterTitle($verses);
 
     }
 
@@ -180,51 +152,53 @@ class BibleChapter extends Component
 
     public function switchTranslation($translationKey)
     {
-        // Switch translation using the service
         $this->bibleService->setCurrentTranslation($translationKey);
         $this->currentTranslation = $this->bibleService->getCurrentTranslation();
-
-        // Refresh books and chapters data
-        $this->books = $this->bibleService->getBooks();
-        $this->chapters = $this->bibleService->getChapters($this->bookOsisId);
         $this->availableTranslations = $this->bibleService->getAvailableTranslations();
+        $this->chapters = $this->bibleService->getChapters($this->bookOsisId);
 
-        // Reload verses with new translation
-        $chapterOsisRef = $this->bookOsisId . '.' . $this->chapterNumber;
+        // Everything else is computed from the current translation: drop the memoised values.
+        unset($this->books, $this->testamentBooks, $this->chapterVerses, $this->previousChapterVerses, $this->nextChapterVerses);
 
-        // For Psalm 119, use individual verse format to properly display acrostic titles
-        // For other chapters, use paragraph format for better reading
-        if (strtolower($this->bookOsisId) === 'ps' && $this->chapterNumber == 119) {
-            // Get individual verses for Psalm 119 to show acrostic titles
-            $individualVerses = $this->bibleService->getVerses($chapterOsisRef);
-            $this->verses = $individualVerses->map(function ($verse) {
-                return [
-                    'verses' => [$verse],
-                    'type' => 'individual_verse',
-                ];
-            });
-        } else {
-            // Get verses grouped by paragraphs for better reading experience
-            $this->verses = $this->bibleService->getVersesParagraphStyle($chapterOsisRef);
-        }
+        $this->chapterTitle = $this->extractChapterTitle($this->chapterVerses);
 
-        // Extract chapter title from first paragraph's first verse if available
-        $firstParagraph = $this->verses->first();
-        if ($firstParagraph && isset($firstParagraph['verses']) && ! empty($firstParagraph['verses'])) {
-            $firstVerse = $firstParagraph['verses'][0];
-            if (isset($firstVerse['chapter_titles']) && ! empty($firstVerse['chapter_titles'])) {
-                // Extract the title text from the HTML
-                if (preg_match('/<div[^>]*>(.*?)<\/div>/', $firstVerse['chapter_titles'], $matches)) {
-                    $this->chapterTitle = ['title_text' => $matches[1]];
-                }
-            }
-        } else {
-            $this->chapterTitle = null;
-        }
-
-        // Emit an event to notify other components of the translation change
         $this->dispatch('translation-changed', $translationKey);
+    }
 
+    /**
+     * This chapter's verses, grouped for display. Computed, so the verses (with their raw OSIS
+     * and Strong's data) are rendered but not serialised into wire:snapshot (Matt 5: 108 KB).
+     */
+    #[Computed]
+    public function chapterVerses()
+    {
+        return $this->chapterParagraphs($this->bookOsisId, (int) $this->chapterNumber);
+    }
+
+    /** All books (cached by the reader). For lookups and the book selector; not serialised. */
+    #[Computed]
+    public function books()
+    {
+        return $this->bibleService->getBooks();
+    }
+
+    #[Computed]
+    public function testamentBooks(): array
+    {
+        return $this->getTestamentBooks($this->books);
+    }
+
+    /** The chapter heading carried by the first verse (e.g. a psalm title), as plain title text. */
+    private function extractChapterTitle($verses): ?array
+    {
+        $firstVerse = $verses->first()['verses'][0] ?? null;
+
+        if ($firstVerse && ! empty($firstVerse['chapter_titles'])
+            && preg_match('/<div[^>]*>(.*?)<\/div>/', $firstVerse['chapter_titles'], $matches)) {
+            return ['title_text' => $matches[1]];
+        }
+
+        return null;
     }
 
     public function setFontSize($size)

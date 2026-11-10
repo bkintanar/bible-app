@@ -149,7 +149,7 @@
                                 <div class="prose prose-lg max-w-none dark:prose-invert">
                                     <!-- Display verses grouped by paragraphs -->
                                     @include('livewire.partials.chapter-verses', [
-                                        'verses' => $verses,
+                                        'verses' => $this->chapterVerses,
                                         'chapterNumber' => $chapterNumber,
                                         'getFontSizeClass' => function() { return $this->getFontSizeClass(); }
                                     ])
@@ -286,7 +286,7 @@
                             <div class="mb-8">
                                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 font-serif">Old Testament</h3>
                                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                                    @foreach($testamentBooks['oldTestament'] as $book)
+                                    @foreach($this->testamentBooks['oldTestament'] as $book)
                                         <button wire:click="selectBookForChapters('{{ $book['osis_id'] }}')"
                                                 class="p-3 text-left bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-blue-50 dark:hover:bg-gray-700 hover:border-blue-200 dark:hover:border-gray-600 transition-colors {{ $book['osis_id'] === $bookOsisId ? 'bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-600' : '' }}">
                                             <div class="font-medium text-gray-900 dark:text-white font-serif text-sm">
@@ -301,7 +301,7 @@
                             <div class="mb-8">
                                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 font-serif">New Testament</h3>
                                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                                    @foreach($testamentBooks['newTestament'] as $book)
+                                    @foreach($this->testamentBooks['newTestament'] as $book)
                                         <button wire:click="selectBookForChapters('{{ $book['osis_id'] }}')"
                                                 class="p-3 text-left bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-blue-50 dark:hover:bg-gray-700 hover:border-blue-200 dark:hover:border-gray-600 transition-colors {{ $book['osis_id'] === $bookOsisId ? 'bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-600' : '' }}">
                                             <div class="font-medium text-gray-900 dark:text-white font-serif text-sm">

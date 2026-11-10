@@ -46,13 +46,17 @@ class DatabaseBibleReader implements BibleReaderInterface
      */
     public function getBooks(): Collection
     {
-        $cacheKey = \App\Support\ProjectionCache::key("books_{$this->versionKey}");
+        // v2: entries carry chapter_count (the book selector renders chapter links client-side).
+        $cacheKey = \App\Support\ProjectionCache::key("books_v2_{$this->versionKey}");
 
         if (Cache::has($cacheKey)) {
             return Cache::get($cacheKey);
         }
 
+        $versionId = $this->bibleVersion?->id;
+
         $books = Book::with('bookGroup')
+            ->withCount(['chapters' => fn ($q) => $q->where('version_id', $versionId)])
             ->canonical()
             ->ordered()
             ->get()
@@ -63,6 +67,7 @@ class DatabaseBibleReader implements BibleReaderInterface
                     'short_name' => $book->short_name ?? $book->name,
                     'testament' => $book->bookGroup->name ?? 'Unknown',
                     'book_order' => $book->sort_order,
+                    'chapter_count' => (int) $book->chapters_count,
                 ];
             });
 
