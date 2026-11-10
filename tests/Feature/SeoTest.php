@@ -6,10 +6,12 @@ beforeEach(function () {
 });
 
 it('lists every projected chapter in the sitemap, by canonical URL', function () {
+    config(['app.url' => 'https://bible.example']);
+
     $xml = $this->get('/sitemap.xml')->assertOk()->assertHeader('Content-Type', 'application/xml; charset=UTF-8')->getContent();
 
     expect(substr_count($xml, '<loc>'))->toBe(20) // the fixture's 20 chapters
-        ->and($xml)->toContain('<loc>' . route('chapters.show', ['bookOsisId' => '1John', 'chapterNumber' => 4]) . '</loc>')
+        ->and($xml)->toContain('<loc>https://bible.example/books/1John/chapters/4</loc>')   // APP_URL, whatever the request
         ->and($xml)->toContain('/books/Ps/chapters/23</loc>')
         ->and($xml)->not->toContain('/books/Ps/chapters/1</loc>');
 });
