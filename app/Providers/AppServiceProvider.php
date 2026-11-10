@@ -51,5 +51,10 @@ class AppServiceProvider extends ServiceProvider
 
         Livewire::setUpdateRoute(fn ($handle) => Route::post('/livewire/update', $handle)
             ->middleware(['web', 'throttle:livewire']));
+
+        // Livewire re-applies only "persistent" middleware from the page's route to its update
+        // requests, and its default list has Jetstream's AuthenticateSession, not the framework's.
+        // Without this, a session opened before a password change could keep saving titles.
+        Livewire::addPersistentMiddleware([\Illuminate\Session\Middleware\AuthenticateSession::class]);
     }
 }

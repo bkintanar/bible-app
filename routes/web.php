@@ -25,8 +25,9 @@ Route::post('/login', [LoginController::class, 'store'])->middleware('throttle:6
 Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
 
 // Verse title management (Livewire component). WRITES THE OSIS SOURCE OF TRUTH, and the site
-// is public, so it is behind auth.
-Route::middleware('auth')->group(function () {
+// is public, so it is behind auth. auth.session logs out every other session when the password
+// changes (admin:create); AppServiceProvider makes it apply to Livewire round-trips too.
+Route::middleware(['auth', 'auth.session'])->group(function () {
     Route::get('/admin/verse-titles', [App\Http\Controllers\VerseTitleController::class, 'index'])->name('admin.verse-titles');
 });
 

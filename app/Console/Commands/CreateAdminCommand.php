@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Support\Facades\Validator;
 
@@ -54,6 +55,12 @@ class CreateAdminCommand extends Command
             ['email' => $email],
             ['name' => $name, 'password' => Hash::make($password)]
         );
+
+        // A new remember token voids every "remember me" cookie issued before this change, and
+        // auth.session logs the other open sessions out on their next request. (Not fillable,
+        // so set directly: through updateOrCreate it would be silently dropped.)
+        $user->setRememberToken(Str::random(60));
+        $user->save();
 
         $this->info($existing
             ? "✅ Password updated for {$user->email}"
