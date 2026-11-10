@@ -187,7 +187,8 @@ class BibleService
             return [
                 'book_osis_id' => $result['book_osis_id'] ?? '',
                 'chapter' => $result['chapter'] ?? 1,
-                'verse' => $result['verse'] ?? 1,
+                // The reader returns verse_number; reading 'verse' made every result verse 1.
+                'verse' => $result['verse_number'] ?? $result['verse'] ?? 1,
                 'reference' => $result['reference'] ?? '',
                 'text' => $result['text'] ?? '',
             ];

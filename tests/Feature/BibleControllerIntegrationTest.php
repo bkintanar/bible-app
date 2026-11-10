@@ -238,8 +238,9 @@ describe('Bible Controller Integration', function () {
             $longQuery = str_repeat('test ', 100);
             $response = $this->get('/search?q=' . urlencode($longQuery) . '&translation=kjv');
 
-            // Should either handle gracefully or return validation error
-            expect($response->status())->toBeIn([200, 302, 422]);
+            // Should either handle gracefully or return validation error. /search is now a
+            // permanent redirect to /searches (it used to fall into the book catch-all: 302).
+            expect($response->status())->toBeIn([200, 301, 302, 422]);
         });
 
         it('handles concurrent requests properly', function () {

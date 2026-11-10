@@ -31,8 +31,11 @@ Route::middleware(['auth', 'auth.session'])->group(function () {
     Route::get('/admin/verse-titles', [App\Http\Controllers\VerseTitleController::class, 'index'])->name('admin.verse-titles');
 });
 
-// RESTful Search routes
-Route::resource('searches', SearchController::class)->only(['index', 'store']);
+// Search. GET only: the page is a Livewire component, so there was never anything to POST.
+// /search (old links, and BibleBook used to send readers there) must be registered before the
+// single-segment catch-all below, which would read "search" as a book.
+Route::get('/searches', [SearchController::class, 'index'])->name('searches.index');
+Route::get('/search', [SearchController::class, 'legacy'])->name('searches.legacy');
 
 // RESTful Translation routes (singleton resource)
 Route::singleton('translation', TranslationController::class)->only(['show', 'update']);

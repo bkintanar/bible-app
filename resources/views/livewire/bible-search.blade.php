@@ -5,8 +5,9 @@
             <!-- Main Navigation Row -->
             <div class="flex items-center h-16 w-full">
                 <!-- Left side -->
-                <div class="flex-1">
-                    <h1 class="text-xl font-semibold text-gray-900 dark:text-white">Bible Search</h1>
+                <div class="flex-1 flex items-center gap-4">
+                    <a href="{{ route('bible.index') }}" class="text-sm text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap">&larr; Back to reading</a>
+                    <h1 class="text-xl font-semibold text-gray-900 dark:text-white">Search the Bible</h1>
                 </div>
 
                 <!-- Mobile Actions -->
@@ -52,33 +53,40 @@
         <!-- Fixed Search Form -->
         <div class="flex-shrink-0 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 p-4 sm:p-8">
             <div class="max-w-2xl mx-auto">
-                <div class="flex gap-2">
+                {{-- A form: Enter and the button both submit, and the query is sent only then
+                     (the old live binding ran a search on every pause in typing). --}}
+                <form wire:submit="search" class="flex gap-2" role="search">
                     <div class="relative flex-1">
+                        <label for="bible-search-q" class="sr-only">Search the Bible</label>
                         <input
-                            wire:model.live.debounce.300ms="q"
-                            wire:keydown.enter="search"
-                            type="text"
-                            placeholder="Search for verses, words, or references..."
+                            id="bible-search-q"
+                            wire:model="q"
+                            type="search"
+                            name="q"
+                            maxlength="200"
+                            autocomplete="off"
+                            placeholder="Search for words or phrases..."
                             class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg pl-10 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500 dark:placeholder-gray-400"
                         >
                         <div class="absolute left-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                            <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                             </svg>
                         </div>
                     </div>
                     <button
-                        wire:click="search"
+                        type="submit"
+                        wire:loading.attr="disabled"
                         class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition-colors whitespace-nowrap touch-friendly"
                     >
                         Search
                     </button>
-                </div>
+                </form>
             </div>
         </div>
 
         <!-- Scrollable Content Area -->
-        <div class="flex-1 overflow-y-auto p-4 sm:p-8">
+        <div id="search-scroller" class="flex-1 overflow-y-auto p-4 sm:p-8">
             @if($q)
                 <!-- Search Info -->
                 <div class="mb-6">
@@ -107,7 +115,7 @@
                                 <div class="flex items-start justify-between">
                                     <div class="flex-1">
                                         <div class="text-sm font-medium text-blue-600 dark:text-blue-400 mb-2">
-                                            <a href="/{{ $result['book_osis_id'] }}/{{ $result['chapter'] }}" class="hover:underline">
+                                            <a href="{{ route('chapters.show', ['bookOsisId' => $result['book_osis_id'], 'chapterNumber' => $result['chapter']]) }}#verse-{{ $result['verse'] }}" class="hover:underline">
                                                 {{ $result['reference'] }}
                                             </a>
                                         </div>
@@ -160,46 +168,12 @@
         </div>
     </div>
 
-    <!-- Scroll to element after Livewire update -->
-    @if($scrollToIndex !== null)
-        <script>
-            document.addEventListener('livewire:updated', function () {
-                setTimeout(function() {
-                    const targetElement = document.getElementById('result-{{ $scrollToIndex }}');
-                    if (targetElement) {
-                        try {
-                            targetElement.scrollIntoView({
-                                behavior: 'smooth',
-                                block: 'start'
-                            });
-
-                            setTimeout(() => {
-                                const currentScrollTop = window.pageYOffset || document.documentElement.scrollTop;
-                                window.scrollTo({
-                                    top: currentScrollTop - 120,
-                                    behavior: 'smooth'
-                                });
-                            }, 100);
-                        } catch (error) {
-                            const offsetTop = targetElement.offsetTop - 120;
-                            window.scrollTo(0, offsetTop);
-                        }
-                    }
-                }, 100);
-            });
-        </script>
-    @endif
-
     <!-- Dark Mode Script -->
     <script>
+        // Initial theme is set in <head> (partials/dark-mode-head) to avoid a flash.
         function toggleDarkMode() {
             document.documentElement.classList.toggle('dark');
-            localStorage.setItem('darkMode', document.documentElement.classList.contains('dark'));
-        }
-
-        // Initialize dark mode from localStorage
-        if (localStorage.getItem('darkMode') === 'true') {
-            document.documentElement.classList.add('dark');
+            try { localStorage.setItem('darkMode', document.documentElement.classList.contains('dark')); } catch (e) {}
         }
     </script>
 </div>

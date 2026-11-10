@@ -2,25 +2,25 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\View\View;
+
 class SearchController extends Controller
 {
     /**
-     * Display the search page
-     * GET /searches
+     * GET /searches - the search page (Livewire BibleSearch; reads ?q=, and legacy ?query=).
      */
-    public function index()
+    public function index(): View
     {
         return view('livewire-search');
     }
 
     /**
-     * Store a new search (perform search)
-     * POST /searches
+     * GET /search - old address. Route::redirect() would drop the query string (?q=love).
      */
-    public function store()
+    public function legacy(Request $request): RedirectResponse
     {
-        // This would handle search form submission if needed
-        // For now, searches are handled by Livewire components
-        return redirect()->route('searches.index');
+        return redirect()->route('searches.index', $request->query(), 301);
     }
 }

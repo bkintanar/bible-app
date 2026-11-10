@@ -97,7 +97,7 @@ class BibleBook extends Component
     public function search()
     {
         if (! empty($this->searchQuery)) {
-            return redirect('/search?q=' . urlencode($this->searchQuery));
+            return redirect()->route('searches.index', ['q' => $this->searchQuery]);
         }
     }
 
