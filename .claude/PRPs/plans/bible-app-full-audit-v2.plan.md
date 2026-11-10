@@ -655,9 +655,13 @@ function projectFixture(string $name = 'mini-kjv'): void {
 - **8.2 Strong's (`7623ff0`):** tap/click popover for Strong's numbers (title tooltips never appear on touch); words deliberately not focusable (~700 tab stops per chapter).
 - Validation: 244 tests green; `pint --test` 0; build 0; composer/npm audit clean; CI green (run 42745923924); live `osis:verify --content` matches, gate 32/32, `integrity_check` ok; queue + timers active.
 
-### Remaining after iteration 2 (needs the owner, or a browser)
+### Iteration 3 (2026-11-10) — 8.2's axe validation
+- Ran **axe-core 4.10 (WCAG 2.1 A/AA)** against production with the host's Chrome 151 (+ matching chromedriver): found **serious** `scrollable-region-focusable` on chapter pages (region attributes were on `.page-current`; `.page-content` is what scrolls) and on the empty `/searches` scroller, and **critical** `button-name` on the book page's icon-only search toggle. Fixed (`35aeafe`, `f2fffd7`); re-run on 11 pages (Gen 1, Ps 23, Ps 119, John 3, Matt 26, 1John 4, the John book page, search with/without results, login, 404) → **0 violations**.
+- Made continuous: `scripts/audit/a11y/axe_gate.py` + CI job `a11y` (fixture projection, `php artisan serve`, axe on 9 pages, fails on serious/critical) — run 42747312137: test success, a11y success, 9 pages × 0 violations (`078572c`).
+
+### Remaining after iteration 3 (needs the owner, or a browser)
 - **Owner actions:** APP_KEY rotation (`deploy/bin/rotate-app-key.sh`; classifier refused); write deploy key at `/root/.ssh/bible-app-deploy` for the nightly OSIS push (3.4); off-host backup target (0.3); `/etc/default/bible-app-notify` with NOTIFY_URL (+ an external uptime check on `/up`) (9.4); host package upgrades (9.5); answers to OD-1/3/4/9/10/11 (interim defaults applied); review of the 9 red-letter boundary verses (2.4).
-- **Deviations (decided, documented):** axe-core run (needs a headless browser — CI candidate); custom CSS not moved into `@layer components`; `word_order`/`text_order`/`poetry_structure` kept (9.2); Strong's words not keyboard-focusable (8.2).
+- **Deviations (decided, documented):** custom CSS not moved into `@layer components`; `word_order`/`text_order`/`poetry_structure` kept (9.2); Strong's words not keyboard-focusable (8.2).
 - **Manual browser check recommended:** book selector (open/pick/Escape/focus return), A−/A+, search box, arrow keys and swipe, print preview, dark mode on every page.
 - **Push credential GOTCHA (affects 3.4 and every push):** this host's SSH key and the *active* `gh` account are `b8-catch`, which has no write access to `bkintanar/bible-app`. Pushes were made once as `bkintanar` via a one-off credential helper (`gh auth token --user bkintanar`, HTTPS `insteadOf`), without switching the active `gh` account or changing git config. For the unattended nightly push in 3.4, add a **write-enabled deploy key** to `bkintanar/bible-app` (owner action on GitHub) and point `remote.origin.url` / an SSH `Host` alias at it.
 
