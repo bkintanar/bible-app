@@ -1,2 +1,8 @@
 User-agent: *
-Disallow:
+Disallow: /searches
+Disallow: /search
+Disallow: /admin/
+Disallow: /login
+Disallow: /api/
+
+Sitemap: https://bible.b8.co.nz/sitemap.xml

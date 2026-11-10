@@ -34,10 +34,10 @@ class LegacyRedirectController extends Controller
 
     private function canonical(string $bookOsisId): string
     {
-        $book = $this->bible->getBooks()->first(fn ($b) => strcasecmp($b['osis_id'], $bookOsisId) === 0);
+        $book = $this->bible->canonicalBookId($bookOsisId);
 
-        abort_unless($book !== null, 404);
+        abort_if($book === null, 404);
 
-        return $book['osis_id'];
+        return $book;
     }
 }

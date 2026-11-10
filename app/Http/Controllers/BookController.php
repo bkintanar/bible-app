@@ -30,9 +30,12 @@ class BookController extends Controller
      */
     public function show(string $bookOsisId)
     {
-        // Validate the book exists
-        if (! $this->bibleService->bookExists($bookOsisId)) {
-            abort(404, "Book not found: {$bookOsisId}");
+        // Case variants redirect to the one canonical URL (/books/john -> /books/John).
+        $canonical = $this->bibleService->canonicalBookId($bookOsisId);
+        abort_if($canonical === null, 404);
+
+        if ($canonical !== $bookOsisId) {
+            return redirect()->route('books.show', ['bookOsisId' => $canonical], 301);
         }
 
         ResumePosition::remember($bookOsisId);

@@ -7,6 +7,8 @@ use App\Http\Controllers\BookController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\ChapterController;
 use App\Http\Controllers\LegacyRedirectController;
+use App\Http\Controllers\SitemapController;
+use App\Http\Middleware\NoIndex;
 
 // =======================================
 // MAIN APPLICATION ROUTES
@@ -19,14 +21,16 @@ Route::get('/', [BibleController::class, 'index'])->name('bible.index');
 
 // Authentication. No registration route by design: this is a single-editor app on a public
 // domain, so accounts are created on the box with `php artisan admin:create`.
-Route::get('/login', [LoginController::class, 'show'])->name('login');
+Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
+
+Route::get('/login', [LoginController::class, 'show'])->middleware(NoIndex::class)->name('login');
 Route::post('/login', [LoginController::class, 'store'])->middleware('throttle:6,1')->name('login.store');
 Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
 
 // Verse title management (Livewire component). WRITES THE OSIS SOURCE OF TRUTH, and the site
 // is public, so it is behind auth. auth.session logs out every other session when the password
 // changes (admin:create); AppServiceProvider makes it apply to Livewire round-trips too.
-Route::middleware(['auth', 'auth.session'])->group(function () {
+Route::middleware(['auth', 'auth.session', NoIndex::class])->group(function () {
     Route::get('/admin/verse-titles', [App\Http\Controllers\VerseTitleController::class, 'index'])->name('admin.verse-titles');
 });
 

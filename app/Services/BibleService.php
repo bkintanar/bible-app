@@ -87,6 +87,14 @@ class BibleService
     /**
      * Check if a book exists
      */
+    /** The stored spelling of a book id, matched case-insensitively ("gen" -> "Gen"), or null. */
+    public function canonicalBookId(string $bookOsisId): ?string
+    {
+        $book = $this->getBooks()->first(fn ($b) => strcasecmp($b['osis_id'], $bookOsisId) === 0);
+
+        return $book['osis_id'] ?? null;
+    }
+
     public function bookExists(string $bookOsisId): bool
     {
         $books = $this->getBooks();
