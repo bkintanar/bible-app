@@ -4,7 +4,7 @@
         <div class="px-4 sm:px-6 py-4">
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-4">
-                    <a href="/" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+                    <a href="{{ route('books.index') }}" class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
                         ← Home
                     </a>
                     <div class="text-xl font-semibold text-gray-900 dark:text-white">
@@ -95,7 +95,7 @@
                         </div>
                         <div class="text-right">
                             <div class="text-sm text-gray-500 dark:text-gray-400 mb-1">Start Reading</div>
-                            <a href="/{{ $bookOsisId }}/1"
+                            <a href="{{ route('chapters.show', ['bookOsisId' => $bookOsisId, 'chapterNumber' => 1]) }}"
                                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
                                 Chapter 1 →
                             </a>
@@ -115,7 +115,7 @@
                         <div class="grid grid-cols-3 sm:grid-cols-6 gap-3">
                             @foreach($this->getPopularChapters() as $chapterNum)
                                 @if($chapterNum <= count($chapters))
-                                    <a href="/{{ $bookOsisId }}/{{ $chapterNum }}"
+                                    <a href="{{ route('chapters.show', ['bookOsisId' => $bookOsisId, 'chapterNumber' => $chapterNum]) }}"
                                        class="bg-blue-600 hover:bg-blue-700 text-white text-center py-3 px-4 rounded-lg transition-colors font-medium">
                                         {{ $chapterNum }}
                                     </a>
@@ -131,7 +131,7 @@
 
                     <div class="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-3">
                         @foreach($chapters as $chapter)
-                            <a href="/{{ $bookOsisId }}/{{ $chapter['chapter_number'] }}"
+                            <a href="{{ route('chapters.show', ['bookOsisId' => $bookOsisId, 'chapterNumber' => $chapter['chapter_number']]) }}"
                                class="bg-gray-100 dark:bg-gray-700 hover:bg-blue-600 hover:text-white text-gray-900 dark:text-gray-100 text-center py-3 px-2 rounded-lg transition-colors font-medium group">
                                 <div class="text-lg">{{ $chapter['chapter_number'] }}</div>
                                 @if(isset($chapter['verse_count']))
@@ -148,20 +148,20 @@
                 <div class="mt-8 bg-gray-100 dark:bg-gray-800 rounded-lg p-6">
                     <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quick Navigation</h3>
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        <a href="/" class="text-center p-4 bg-white dark:bg-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+                        <a href="{{ route('books.index') }}" class="text-center p-4 bg-white dark:bg-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
                             <div class="text-2xl mb-2">📖</div>
                             <div class="text-sm font-medium text-gray-900 dark:text-white">All Books</div>
                         </a>
-                        <a href="/search" class="text-center p-4 bg-white dark:bg-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+                        <a href="{{ route('searches.index') }}" class="text-center p-4 bg-white dark:bg-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
                             <div class="text-2xl mb-2">🔍</div>
                             <div class="text-sm font-medium text-gray-900 dark:text-white">Search</div>
                         </a>
                         @if(count($chapters) > 0)
-                            <a href="/{{ $bookOsisId }}/1" class="text-center p-4 bg-white dark:bg-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+                            <a href="{{ route('chapters.show', ['bookOsisId' => $bookOsisId, 'chapterNumber' => 1]) }}" class="text-center p-4 bg-white dark:bg-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
                                 <div class="text-2xl mb-2">▶️</div>
                                 <div class="text-sm font-medium text-gray-900 dark:text-white">Start Reading</div>
                             </a>
-                            <a href="/{{ $bookOsisId }}/{{ count($chapters) }}" class="text-center p-4 bg-white dark:bg-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+                            <a href="{{ route('chapters.show', ['bookOsisId' => $bookOsisId, 'chapterNumber' => count($chapters)]) }}" class="text-center p-4 bg-white dark:bg-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
                                 <div class="text-2xl mb-2">⏭️</div>
                                 <div class="text-sm font-medium text-gray-900 dark:text-white">Last Chapter</div>
                             </a>
@@ -195,7 +195,7 @@
 
     @if($prevBook)
         <div class="fixed left-4 top-1/2 transform -translate-y-1/2 z-40">
-            <a href="/{{ $prevBook['osis_id'] }}"
+            <a href="{{ route('books.show', ['bookOsisId' => $prevBook['osis_id']]) }}"
                class="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 p-3 rounded-full shadow-lg transition-colors group"
                title="Previous Book: {{ $prevBook['name'] }}">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -208,7 +208,7 @@
     <!-- Floating Next Book Button (Right Side) -->
     @if($nextBook)
         <div class="fixed right-4 top-1/2 transform -translate-y-1/2 z-40">
-            <a href="/{{ $nextBook['osis_id'] }}"
+            <a href="{{ route('books.show', ['bookOsisId' => $nextBook['osis_id']]) }}"
                class="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 p-3 rounded-full shadow-lg transition-colors group"
                title="Next Book: {{ $nextBook['name'] }}">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

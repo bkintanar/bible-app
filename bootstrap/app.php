@@ -41,5 +41,18 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->throttleApi();
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        // The API answers in JSON - including for routes that do not exist (/api, /api/nope), which
+        // used to get the HTML 404 page - with the same envelope as ApiResponseTrait.
+        $isApi = fn (\Illuminate\Http\Request $request) => $request->is('api', 'api/*');
+        $envelope = fn (string $message, int $status, array $headers = []) => response()->json([
+            'success' => false,
+            'message' => $message,
+            'timestamp' => now()->toISOString(),
+        ], $status, $headers);
+
+        $exceptions->shouldRenderJsonWhen(fn ($request) => $isApi($request) || $request->expectsJson());
+
+        $exceptions->render(fn (\Symfony\Component\HttpKernel\Exception\NotFoundHttpException $e, $request) => $isApi($request) ? $envelope('Not found.', 404) : null);
+
+        $exceptions->render(fn (\Illuminate\Http\Exceptions\ThrottleRequestsException $e, $request) => $isApi($request) ? $envelope('Too many requests. Please slow down.', 429, $e->getHeaders()) : null);
     })->create();

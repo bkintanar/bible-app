@@ -6,8 +6,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\BookController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\ChapterController;
-use App\Http\Controllers\TranslationController;
-use App\Http\Controllers\UserSessionController;
+use App\Http\Controllers\LegacyRedirectController;
 
 // =======================================
 // MAIN APPLICATION ROUTES
@@ -37,13 +36,6 @@ Route::middleware(['auth', 'auth.session'])->group(function () {
 Route::get('/searches', [SearchController::class, 'index'])->name('searches.index');
 Route::get('/search', [SearchController::class, 'legacy'])->name('searches.legacy');
 
-// RESTful Translation routes (singleton resource)
-Route::singleton('translation', TranslationController::class)->only(['show', 'update']);
-
-// RESTful User Session routes (singleton resource)
-Route::singleton('user-session', UserSessionController::class)->only(['show', 'update']);
-Route::delete('user-session', [UserSessionController::class, 'destroy'])->name('user-session.destroy');
-
 // =======================================
 // RESTFUL RESOURCE ROUTES
 // =======================================
@@ -53,7 +45,7 @@ Route::get('/books', [BookController::class, 'index'])->name('books.index');
 Route::get('/books/{bookOsisId}', [BookController::class, 'show'])->name('books.show');
 
 // Chapters resource routes (nested under books)
-Route::get('/books/{bookOsisId}/chapters/{chapterNumber}', [ChapterController::class, 'show'])->whereNumber('chapterNumber')->name('chapters.show');
+Route::get('/books/{bookOsisId}/chapters/{chapterNumber}', [ChapterController::class, 'show'])->where('chapterNumber', '[0-9]{1,3}')->name('chapters.show');
 
 // =======================================
 // TESTING ROUTES (must be before dynamic routes)
@@ -63,11 +55,13 @@ Route::get('/books/{bookOsisId}/chapters/{chapterNumber}', [ChapterController::c
 // LEGACY ROUTES (for backward compatibility)
 // =======================================
 
-// Short URLs - redirect to RESTful routes
-Route::get('/{bookOsisId}/{chapterNumber}', function ($bookOsisId, $chapterNumber) {
-    return redirect()->route('chapters.show', ['bookOsisId' => $bookOsisId, 'chapterNumber' => $chapterNumber]);
-})->name('bible.chapter');
+// Short URLs (/Gen/1, /John) -> the RESTful routes, permanently, and only for real books.
+// The book pattern excludes "api" so /api and /api/... reach the JSON 404 instead. (No ^/$ anchors:
+// Symfony strips them from requirements, and an unanchored (?!api$) would still let /api/nope in.)
+Route::get('/{bookOsisId}/{chapterNumber}', [LegacyRedirectController::class, 'chapter'])
+    ->where(['bookOsisId' => '(?!api\b)[1-3]?[A-Za-z]+', 'chapterNumber' => '[0-9]{1,3}'])
+    ->name('bible.chapter');
 
-Route::get('/{bookOsisId}', function ($bookOsisId) {
-    return redirect()->route('books.show', ['bookOsisId' => $bookOsisId]);
-})->name('bible.book');
+Route::get('/{bookOsisId}', [LegacyRedirectController::class, 'book'])
+    ->where('bookOsisId', '(?!api\b)[1-3]?[A-Za-z]+')
+    ->name('bible.book');
